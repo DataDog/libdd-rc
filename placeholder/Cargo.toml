@@ -1,0 +1,7 @@
+[package]
+name = "placeholder"
+version = "0.1.0"
+publish = ["datadog"]
+edition.workspace = true
+
+[dependencies]
