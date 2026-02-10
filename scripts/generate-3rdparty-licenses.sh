@@ -83,7 +83,7 @@ generate_licenses() {
 
         # Output CSV row
         echo "${pkg_name},${repository},${license},${authors}"
-    done | sort >> "$output"
+    done | LC_COLLATE=POSIX sort >> "$output"
 }
 
 case "$MODE" in
