@@ -3,6 +3,7 @@
 # See "docs/license.md" for helper script documentation.
 
 name: licence
+permissions: {}
 
 on:
   workflow_call:
@@ -15,11 +16,13 @@ jobs:
   check-headers:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       # https://github.com/apache/skywalking-eyes
       - name: Check Apache license headers
-        uses: apache/skywalking-eyes/header@main
+        uses: apache/skywalking-eyes/header@61275cc80d0798a405cb070f7d3a8aaf7cf2c2c1
         with:
           mode: check
 
@@ -27,17 +30,19 @@ jobs:
   check-3rdparty-bom:
     runs-on: ubuntu-latest
     container:
-      image: rust:latest
+      image: rust:1.93.0
     steps:
       - name: ensure node is installed for act
         if: ${{ env.ACT }}
         run: command -v node || (apt update && apt install -y nodejs zstd)
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Cache cargo-license
         id: cache-cargo-license
-        uses: actions/cache@v4
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
         with:
           path: /usr/local/cargo/bin/cargo-license
           key: ${{ runner.os }}-cargo-license-${{ hashFiles('**/Cargo.lock') }}
@@ -61,13 +66,15 @@ jobs:
   check-crate-licenses:
     runs-on: ubuntu-latest
     container:
-      image: rust:latest
+      image: rust:1.93.0
     steps:
       - name: ensure node is installed for act
         if: ${{ env.ACT }}
         run: command -v node || (apt update && apt install -y nodejs zstd)
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Install jq
         run: apt-get update && apt-get install -y jq
