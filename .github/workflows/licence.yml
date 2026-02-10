@@ -53,3 +53,21 @@ jobs:
 
       - name: Check LICENSE-3rdparty.csv is up to date
         run: ./scripts/generate-3rdparty-licenses.sh check
+
+  # 1st party crates have to be correctly licensed in their Cargo.toml
+  check-crate-licenses:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+    steps:
+      - name: ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: apt-get update && apt-get install -y jq
+
+      - name: Check crate license fields
+        run: ./scripts/check-1stparty-crate-licenses.sh

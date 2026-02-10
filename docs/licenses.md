@@ -10,6 +10,13 @@ by using [SkyWalking Eyes]:
 
 [SkyWalking Eyes]: https://github.com/apache/skywalking-eyes
 
+## 1st Party
+
+All 1st party crates should have `license = "Apache-2.0"` set in their
+Cargo.toml files.
+
+This is verified by the `scripts/check-1stparty-crate-licenses.sh` helper in CI.
+
 ## 3rd Party
 
 All 3rd party dependencies, and their licenses must be listed in the
