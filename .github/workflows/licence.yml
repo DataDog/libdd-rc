@@ -1,0 +1,55 @@
+# This file ensures the repo has up-to-date legal notices.
+#
+# See "docs/license.md" for helper script documentation.
+
+name: licence
+
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  # All source code must have the Apache 2.0 header at the top.
+  check-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # https://github.com/apache/skywalking-eyes
+      - name: Check Apache license headers
+        uses: apache/skywalking-eyes/header@main
+        with:
+          mode: check
+
+  # 3rd party crates must be listed in LICENSE-3rdparty.csv.
+  check-3rdparty-bom:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+    steps:
+      - name: ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo-license
+        id: cache-cargo-license
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/cargo/bin/cargo-license
+          key: ${{ runner.os }}-cargo-license-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-license
+
+      - name: Install cargo-license
+        if: steps.cache-cargo-license.outputs.cache-hit != 'true'
+        run: cargo install cargo-license
+
+      - name: Install jq
+        run: apt-get update && apt-get install -y jq
+
+      - name: Check LICENSE-3rdparty.csv is up to date
+        run: ./scripts/generate-3rdparty-licenses.sh check
