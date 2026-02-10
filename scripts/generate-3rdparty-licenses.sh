@@ -51,7 +51,7 @@ fi
 generate_licenses() {
     local output="$1"
     echo "Component,Origin,License,Copyright" > "$output"
-    cargo license --json | jq -r '.[] | [.name, .repository // "N/A", .license, .authors // "N/A"] | @csv' | sort >> "$output"
+    cargo license --all-features --json | jq -r '.[] | [.name, .repository // "N/A", .license, .authors // "N/A"] | @csv' | sort >> "$output"
 }
 
 case "$MODE" in
