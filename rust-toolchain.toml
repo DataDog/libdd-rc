@@ -1,3 +1,7 @@
 [toolchain]
-channel = "1.93.0"
 profile = "default"
+
+# Run scripts/update-rust-version.sh after changing this value.
+#
+# Always pin to a specific version, not "stable" or other moving targets.
+channel = "1.93.0"
