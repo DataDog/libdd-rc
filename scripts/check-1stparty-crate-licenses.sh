@@ -58,5 +58,8 @@ else
     for manifest in "${FAILED_MANIFESTS[@]}"; do
         echo "  - $manifest"
     done
+    echo ""
+    echo ""
+    echo "Please add 'license = \"Apache-2.0\"' to the [package] section of each file"
     exit 1
 fi
