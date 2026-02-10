@@ -21,8 +21,8 @@ set -euo pipefail
 #   ./generate-3rdparty-licenses.sh        # fix mode (default) - generates LICENSE-3rdparty.csv
 #   ./generate-3rdparty-licenses.sh check  # check mode - verifies LICENSE-3rdparty.csv is up to date
 #
-# This script requires cargo-license to be installed:
-#   cargo install cargo-license
+# This script requires cargo-deny to be installed:
+#   cargo install cargo-deny
 #
 # It also requires jq for JSON processing:
 #   apt-get install jq  # Debian/Ubuntu
@@ -31,10 +31,10 @@ set -euo pipefail
 MODE="${1:-fix}"
 OUTPUT_FILE="LICENSE-3rdparty.csv"
 
-# Check if cargo-license is installed
-if ! command -v cargo-license &> /dev/null; then
-    echo "Error: cargo-license is not installed"
-    echo "Please run: cargo install cargo-license"
+# Check if cargo-deny is installed
+if ! command -v cargo-deny &> /dev/null; then
+    echo "Error: cargo-deny is not installed"
+    echo "Please run: cargo install cargo-deny"
     exit 1
 fi
 
@@ -50,8 +50,40 @@ fi
 # $1: path to CSV file to create
 generate_licenses() {
     local output="$1"
+
+    # Get all package metadata
+    local metadata
+    metadata=$(cargo metadata --format-version 1 --all-features 2>/dev/null)
+
+    # Get license information from cargo deny
+    local licenses
+    licenses=$(cargo deny list --format json --layout crate 2>/dev/null)
+
+    # Write CSV header
     echo "Component,Origin,License,Copyright" > "$output"
-    cargo license --all-features --json | jq -r '.[] | [.name, .repository // "N/A", .license, .authors // "N/A"] | @csv' | sort >> "$output"
+
+    # Process each package from cargo deny list
+    echo "$licenses" | jq -r 'keys[]' | while IFS= read -r key; do
+        # Extract package name and version from the key (format: "name version source")
+        local pkg_name pkg_version
+        pkg_name=$(echo "$key" | awk '{print $1}')
+        pkg_version=$(echo "$key" | awk '{print $2}')
+
+        # Get license from cargo deny
+        local license
+        license=$(echo "$licenses" | jq -r --arg key "$key" '.[$key].licenses | join(" OR ")')
+
+        # Get repository and authors from cargo metadata
+        local repository authors
+        repository=$(echo "$metadata" | jq -r --arg name "$pkg_name" --arg version "$pkg_version" \
+            '.packages[] | select(.name == $name and .version == $version) | .repository // "N/A"')
+        authors=$(echo "$metadata" | jq -r --arg name "$pkg_name" --arg version "$pkg_version" \
+            '.packages[] | select(.name == $name and .version == $version) |
+            if .authors | length > 0 then .authors | join(", ") else "N/A" end')
+
+        # Output CSV row
+        echo "${pkg_name},${repository},${license},${authors}"
+    done | sort >> "$output"
 }
 
 case "$MODE" in

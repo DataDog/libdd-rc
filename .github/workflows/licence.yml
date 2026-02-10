@@ -41,17 +41,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Cache cargo-license
-        id: cache-cargo-license
+      - name: Cache cargo-deny
+        id: cache-cargo-deny
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
         with:
-          path: /usr/local/cargo/bin/cargo-license
-          key: ${{ runner.os }}-cargo-license-${{ hashFiles('**/Cargo.lock') }}
+          path: /usr/local/cargo/bin/cargo-deny
+          key: ${{ runner.os }}-cargo-deny-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-license
+            ${{ runner.os }}-cargo-deny
 
-      - name: Install cargo-license
-        run: command -v cargo-license || cargo install --git https://github.com/onur/cargo-license --rev d43e880f2d7b6f219b08d6ef321251aa0e9839ea cargo-license  # v0.7.0
+      # Manual install / not github action so scripts can be run to check after.
+      - name: Install cargo-deny
+        run: command -v cargo-deny || cargo install --git https://github.com/EmbarkStudios/cargo-deny --rev 8e63a579d8ac61faa6e00d3d4ecde495bf138540 cargo-deny # 0.19.0
 
       - name: Install jq
         run: apt-get update && apt-get install -y jq
@@ -59,7 +60,7 @@ jobs:
       - name: Check LICENSE-3rdparty.csv is up to date
         run: ./scripts/generate-3rdparty-licenses.sh check
 
-      - name: Check dependency licenses
+      - name: Check dependency licenses are allowed
         run: ./scripts/check-3rdparty-licenses.sh
 
   # 1st party crates have to be correctly licensed in their Cargo.toml
