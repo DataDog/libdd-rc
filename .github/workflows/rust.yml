@@ -1,3 +1,5 @@
+# Rust source code quality checks.
+
 name: build
 
 on:
@@ -100,3 +102,31 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace --all-features
+
+  # Check for banned crates, invalid sources, and security advisories
+  cargo-deny:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+    steps:
+      - name: ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo-deny
+        id: cache-cargo-deny
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/cargo/bin/cargo-deny
+          key: ${{ runner.os }}-cargo-deny-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-deny
+
+      - name: Install cargo-deny
+        if: steps.cache-cargo-deny.outputs.cache-hit != 'true'
+        run: cargo install cargo-deny
+
+      - name: Check for banned crates and invalid sources
+        run: cargo deny check bans sources advisories

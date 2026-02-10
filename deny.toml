@@ -1,0 +1,34 @@
+# https://embarkstudios.github.io/cargo-deny/
+#
+# NOTE: License checks are performed by scripts/check-3rdparty-licenses.sh
+# using the LICENSE-3rdparty.csv file. This configuration only covers
+# bans, sources, and advisories.
+
+[bans]
+# Warn about multiple versions of the same dependency
+multiple-versions = "allow"
+
+# Warn about wildcard dependencies
+wildcards = "deny"
+
+# Deny specific crates
+deny = []
+
+# Skip certain crates from duplicate checks
+skip = []
+
+# Skip certain crate trees from duplicate checks
+skip-tree = []
+
+[sources]
+# Deny crates from unknown registries
+unknown-registry = "deny"
+
+# Deny crates from git sources
+unknown-git = "deny"
+
+# Allow crates from crates.io
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# Allow git sources (if needed, can be empty list to deny all)
+allow-git = []
