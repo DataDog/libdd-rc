@@ -51,8 +51,7 @@ jobs:
             ${{ runner.os }}-cargo-license
 
       - name: Install cargo-license
-        if: steps.cache-cargo-license.outputs.cache-hit != 'true'
-        run: cargo install cargo-license
+        run: command -v cargo-license || cargo install cargo-license
 
       - name: Install jq
         run: apt-get update && apt-get install -y jq

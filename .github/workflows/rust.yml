@@ -135,8 +135,7 @@ jobs:
             ${{ runner.os }}-cargo-deny
 
       - name: Install cargo-deny
-        if: steps.cache-cargo-deny.outputs.cache-hit != 'true'
-        run: cargo install cargo-deny
+        run: command -v cargo-deny || cargo install cargo-deny
 
       - name: Check for banned crates and invalid sources
         run: cargo deny check bans sources advisories
