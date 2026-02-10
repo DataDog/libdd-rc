@@ -1,13 +1,14 @@
 # Rust source code quality checks.
 
 name: build
-permissions: {}
+permissions:
+  contents: read
 
 on:
   workflow_call:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build:
