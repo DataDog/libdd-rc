@@ -51,7 +51,7 @@ jobs:
             ${{ runner.os }}-cargo-license
 
       - name: Install cargo-license
-        run: command -v cargo-license || cargo install cargo-license
+        run: command -v cargo-license || cargo install --git https://github.com/onur/cargo-license --rev d43e880f2d7b6f219b08d6ef321251aa0e9839ea cargo-license  # v0.7.0
 
       - name: Install jq
         run: apt-get update && apt-get install -y jq
