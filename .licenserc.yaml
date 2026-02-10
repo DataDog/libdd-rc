@@ -4,12 +4,14 @@ header:
     copyright-owner: Datadog, Inc
 
   paths-ignore:
+    - ".licenserc.yaml"
     - "**/*.md"
     - "**/*.txt"
     - "**/*.lock"
     - "**/target/**"
     - ".gitignore"
     - "LICENSE"
+    - "LICENSE-3rdparty.csv"
     - "NOTICE"
     - "rust-toolchain.toml"
     - ".github/"
