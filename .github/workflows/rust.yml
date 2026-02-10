@@ -111,7 +111,7 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-features
 
-  # Check for banned crates, invalid sources, and security advisories
+  # Check for banned crates, invalid sources, security advisories, and licenses
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
@@ -122,4 +122,4 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@8371184bd11e21dcf8ac82ebf8c9c9f74ebf7268 # v2
         with:
           arguments: --workspace
-          command: check bans sources advisories
+          command: check bans sources advisories licenses

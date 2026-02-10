@@ -1,8 +1,17 @@
 # https://embarkstudios.github.io/cargo-deny/
-#
-# NOTE: License checks are performed by scripts/check-3rdparty-licenses.sh
-# using the LICENSE-3rdparty.csv file. This configuration only covers
-# bans, sources, and advisories.
+
+[licenses]
+# Allow only specific licenses
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+]
+
+# Set confidence threshold for license detection
+confidence-threshold = 0.8
 
 [bans]
 # Warn about multiple versions of the same dependency

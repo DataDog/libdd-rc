@@ -60,9 +60,6 @@ jobs:
       - name: Check LICENSE-3rdparty.csv is up to date
         run: ./scripts/generate-3rdparty-licenses.sh check
 
-      - name: Check dependency licenses are allowed
-        run: ./scripts/check-3rdparty-licenses.sh
-
   # 1st party crates have to be correctly licensed in their Cargo.toml
   check-crate-licenses:
     runs-on: ubuntu-latest
