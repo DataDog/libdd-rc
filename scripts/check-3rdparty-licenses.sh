@@ -35,7 +35,7 @@ APPROVED_LICENSES=(
 )
 
 echo "Checking dependency licenses in $LICENSE_FILE..."
-echo ""
+echo
 
 if [ ! -f "$LICENSE_FILE" ]; then
     echo "Error: $LICENSE_FILE not found"
@@ -85,7 +85,7 @@ while IFS=',' read -r component origin license copyright; do
     fi
 done < "$LICENSE_FILE"
 
-echo ""
+echo
 
 if [ ${#FAILED_COMPONENTS[@]} -eq 0 ]; then
     echo "✓ All dependencies have approved licenses"
@@ -95,7 +95,8 @@ else
     for component in "${FAILED_COMPONENTS[@]}"; do
         echo "  - $component"
     done
-    echo ""
+    echo
     echo "Approved licenses: ${APPROVED_LICENSES[*]}"
+    echo
     exit 1
 fi

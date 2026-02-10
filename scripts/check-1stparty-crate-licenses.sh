@@ -29,7 +29,7 @@ if [ ! -f Cargo.toml ]; then
 fi
 
 echo "Checking license fields in workspace crates..."
-echo ""
+echo
 
 FAILED_MANIFESTS=()
 
@@ -45,7 +45,7 @@ fi
 # Check each workspace package
 while IFS='|' read -r package_name manifest_path; do
     # Check if the license field exists and has the correct value
-    LICENSE=$(grep -E '^license\s*=' "$manifest_path" | sed -E 's/^license\s*=\s*"([^"]+)".*/\1/' || echo "")
+    LICENSE=$(grep -E '^license\s*=' "$manifest_path" | sed -E 's/^license\s*=\s*"([^"]+)".*/\1/' || echo )
 
     case "$LICENSE" in
         "Apache-2.0")
@@ -62,7 +62,7 @@ while IFS='|' read -r package_name manifest_path; do
     esac
 done <<< "$WORKSPACE_PACKAGES"
 
-echo ""
+echo
 
 if [ ${#FAILED_MANIFESTS[@]} -eq 0 ]; then
     echo "✓ All crates have correct license fields"
@@ -72,8 +72,9 @@ else
     for manifest in "${FAILED_MANIFESTS[@]}"; do
         echo "  - $manifest"
     done
-    echo ""
-    echo ""
+    echo
+    echo
     echo "Please add 'license = \"Apache-2.0\"' to the [package] section of each file"
+    echo
     exit 1
 fi

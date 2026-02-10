@@ -61,8 +61,8 @@ case "$MODE" in
         # Check if the file exists
         if [ ! -f "$OUTPUT_FILE" ]; then
             echo "::error::$OUTPUT_FILE is missing from the repository"
-            echo ""
-            echo ""
+            echo
+            echo
             echo "Please run: ./scripts/generate-3rdparty-licenses.sh"
             exit 1
         fi
@@ -76,11 +76,11 @@ case "$MODE" in
         # Compare the files
         if ! diff -q "$OUTPUT_FILE" "$TEMP_FILE" > /dev/null; then
             echo "::error::$OUTPUT_FILE is out of date"
-            echo ""
+            echo
             echo "Differences:"
             diff -u "$OUTPUT_FILE" "$TEMP_FILE" || true
-            echo ""
-            echo ""
+            echo
+            echo
             echo "Please run: ./scripts/generate-3rdparty-licenses.sh"
             exit 1
         fi
@@ -92,12 +92,13 @@ case "$MODE" in
         echo "Generating $OUTPUT_FILE..."
         generate_licenses "$OUTPUT_FILE"
         echo "✓ $OUTPUT_FILE has been generated successfully"
-        echo ""
+        echo
         echo "Please review the file and commit it to the repository."
         ;;
 
     *)
         echo "Error: Invalid mode '$MODE'. Use 'fix' or 'check'"
+		echo
         exit 1
         ;;
 esac
