@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# Enumerate the local rust crates in the workspace, and ensure they all have
+# license metadata that specifies Apache 2.0.
+#
+# This script is used in CI.
+#
+
 set -euo pipefail
 
 # Check that all first-party crates have license = "Apache-2.0" in their Cargo.toml

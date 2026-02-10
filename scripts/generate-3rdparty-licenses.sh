@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euo pipefail
-
+#
 # Generate LICENSE-3rdparty.csv from Cargo dependencies
 #
 # Usage:
@@ -27,6 +26,11 @@ set -euo pipefail
 # It also requires jq for JSON processing:
 #   apt-get install jq  # Debian/Ubuntu
 #   brew install jq     # macOS
+#
+# This script is used in CI.
+#
+
+set -euo pipefail
 
 MODE="${1:-fix}"
 OUTPUT_FILE="LICENSE-3rdparty.csv"
