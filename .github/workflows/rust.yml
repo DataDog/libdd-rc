@@ -114,28 +114,12 @@ jobs:
   # Check for banned crates, invalid sources, and security advisories
   cargo-deny:
     runs-on: ubuntu-latest
-    container:
-      image: rust:1.93.0
     steps:
-      - name: ensure node is installed for act
-        if: ${{ env.ACT }}
-        run: command -v node || (apt update && apt install -y nodejs zstd)
-
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
-      - name: Cache cargo-deny
-        id: cache-cargo-deny
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      - uses: EmbarkStudios/cargo-deny-action@8371184bd11e21dcf8ac82ebf8c9c9f74ebf7268 # v2
         with:
-          path: /usr/local/cargo/bin/cargo-deny
-          key: ${{ runner.os }}-cargo-deny-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-deny
-
-      - name: Install cargo-deny
-        run: command -v cargo-deny || cargo install --git https://github.com/EmbarkStudios/cargo-deny --rev 8e63a579d8ac61faa6e00d3d4ecde495bf138540 cargo-deny  # 0.19.0
-
-      - name: Check for banned crates and invalid sources
-        run: cargo deny check bans sources advisories
+          arguments: --workspace
+          command: check bans sources advisories
