@@ -61,7 +61,7 @@ jobs:
         run: ./scripts/generate-3rdparty-licenses.sh check
 
   # 1st party crates have to be correctly licensed in their Cargo.toml
-  check-crate-licenses:
+  check-1stparty-licenses:
     runs-on: ubuntu-latest
     container:
       image: rust:1.93.0
