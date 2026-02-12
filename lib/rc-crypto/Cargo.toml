@@ -1,0 +1,27 @@
+[package]
+name = "rc-crypto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aws-lc-rs = { version = "1.15.4", default-features = false, features = ["alloc", "fips"] }
+bytes = "1"
+thiserror = "2"
+valuable = { version = "0.1.1", features = ["derive"] }
+
+# NOTE: both of these dependencies currently enable non-FIPS crypto backends.
+rcgen = { version = "0.14.7", default-features = false, features = ["fips", "pem", "aws_lc_rs", "x509-parser"] }
+x509-parser = { version = "0.18", features = ["verify-aws"] }
+
+[dev-dependencies]
+criterion = "0.7"
+hex = "0.4"
+proptest = "1.7"
+
+[lib]
+# Disable the stdlib benchmark harness and use Criterion exclusively.
+bench = false
+
+[[bench]]
+name = "benches"
+harness = false
