@@ -4,9 +4,11 @@
 # Allow only specific licenses
 allow = [
     "Apache-2.0",
-    "MIT",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "OpenSSL",
     "Unicode-3.0",
 ]
 
