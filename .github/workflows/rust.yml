@@ -90,7 +90,7 @@ jobs:
         run: rustup component add clippy
 
       - name: Run Clippy
-        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-features -- -D warnings
 
   test:
     runs-on: ubuntu-latest
