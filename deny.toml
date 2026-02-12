@@ -21,7 +21,13 @@ multiple-versions = "allow"
 wildcards = "deny"
 
 # Deny specific crates
-deny = []
+deny = [
+    # Non-FIPS crypto modules.
+    "ring",
+    #
+    # This is pending upstream dependency changes:
+    # "aws-lc-sys",
+]
 
 # Skip certain crates from duplicate checks
 skip = []
