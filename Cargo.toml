@@ -15,5 +15,8 @@
 [workspace]
 resolver = "3"
 package.edition = "2024"
+package.license = "Apache-2.0"
 
-members = ["placeholder"]
+members = [
+	"lib/rc-crypto",
+]

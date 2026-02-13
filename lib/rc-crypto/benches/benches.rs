@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod runs;
+use runs::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use criterion::{criterion_group, criterion_main};
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// List benchmarks here.
+criterion_group!(benches, key_gen::key_generation, sign::sign);
+
+criterion_main!(benches);
