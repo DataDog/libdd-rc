@@ -3,16 +3,10 @@ header:
     spdx-id: Apache-2.0
     copyright-owner: Datadog, Inc
 
+  paths:
+    - "**/*.rs"
+    - "**/*.toml"
+
   paths-ignore:
-    - ".licenserc.yaml"
-    - "**/*.md"
-    - "**/*.txt"
-    - "**/*.lock"
-    - "**/target/**"
-    - ".gitignore"
-    - "LICENSE"
-    - "LICENSE-3rdparty.csv"
-    - "NOTICE"
     - "rust-toolchain.toml"
-    - ".github/"
     - "deny.toml"
