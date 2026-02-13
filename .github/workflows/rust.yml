@@ -16,7 +16,7 @@ env:
   AWS_LC_FIPS_SYS_CC: clang
 
 jobs:
-  build:
+  build-dev:
     runs-on: ubuntu-latest
     container:
       image: rust:1.93.0
@@ -41,17 +41,76 @@ jobs:
             /usr/local/cargo/registry/index
             /usr/local/cargo/registry/cache
             /usr/local/cargo/git/db
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-dev-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-dev-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-dev-
 
       - name: dev
-        id: build
         run: cargo build --workspace --all-features
+
+  build-release:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.93.0
+    steps:
+      - name: Ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - name: Install dependencies for aws-lc-rs
+        run: apt-get update && apt-get install -y golang-go cmake clang
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust dependencies
+        id: rust-cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+        with:
+          path: |
+            target
+            /usr/local/cargo/registry/index
+            /usr/local/cargo/registry/cache
+            /usr/local/cargo/git/db
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-release-
 
       - name: release
         run: cargo build --workspace --all-features --release
+
+  build-benchmarks:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.93.0
+    steps:
+      - name: Ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - name: Install dependencies for aws-lc-rs
+        run: apt-get update && apt-get install -y golang-go cmake clang
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust dependencies
+        id: rust-cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+        with:
+          path: |
+            target
+            /usr/local/cargo/registry/index
+            /usr/local/cargo/registry/cache
+            /usr/local/cargo/git/db
+          key: ${{ runner.os }}-cargo-benchmarks-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-benchmarks-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-benchmarks-
 
       - name: benchmarks
         run: cargo test --workspace --all-features --benches --no-run
