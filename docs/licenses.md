@@ -43,3 +43,14 @@ helper:
 ```shellsession
 % scripts/check-3rdparty-licenses.sh
 ```
+
+### Merge Conflicts
+
+Merge conflicts in this file are not uncommon. These conflicts can be handled
+automatically (locally) if you install the merge helper:
+
+```shellsession
+% ./scripts/setup-git-merge-drivers.sh
+```
+
+You only need to run this script once after cloning the repo.

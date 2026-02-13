@@ -27,6 +27,9 @@
 #   apt-get install jq  # Debian/Ubuntu
 #   brew install jq     # macOS
 #
+# Note: To automatically regenerate this file on merge conflicts, run:
+#   ./scripts/setup-git-merge-drivers.sh
+#
 # This script is used in CI.
 #
 
