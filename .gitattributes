@@ -1,0 +1,6 @@
+# Automatically regenerate LICENSE-3rdparty.csv on merge conflicts
+#
+# To enable, run once after cloning:
+#   ./scripts/setup-git-merge-drivers.sh
+#
+LICENSE-3rdparty.csv merge=generate-licenses
