@@ -6,8 +6,8 @@ errno,https://github.com/lambda-fairy/rust-errno,MIT OR Apache-2.0,Chris Wong <l
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
 lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 mio,https://github.com/tokio-rs/mio,MIT,Carl Lerche <me@carllerche.com>, Thomas de Zeeuw <thomasdezeeuw@gmail.com>, Tokio Contributors <team@tokio.rs>
-parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
+parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 pin-project-lite,https://github.com/taiki-e/pin-project-lite,Apache-2.0 OR MIT,N/A
 placeholder,N/A,Apache-2.0,N/A
 proc-macro2,https://github.com/dtolnay/proc-macro2,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>, Alex Crichton <alex@alexcrichton.com>
@@ -18,10 +18,14 @@ signal-hook-registry,https://github.com/vorner/signal-hook,MIT OR Apache-2.0,Mic
 smallvec,https://github.com/servo/rust-smallvec,MIT OR Apache-2.0,The Servo Project Developers
 socket2,https://github.com/rust-lang/socket2,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>, Thomas de Zeeuw <thomasdezeeuw@gmail.com>
 syn,https://github.com/dtolnay/syn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
-tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 wasi,https://github.com/bytecodealliance/wasi,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,The Cranelift Project Developers
+windows-link,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
+windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,Microsoft
+windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
+windows-targets,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_aarch64_gnullvm,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_aarch64_msvc,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_i686_gnu,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
@@ -30,7 +34,3 @@ windows_i686_msvc,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_x86_64_gnu,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_x86_64_gnullvm,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows_x86_64_msvc,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
-windows-link,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
-windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,Microsoft
-windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
-windows-targets,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
