@@ -29,7 +29,7 @@ rcgen = { version = "0.14.7", default-features = false, features = ["fips", "pem
 x509-parser = { version = "0.18", features = ["verify-aws"] }
 
 [dev-dependencies]
-criterion = "0.7"
+criterion = "0.8"
 hex = "0.4"
 proptest = "1.7"
 
