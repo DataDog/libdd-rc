@@ -48,6 +48,7 @@ proc-macro2,https://github.com/dtolnay/proc-macro2,MIT OR Apache-2.0,David Tolna
 quote,https://github.com/dtolnay/quote,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 r-efi,https://github.com/r-efi/r-efi,MIT OR Apache-2.0 OR LGPL-2.1-or-later,N/A
 rc-crypto,N/A,Apache-2.0,N/A
+rc-x509-client,N/A,Apache-2.0,N/A
 rcgen,https://github.com/rustls/rcgen,MIT OR Apache-2.0,N/A
 regex,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
 regex-automata,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
