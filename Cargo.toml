@@ -19,4 +19,5 @@ package.license = "Apache-2.0"
 
 members = [
 	"lib/rc-crypto",
+	"lib/rc-x509-client",
 ]
