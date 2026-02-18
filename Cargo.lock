@@ -884,6 +884,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-x509-client"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "rcgen"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

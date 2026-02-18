@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[workspace]
-resolver = "3"
-package.edition = "2024"
-package.license = "Apache-2.0"
+[package]
+name = "rc-x509-client"
+version = "0.1.0"
+edition.workspace = true
+license = "Apache-2.0"
 
-members = [
-	"lib/rc-crypto",
-	"lib/rc-x509-client",
-]
+[dependencies]
+thiserror = "2.0.18"
