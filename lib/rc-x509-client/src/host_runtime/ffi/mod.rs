@@ -1,3 +1,5 @@
+#![doc = include_str!("README.md")]
+
 // Copyright 2026 Datadog, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
