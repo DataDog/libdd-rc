@@ -1,3 +1,6 @@
+//! Boundary interface between this client library, and a host layer capable of
+//! performing I/O, possibly called via FFI.
+
 // Copyright 2026 Datadog, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Boundary interface between this client library, and a host layer capable of
-//! performing I/O, possibly called via FFI.
-
 mod api;
-mod connection;
 mod correlation_id;
+pub(crate) mod ffi;
 
 pub(crate) use api::*;
-pub(crate) use connection::*;
 pub(crate) use correlation_id::*;

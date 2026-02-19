@@ -14,10 +14,7 @@
 
 use thiserror::Error;
 
-use crate::{
-    host_runtime::{Connection, CorrelationId},
-    payload::PayloadTopic,
-};
+use crate::{host_runtime::CorrelationId, payload::PayloadTopic};
 
 #[derive(Debug, Error)]
 pub(crate) enum DialError {}
@@ -27,6 +24,19 @@ pub(crate) enum DispatchError {}
 
 #[derive(Debug, Error)]
 pub(crate) enum InvokeError {}
+
+/// Errors returned by the FFI host runtime when sending data.
+#[derive(Debug, Error)]
+pub(crate) enum ConnectionErr {
+    #[error("unknown connection error")]
+    Unknown,
+
+    #[error("connection is closed")]
+    Closed,
+
+    #[error("send queue full in FFI host")]
+    QueueFull,
+}
 
 /// Boundary layer between calls from this library, to some abstract
 /// implementation that can perform I/O and consume verified messages from RC.
@@ -56,10 +66,6 @@ pub(crate) enum InvokeError {}
 /// responsible for performing all conversions between rust types and their FFI
 /// representations, encapsulating any unsafe operations.
 pub(crate) trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
-    /// Connect to the RC backend, returning a [`Connection`] that brokers I/O
-    /// with the host runtime.
-    fn connect(&mut self) -> Result<Connection, DialError>;
-
     /// Call into the host message dispatcher to pass a verified `msg` to the
     /// registered client for `topic`. The call return value is later passed
     /// back providing the same unique `correlation_id`.
@@ -101,9 +107,12 @@ pub(crate) trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
 /// responsible for performing all conversions between rust types and their FFI
 /// representations, encapsulating any unsafe operations.
 pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
-    /// Enqueue a complete data payload received from RC into the internal
-    /// receive queue, specifying the encoding used by the frame.
-    fn recv(&mut self, msg: Vec<u8>);
+    /// The concrete type of the host connection broker.
+    type Connection: Connection;
+
+    /// Connect to the RC backend, returning a [`Connection`] that brokers I/O
+    /// with the host runtime.
+    fn connect(&mut self) -> Result<Self::Connection, DialError>;
 
     /// A `dispatch()` has completed, and the handler returned the provided byte
     /// response.
@@ -117,4 +126,29 @@ pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
         correlation_id: CorrelationId,
         response: Result<Vec<u8>, InvokeError>,
     );
+}
+
+/// An abstract broker of I/O to the RC delivery backend.
+pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
+    /// Enqueue a complete data payload received from RC into the internal
+    /// receive queue, specifying the encoding used by the frame.
+    ///
+    /// # Delivery Guarantees
+    ///
+    /// Payloads are sent by the host runtime in the order they are passed to
+    /// this function. The host runtime asynchronously ends the payload, and
+    /// provides no acknowledgement.
+    ///
+    /// If the send fails, the connection is eventually closed, and in-flight
+    /// messages are lost.
+    fn send(&mut self, payload: &[u8]) -> Result<(), ConnectionErr>;
+
+    /// Enqueue a complete data payload received from RC into the internal
+    /// receive queue, specifying the encoding used by the frame.
+    ///
+    /// # Delivery Guarantees
+    ///
+    /// Data received from the RC backend is returned by this function in the
+    /// order it is read from the RC backend by the host runtime.
+    fn recv(&mut self) -> Vec<u8>;
 }
