@@ -1,3 +1,5 @@
+#![doc = include_str!("README.md")]
+
 // Copyright 2026 Datadog, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,5 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[derive(Debug)]
-pub(crate) struct Connection;
+mod connection;
+mod ctx;
+
+pub use connection::*;
+pub use ctx::*;
