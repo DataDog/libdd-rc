@@ -24,6 +24,8 @@ dunce,https://gitlab.com/kornelski/dunce,CC0-1.0 OR MIT-0 OR Apache-2.0,Kornel <
 either,https://github.com/rayon-rs/either,MIT OR Apache-2.0,bluss
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
+futures-core,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-sink,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 glob,https://github.com/rust-lang/glob,MIT OR Apache-2.0,The Rust Project Developers
 itertools,https://github.com/rust-itertools/itertools,MIT OR Apache-2.0,bluss
@@ -32,6 +34,7 @@ jobserver,https://github.com/rust-lang/jobserver-rs,MIT OR Apache-2.0,Alex Crich
 lazy_static,https://github.com/rust-lang-nursery/lazy-static.rs,MIT OR Apache-2.0,Marvin Löbel <loebel.marvin@gmail.com>
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
 libloading,https://github.com/nagisa/rust_libloading/,ISC,Simonas Kazlauskas <libloading@kazlauskas.me>
+lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 log,https://github.com/rust-lang/log,MIT OR Apache-2.0,The Rust Project Developers
 memchr,https://github.com/BurntSushi/memchr,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>, bluss
 minimal-lexical,https://github.com/Alexhuszagh/minimal-lexical,MIT OR Apache-2.0,Alex Huszagh <ahuszagh@gmail.com>
@@ -41,7 +44,10 @@ num-conv,https://github.com/jhpratt/num-conv,MIT OR Apache-2.0,Jacob Pratt <jaco
 num-integer,https://github.com/rust-num/num-integer,MIT OR Apache-2.0,The Rust Project Developers
 num-traits,https://github.com/rust-num/num-traits,MIT OR Apache-2.0,The Rust Project Developers
 oid-registry,https://github.com/rusticata/oid-registry.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
+parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
+pin-project-lite,https://github.com/taiki-e/pin-project-lite,Apache-2.0 OR MIT,N/A
 powerfmt,https://github.com/jhpratt/powerfmt,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
 prettyplease,https://github.com/dtolnay/prettyplease,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 proc-macro2,https://github.com/dtolnay/proc-macro2,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>, Alex Crichton <alex@alexcrichton.com>
@@ -50,13 +56,16 @@ r-efi,https://github.com/r-efi/r-efi,MIT OR Apache-2.0 OR LGPL-2.1-or-later,N/A
 rc-crypto,N/A,Apache-2.0,N/A
 rc-x509-client,N/A,Apache-2.0,N/A
 rcgen,https://github.com/rustls/rcgen,MIT OR Apache-2.0,N/A
+redox_syscall,https://gitlab.redox-os.org/redox-os/syscall,MIT,Jeremy Soller <jackpot51@gmail.com>
 regex,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
 regex-automata,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
 regex-syntax,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
 rustc-hash,https://github.com/rust-lang/rustc-hash,Apache-2.0 OR MIT,The Rust Project Developers
 rusticata-macros,https://github.com/rusticata/rusticata-macros.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 rustls-pki-types,https://github.com/rustls/pki-types,MIT OR Apache-2.0,N/A
+scopeguard,https://github.com/bluss/scopeguard,MIT OR Apache-2.0,bluss
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
+smallvec,https://github.com/servo/rust-smallvec,MIT OR Apache-2.0,The Servo Project Developers
 syn,https://github.com/dtolnay/syn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 synstructure,https://github.com/mystor/synstructure,MIT,Nika Layzell <nika@thelayzells.com>
 thiserror,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
@@ -64,6 +73,9 @@ thiserror-impl,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Toln
 time,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 time-core,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 time-macros,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
+tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+tokio-util,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 valuable,https://github.com/tokio-rs/valuable,MIT,N/A
