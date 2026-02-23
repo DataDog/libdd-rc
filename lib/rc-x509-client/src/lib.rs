@@ -15,5 +15,8 @@
 #![doc = "../README.md"]
 #![allow(unused)] // Nothing is used yet.
 
+mod shutdown_signal;
+pub(crate) use shutdown_signal::*;
+
 pub(crate) mod host_runtime;
 pub(crate) mod payload;
