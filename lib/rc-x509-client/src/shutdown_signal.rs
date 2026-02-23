@@ -39,12 +39,18 @@ impl ShutdownSignal {
 
 /// A handle to initiate a graceful shutdown of all workers consuming the
 /// [`ShutdownSignal`] this type controls.
+#[derive(Debug)]
 pub(crate) struct ShutdownCtl(CancellationToken);
 
 impl ShutdownCtl {
     /// Wait for the shutdown signal.
     pub(crate) fn shutdown_now(self) {
         self.0.cancel();
+    }
+
+    /// Obtain a new [`ShutdownSignal`] tied to this [`ShutdownCtl`].
+    pub(crate) fn get_signal(&self) -> ShutdownSignal {
+        ShutdownSignal(self.0.clone())
     }
 }
 

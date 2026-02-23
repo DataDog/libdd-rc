@@ -13,9 +13,15 @@
 // limitations under the License.
 
 #![doc = "../README.md"]
-#![allow(unused)] // Nothing is used yet.
+// Nothing is used yet.
+#![allow(unused)]
+// The use of unsafe code should be contained to the FFI module, which has
+// additional checks (miri) run in CI.
+#![warn(unsafe_code)]
 
+mod entrypoint;
 mod shutdown_signal;
+pub(crate) use entrypoint::*;
 pub(crate) use shutdown_signal::*;
 
 pub(crate) mod host_runtime;

@@ -1,4 +1,7 @@
 #![doc = include_str!("README.md")]
+// This module has additional testing (miri) in CI to help with writing correct
+// unsafe code.
+#![allow(unsafe_code)]
 
 // Copyright 2026 Datadog, Inc
 //
