@@ -17,8 +17,8 @@ use tokio_util::sync::CancellationToken;
 /// An asynchronous signal to stop all work and clean up all resources held
 /// before the library runtime exits.
 ///
-/// A [`ShutdownSignal`] has a single parent responsible for initiating the
-/// shutdown.
+/// [`ShutdownSignal`] observes the shutdown of a client library instance,
+/// triggered from a single [`ShutdownCtl`].
 ///
 /// This is not a general purpose cancellation primitive; it should be used
 /// specifically for graceful shutdown of client library instances.
