@@ -24,8 +24,15 @@ dunce,https://gitlab.com/kornelski/dunce,CC0-1.0 OR MIT-0 OR Apache-2.0,Kornel <
 either,https://github.com/rayon-rs/either,MIT OR Apache-2.0,bluss
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
+futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-channel,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-core,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-executor,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-io,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-macro,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-sink,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-task,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-util,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 glob,https://github.com/rust-lang/glob,MIT OR Apache-2.0,The Rust Project Developers
 itertools,https://github.com/rust-itertools/itertools,MIT OR Apache-2.0,bluss
@@ -65,6 +72,7 @@ rusticata-macros,https://github.com/rusticata/rusticata-macros.git,MIT OR Apache
 rustls-pki-types,https://github.com/rustls/pki-types,MIT OR Apache-2.0,N/A
 scopeguard,https://github.com/bluss/scopeguard,MIT OR Apache-2.0,bluss
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
+slab,https://github.com/tokio-rs/slab,MIT,Carl Lerche <me@carllerche.com>
 smallvec,https://github.com/servo/rust-smallvec,MIT OR Apache-2.0,The Servo Project Developers
 syn,https://github.com/dtolnay/syn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 synstructure,https://github.com/mystor/synstructure,MIT,Nika Layzell <nika@thelayzells.com>
