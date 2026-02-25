@@ -32,6 +32,12 @@ use super::Ctx;
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection {
+    // TODO(dom): init an FFIConnection
+
+    // TODO(dom): register it with the Ctx
+
+    // TODO(dom): spawn a connection handler?
+
     unimplemented!()
 }
 
