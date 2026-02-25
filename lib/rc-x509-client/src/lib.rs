@@ -19,6 +19,7 @@
 // additional checks (miri) run in CI.
 #![warn(unsafe_code)]
 
+pub(crate) mod connection;
 mod entrypoint;
 mod shutdown_signal;
 pub(crate) use entrypoint::*;
