@@ -10,6 +10,7 @@ allow = [
     "MIT",
     "OpenSSL",
     "Unicode-3.0",
+    "MPL-2.0",
 ]
 
 # Set confidence threshold for license detection
