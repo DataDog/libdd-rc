@@ -24,6 +24,23 @@ use std::{
 
 use super::Ctx;
 
+/// Initialise a new client connection state.
+///
+///   * Called by: `host runtime`.
+///   * Ownership: passes mutable reference of `conn` for the duration of the
+///     call, and returns ownership of [`FFIConnection`].
+///
+#[unsafe(no_mangle)]
+pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection {
+    // TODO(dom): init an FFIConnection
+
+    // TODO(dom): register it with the Ctx
+
+    // TODO(dom): spawn a connection handler?
+
+    unimplemented!()
+}
+
 /// Mark the connection as established.
 ///
 /// The caller MUST have made a previous call to [`rc_set_send_callback`],
@@ -73,16 +90,6 @@ pub(super) unsafe extern "C" fn rc_conn_recv(
     unimplemented!()
 }
 
-/// Release the resources held by this `conn`.
-///
-///   * Called by: `host runtime`.
-///   * Ownership: passes ownership of [`FFIConnection`] to client library.
-///
-#[unsafe(no_mangle)]
-pub(super) unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) {
-    unimplemented!()
-}
-
 /// Send `data` from the client library to the RC delivery backend over the
 /// network [`FFIConnection`] the callback was registered to..
 ///
@@ -97,17 +104,6 @@ pub(super) unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) {
 /// may be freed or modified at any time after this function returns.
 pub(super) type SendCb = unsafe extern "C" fn(data: *const u8, length: i32) -> SendRet;
 
-/// Initialise a new client connection state.
-///
-///   * Called by: `host runtime`.
-///   * Ownership: passes mutable reference of `conn` for the duration of the
-///     call, and returns ownership of [`FFIConnection`].
-///
-#[unsafe(no_mangle)]
-pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection {
-    unimplemented!()
-}
-
 /// Configure the callback used by the client library to request data be sent to
 /// the RC backend.
 ///
@@ -120,6 +116,16 @@ pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_set_send_callback(mut conn: *mut FFIConnection, cb: SendCb) {
+    unimplemented!()
+}
+
+/// Release the resources held by this `conn`.
+///
+///   * Called by: `host runtime`.
+///   * Ownership: passes ownership of [`FFIConnection`] to client library.
+///
+#[unsafe(no_mangle)]
+pub(super) unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) {
     unimplemented!()
 }
 

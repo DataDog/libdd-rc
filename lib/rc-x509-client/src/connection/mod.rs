@@ -12,18 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
-// Nothing is used yet.
-#![allow(unused)]
-// The use of unsafe code should be contained to the FFI module, which has
-// additional checks (miri) run in CI.
-#![warn(unsafe_code)]
+mod io_handle;
+mod lifecycle_events;
 
-pub(crate) mod connection;
-mod entrypoint;
-mod shutdown_signal;
-pub(crate) use entrypoint::*;
-pub(crate) use shutdown_signal::*;
-
-pub(crate) mod host_runtime;
-pub(crate) mod payload;
+pub(crate) use io_handle::*;
+pub(crate) use lifecycle_events::*;

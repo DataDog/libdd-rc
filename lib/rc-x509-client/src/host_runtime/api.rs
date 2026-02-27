@@ -33,9 +33,6 @@ pub(crate) enum ConnectionErr {
 
     #[error("connection is closed")]
     Closed,
-
-    #[error("send queue full in FFI host")]
-    QueueFull,
 }
 
 /// Boundary layer between calls from this library, to some abstract
@@ -141,14 +138,17 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
     ///
     /// If the send fails, the connection is eventually closed, and in-flight
     /// messages are lost.
-    fn send(&mut self, payload: &[u8]) -> Result<(), ConnectionErr>;
+    async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr>;
 
     /// Enqueue a complete data payload received from RC into the internal
     /// receive queue, specifying the encoding used by the frame.
+    ///
+    /// This call returns [`None`] if the connection is closed; all subsequent
+    /// operations will fail.
     ///
     /// # Delivery Guarantees
     ///
     /// Data received from the RC backend is returned by this function in the
     /// order it is read from the RC backend by the host runtime.
-    fn recv(&mut self) -> Vec<u8>;
+    async fn recv(&mut self) -> Option<Vec<u8>>;
 }
