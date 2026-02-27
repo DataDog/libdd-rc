@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Verify C Header
+name: Verify cbindgen C Header
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  verify-header:
+  cbindgen-verify-header:
     name: Verify generated C header is up-to-date
     runs-on: ubuntu-latest
+    container:
+      image: rust:1.93.0
     permissions:
       contents: read
 
@@ -54,24 +58,24 @@ jobs:
       - name: Generate C header via build.rs
         run: |
           cargo build --package rc-x509-client
-          echo "Header generated at wrapper/include/libdd_rc.h"
+          echo "Header generated at include/libdd_rc.h"
 
       - name: Check for differences
         run: |
-          if git diff --exit-code wrapper/include/libdd_rc.h; then
+          if git diff --exit-code include/libdd_rc.h; then
             echo "Generated C header matches committed version"
             exit 0
           else
             echo "ERROR: Generated C header differs from committed version!"
             echo ""
-            echo "The wrapper/include/libdd_rc.h file is out of sync with the Rust FFI definitions."
+            echo "The include/libdd_rc.h file is out of sync with the Rust FFI definitions."
             echo ""
             echo "To fix this, run the following commands locally:"
             echo "  cargo build --package rc-x509-client"
-            echo "  git add wrapper/include/libdd_rc.h"
+            echo "  git add include/libdd_rc.h"
             echo "  git commit -m 'chore: update generated C header'"
             echo ""
             echo "Differences:"
-            git diff wrapper/include/libdd_rc.h
+            git diff include/libdd_rc.h
             exit 1
           fi
