@@ -10,3 +10,4 @@ header:
   paths-ignore:
     - "rust-toolchain.toml"
     - "deny.toml"
+    - "cbindgen.toml"
