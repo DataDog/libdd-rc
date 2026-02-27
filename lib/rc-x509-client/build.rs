@@ -28,11 +28,8 @@ fn main() {
     // Read cbindgen config from workspace root
     let config_path = workspace_dir.join("cbindgen.toml");
 
-    let config = cbindgen::Config::from_file(&config_path)
-        .expect("Failed to load cbindgen.toml");
-
-    println!("cargo:rerun-if-changed=src/");
     println!("cargo:rerun-if-changed={}", config_path.display());
+    let config = cbindgen::Config::from_file(&config_path).expect("Failed to load cbindgen.toml");
 
     cbindgen::Builder::new()
         .with_crate(&crate_dir)
@@ -41,5 +38,8 @@ fn main() {
         .expect("Unable to generate bindings")
         .write_to_file(&output_file);
 
-    println!("cargo:warning=Generated C header at {}", output_file.display());
+    println!(
+        "cargo:warning=Generated C header at {}",
+        output_file.display()
+    );
 }
