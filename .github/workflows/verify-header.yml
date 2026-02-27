@@ -1,0 +1,77 @@
+# Copyright 2026 Datadog, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Verify C Header
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-header:
+    name: Verify generated C header is up-to-date
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Generate C header via build.rs
+        run: |
+          cargo build --package rc-x509-client
+          echo "Header generated at wrapper/include/libdd_rc.h"
+
+      - name: Check for differences
+        run: |
+          if git diff --exit-code wrapper/include/libdd_rc.h; then
+            echo "Generated C header matches committed version"
+            exit 0
+          else
+            echo "ERROR: Generated C header differs from committed version!"
+            echo ""
+            echo "The wrapper/include/libdd_rc.h file is out of sync with the Rust FFI definitions."
+            echo ""
+            echo "To fix this, run the following commands locally:"
+            echo "  cargo build --package rc-x509-client"
+            echo "  git add wrapper/include/libdd_rc.h"
+            echo "  git commit -m 'chore: update generated C header'"
+            echo ""
+            echo "Differences:"
+            git diff wrapper/include/libdd_rc.h
+            exit 1
+          fi

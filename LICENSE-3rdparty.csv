@@ -1,5 +1,10 @@
 Component,Origin,License,Copyright
 aho-corasick,https://github.com/BurntSushi/aho-corasick,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
+anstream,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
+anstyle,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
+anstyle-parse,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
+anstyle-query,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
+anstyle-wincon,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
@@ -11,17 +16,25 @@ base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall 
 bindgen,https://github.com/rust-lang/rust-bindgen,BSD-3-Clause,Jyun-Yan You <jyyou.tw@gmail.com>, Emilio Cobos Álvarez <emilio@crisal.io>, Nick Fitzgerald <fitzgen@gmail.com>, The Servo project developers
 bitflags,https://github.com/bitflags/bitflags,MIT OR Apache-2.0,The Rust Project Developers
 bytes,https://github.com/tokio-rs/bytes,MIT,Carl Lerche <me@carllerche.com>, Sean McArthur <sean@seanmonstar.com>
+cbindgen,https://github.com/mozilla/cbindgen,MPL-2.0,Emilio Cobos Álvarez <emilio@crisal.io>, Jeff Muizelaar <jmuizelaar@mozilla.com>, Kartikaya Gupta <kats@mozilla.com>, Ryan Hunt <rhunt@eqrion.net>
 cc,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 cexpr,https://github.com/jethrogb/rust-cexpr,Apache-2.0 OR MIT,Jethro Beekman <jethro@jbeekman.nl>
 cfg-if,https://github.com/rust-lang/cfg-if,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 clang-sys,https://github.com/KyleMayes/clang-sys,Apache-2.0,Kyle Mayes <kyle@mayeses.com>
+clap,https://github.com/clap-rs/clap,MIT OR Apache-2.0,N/A
+clap_builder,https://github.com/clap-rs/clap,MIT OR Apache-2.0,N/A
+clap_lex,https://github.com/clap-rs/clap,MIT OR Apache-2.0,N/A
 cmake,https://github.com/rust-lang/cmake-rs,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
+colorchoice,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 data-encoding,https://github.com/ia0/data-encoding,MIT,Julien Cretin <git@ia0.eu>
 der-parser,https://github.com/rusticata/der-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 deranged,https://github.com/jhpratt/deranged,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
 displaydoc,https://github.com/yaahc/displaydoc,MIT OR Apache-2.0,Jane Lusby <jlusby@yaah.dev>
 dunce,https://gitlab.com/kornelski/dunce,CC0-1.0 OR MIT-0 OR Apache-2.0,Kornel <kornel@geekhood.net>
 either,https://github.com/rayon-rs/either,MIT OR Apache-2.0,bluss
+equivalent,https://github.com/indexmap-rs/equivalent,Apache-2.0 OR MIT,N/A
+errno,https://github.com/lambda-fairy/rust-errno,MIT OR Apache-2.0,Chris Wong <lambda.fairy@gmail.com>, Dan Gohman <dev@sunfishcode.online>
+fastrand,https://github.com/smol-rs/fastrand,Apache-2.0 OR MIT,Stjepan Glavina <stjepang@gmail.com>
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
 futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
@@ -34,13 +47,19 @@ futures-sink,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-task,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-util,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
+getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 glob,https://github.com/rust-lang/glob,MIT OR Apache-2.0,The Rust Project Developers
+hashbrown,https://github.com/rust-lang/hashbrown,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
+heck,https://github.com/withoutboats/heck,MIT OR Apache-2.0,N/A
+indexmap,https://github.com/indexmap-rs/indexmap,Apache-2.0 OR MIT,N/A
+is_terminal_polyfill,https://github.com/polyfill-rs/is_terminal_polyfill,MIT OR Apache-2.0,N/A
 itertools,https://github.com/rust-itertools/itertools,MIT OR Apache-2.0,bluss
 itoa,https://github.com/dtolnay/itoa,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 jobserver,https://github.com/rust-lang/jobserver-rs,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 lazy_static,https://github.com/rust-lang-nursery/lazy-static.rs,MIT OR Apache-2.0,Marvin Löbel <loebel.marvin@gmail.com>
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
 libloading,https://github.com/nagisa/rust_libloading/,ISC,Simonas Kazlauskas <libloading@kazlauskas.me>
+linux-raw-sys,https://github.com/sunfishcode/linux-raw-sys,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>
 lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 log,https://github.com/rust-lang/log,MIT OR Apache-2.0,The Rust Project Developers
 memchr,https://github.com/BurntSushi/memchr,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>, bluss
@@ -51,6 +70,8 @@ num-conv,https://github.com/jhpratt/num-conv,MIT OR Apache-2.0,Jacob Pratt <jaco
 num-integer,https://github.com/rust-num/num-integer,MIT OR Apache-2.0,The Rust Project Developers
 num-traits,https://github.com/rust-num/num-traits,MIT OR Apache-2.0,The Rust Project Developers
 oid-registry,https://github.com/rusticata/oid-registry.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+once_cell,https://github.com/matklad/once_cell,MIT OR Apache-2.0,Aleksey Kladov <aleksey.kladov@gmail.com>
+once_cell_polyfill,https://github.com/polyfill-rs/once_cell_polyfill,MIT OR Apache-2.0,N/A
 parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
@@ -69,13 +90,21 @@ regex-automata,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Pro
 regex-syntax,https://github.com/rust-lang/regex,MIT OR Apache-2.0,The Rust Project Developers, Andrew Gallant <jamslam@gmail.com>
 rustc-hash,https://github.com/rust-lang/rustc-hash,Apache-2.0 OR MIT,The Rust Project Developers
 rusticata-macros,https://github.com/rusticata/rusticata-macros.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+rustix,https://github.com/bytecodealliance/rustix,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com>
 rustls-pki-types,https://github.com/rustls/pki-types,MIT OR Apache-2.0,N/A
 scopeguard,https://github.com/bluss/scopeguard,MIT OR Apache-2.0,bluss
+serde,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
+serde_core,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
+serde_derive,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
+serde_json,https://github.com/serde-rs/json,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
+serde_spanned,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
 slab,https://github.com/tokio-rs/slab,MIT,Carl Lerche <me@carllerche.com>
 smallvec,https://github.com/servo/rust-smallvec,MIT OR Apache-2.0,The Servo Project Developers
+strsim,https://github.com/rapidfuzz/strsim-rs,MIT,Danny Guo <danny@dannyguo.com>, maxbachmann <oss@maxbachmann.de>
 syn,https://github.com/dtolnay/syn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 synstructure,https://github.com/mystor/synstructure,MIT,Nika Layzell <nika@thelayzells.com>
+tempfile,https://github.com/Stebalien/tempfile,MIT OR Apache-2.0,Steven Allen <steven@stebalien.com>, The Rust Project Developers, Ashley Mannix <ashleymannix@live.com.au>, Jason White <me@jasonwhite.io>
 thiserror,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 thiserror-impl,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 time,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
@@ -84,13 +113,21 @@ time-macros,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-
 tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-util,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
+toml_datetime,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
+toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
+utf8parse,https://github.com/alacritty/vte,Apache-2.0 OR MIT,Joe Wilm <joe@jwilm.com>, Christian Duerr <contact@christianduerr.com>
 valuable,https://github.com/tokio-rs/valuable,MIT,N/A
 valuable-derive,https://github.com/tokio-rs/valuable,MIT,N/A
 wasip2,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,N/A
+wasip3,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,N/A
 windows-link,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
+windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
+winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 wit-bindgen,https://github.com/bytecodealliance/wit-bindgen,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
 x509-parser,https://github.com/rusticata/x509-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 yasna,https://github.com/qnighy/yasna.rs,MIT OR Apache-2.0,Masaki Hara <ackie.h.gmai@gmail.com>
 zeroize,https://github.com/RustCrypto/utils,Apache-2.0 OR MIT,The RustCrypto Project Developers
+zmij,https://github.com/dtolnay/zmij,MIT,David Tolnay <dtolnay@gmail.com>
