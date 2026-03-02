@@ -140,20 +140,6 @@ void rc_conn_connected(struct FFIConnection *conn);
 void rc_conn_disconnected(struct FFIConnection *conn);
 
 /*
- Pass data received from the RC delivery backend for the `conn`
- connection.
-
-   * Called by: `host runtime`.
-   * Ownership: passes shared reference of [`FFIConnection`] and `data`
-     to client library for the duration of the call.
-
- NOTE: the host runtime retains ownership of `data` after this call, and
- is responsible for freeing the memory backing it after this call
- completes.
- */
-recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, int32_t length);
-
-/*
  Release the resources held by this `conn`.
 
    * Called by: `host runtime`.
@@ -173,28 +159,18 @@ void rc_conn_free(struct FFIConnection *conn);
 struct FFIConnection *rc_conn_new(struct Ctx *ctx);
 
 /*
- Configure the callback used by the client library to request data be sent to
- the RC backend.
-
- This call MUST be made before the first call to [`rc_conn_connected()`] for
- the same `conn`.
+ Pass data received from the RC delivery backend for the `conn`
+ connection.
 
    * Called by: `host runtime`.
-   * Ownership: passes mutable reference of `conn` for the duration of the
-     call.
+   * Ownership: passes shared reference of [`FFIConnection`] and `data`
+     to client library for the duration of the call.
 
+ NOTE: the host runtime retains ownership of `data` after this call, and
+ is responsible for freeing the memory backing it after this call
+ completes.
  */
-void rc_set_send_callback(struct FFIConnection *conn, SendCb cb);
-
-/*
- Initialise a new client [`Ctx`], starting a background thread to drive
- internal execution.
-
-   * Called by: `host runtime`.
-   * Ownership: returns ownership of [`Ctx`] to host runtime.
-
- */
-struct Ctx *rc_init(void);
+recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, int32_t length);
 
 /*
  Stop the client running in [`Ctx`], and release all resources held by
@@ -211,5 +187,29 @@ struct Ctx *rc_init(void);
  [`rc_conn_free()`]: super::rc_conn_free()
  */
 void rc_free(struct Ctx *ctx);
+
+/*
+ Initialise a new client [`Ctx`], starting a background thread to drive
+ internal execution.
+
+   * Called by: `host runtime`.
+   * Ownership: returns ownership of [`Ctx`] to host runtime.
+
+ */
+struct Ctx *rc_init(void);
+
+/*
+ Configure the callback used by the client library to request data be sent to
+ the RC backend.
+
+ This call MUST be made before the first call to [`rc_conn_connected()`] for
+ the same `conn`.
+
+   * Called by: `host runtime`.
+   * Ownership: passes mutable reference of `conn` for the duration of the
+     call.
+
+ */
+void rc_set_send_callback(struct FFIConnection *conn, SendCb cb);
 
 #endif  /* LIBDD_RC_H */
