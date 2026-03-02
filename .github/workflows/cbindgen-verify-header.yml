@@ -30,9 +30,6 @@ jobs:
       image: rust:1.93.0
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
 
     steps:
       - name: Checkout code
@@ -53,6 +50,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Save committed header
+        run: cp include/libdd_rc.h include/libdd_rc.h.committed
+
       - name: Generate C header via build.rs
         run: |
           cargo build --package rc-x509-client
@@ -60,7 +60,7 @@ jobs:
 
       - name: Check for differences
         run: |
-          if git diff --exit-code include/libdd_rc.h; then
+          if diff -u include/libdd_rc.h.committed include/libdd_rc.h; then
             echo "Generated C header matches committed version"
             exit 0
           else
@@ -73,7 +73,6 @@ jobs:
             echo "  git add include/libdd_rc.h"
             echo "  git commit -m 'chore: update generated C header'"
             echo ""
-            echo "Differences:"
-            git diff include/libdd_rc.h
+            echo "Differences shown above."
             exit 1
           fi
