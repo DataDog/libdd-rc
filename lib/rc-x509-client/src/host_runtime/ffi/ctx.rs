@@ -28,7 +28,7 @@ use crate::{GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal, entrypoint::
 ///
 #[unsafe(no_mangle)]
 unsafe extern "C" fn rc_init() -> *mut Ctx {
-    Box::into_raw(Box::new(Ctx::new()))
+    Box::into_raw(Ctx::new())
 }
 
 /// Stop the client running in [`Ctx`], and release all resources held by
@@ -73,9 +73,10 @@ pub struct Ctx {
     shutdown: ShutdownCtl,
 }
 
+#[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
 impl Ctx {
     /// Initialise a new [`Ctx`], typically called from [`rc_init()`].
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new() -> Box<Self> {
         let (signal, shutdown) = ShutdownSignal::new();
 
         // Spawn a background thread to drive the async runtime for this client
@@ -98,13 +99,13 @@ impl Ctx {
             })
             .expect("failed to spawn worker thread for rc-x509-client");
 
-        Self { runtime, shutdown }
+        Box::new(Self { runtime, shutdown })
     }
 
     /// Gracefully stop the library context, releasing all resources.
     ///
     /// Typically called from [`rc_free()`].
-    pub(crate) fn shutdown(self) {
+    pub(crate) fn shutdown(self: Box<Self>) {
         // Signal all tasks to stop.
         self.shutdown.shutdown_now();
 
