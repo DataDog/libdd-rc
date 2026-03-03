@@ -16,6 +16,8 @@
 
 use std::time::Duration;
 
+use tracing::info;
+
 use crate::ShutdownSignal;
 
 pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
@@ -28,5 +30,10 @@ pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 /// complete within [`GRACEFUL_SHUTDOWN_TIMEOUT`] else they are killed at an
 /// arbitrary execution point.
 pub(crate) async fn entrypoint(shutdown: ShutdownSignal) {
+    info!(
+        version = env!("CARGO_PKG_VERSION"),
+        "starting rc-x509-client instance"
+    );
+
     shutdown.wait_for_shutdown().await;
 }
