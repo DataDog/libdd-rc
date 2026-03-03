@@ -30,7 +30,6 @@ documentation_style = "c"
 sort_by = "Name"
 
 [export]
-include = ["Ctx", "FFIConnection", "SendRet", "RecvRet"]
 
 [export.rename]
 "SendRet" = "send_ret_t"
