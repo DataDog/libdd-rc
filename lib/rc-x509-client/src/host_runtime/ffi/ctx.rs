@@ -25,9 +25,8 @@ use tokio::{runtime::Handle, sync::mpsc};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{
-    GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal,
+    GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main, ShutdownCtl, ShutdownSignal,
     connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
-    entrypoint::entrypoint,
     host_runtime::ffi::FFIConnection,
 };
 
@@ -39,7 +38,7 @@ use crate::{
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_init() -> *mut Ctx {
-    Box::into_raw(Ctx::new())
+    Box::into_raw(Ctx::new(Main::default()))
 }
 
 /// Stop the client running in [`Ctx`], and release all resources held by
@@ -102,7 +101,10 @@ pub struct Ctx {
 #[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
 impl Ctx {
     /// Initialise a new [`Ctx`], typically called from [`rc_init()`].
-    pub(crate) fn new() -> Box<Self> {
+    pub(crate) fn new<T>(main: T) -> Box<Self>
+    where
+        T: LibraryEntrypoint<IOHandle>,
+    {
         let (signal, shutdown) = ShutdownSignal::new();
 
         // Initialise a channel through which connection lifecycle events will
@@ -121,7 +123,7 @@ impl Ctx {
 
                 // Execute the client library "main" entrypoint function to
                 // completion.
-                runtime.block_on(entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
+                runtime.block_on(main.entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
 
                 // Allow spawned tasks to observe the shutdown signal and
                 // perform cleanup before the runtime exits.
@@ -148,13 +150,6 @@ impl Ctx {
         self.runtime
             .join()
             .expect("rc-x509-client worker thread panic")
-    }
-
-    /// Initialise a new [`FFIConnection`] registered to this [`Ctx`].
-    pub(super) fn new_connection(&self) -> Box<FFIConnection> {
-        let id = ConnectionId::new(self.next_connection_id.fetch_add(1, Ordering::SeqCst));
-
-        FFIConnection::new(id, self.connection_events.clone())
     }
 }
 
