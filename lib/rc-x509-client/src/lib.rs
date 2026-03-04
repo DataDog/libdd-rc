@@ -16,9 +16,11 @@
 // Nothing is used yet.
 #![allow(unused)]
 
+mod abort_on_drop;
 pub(crate) mod connection;
 mod entrypoint;
 mod shutdown_signal;
+pub(crate) use abort_on_drop::*;
 pub(crate) use entrypoint::*;
 pub(crate) use shutdown_signal::*;
 
