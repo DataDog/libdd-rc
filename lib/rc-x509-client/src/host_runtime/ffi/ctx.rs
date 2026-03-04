@@ -14,11 +14,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{ptr, thread::JoinHandle, time::Duration};
+use std::{
+    ptr,
+    sync::atomic::{AtomicUsize, Ordering},
+    thread::JoinHandle,
+    time::Duration,
+};
 
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, sync::mpsc};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal, entrypoint::entrypoint};
+use crate::{
+    GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal,
+    connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
+    entrypoint::entrypoint,
+    host_runtime::ffi::FFIConnection,
+};
 
 /// Initialise a new client [`Ctx`], starting a background thread to drive
 /// internal execution.
@@ -27,7 +38,7 @@ use crate::{GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal, entrypoint::
 ///   * Ownership: returns ownership of [`Ctx`] to host runtime.
 ///
 #[unsafe(no_mangle)]
-unsafe extern "C" fn rc_init() -> *mut Ctx {
+pub(super) unsafe extern "C" fn rc_init() -> *mut Ctx {
     Box::into_raw(Ctx::new())
 }
 
@@ -44,7 +55,7 @@ unsafe extern "C" fn rc_init() -> *mut Ctx {
 /// [`rc_conn_disconnected()`]: super::rc_conn_disconnected()
 /// [`rc_conn_free()`]: super::rc_conn_free()
 #[unsafe(no_mangle)]
-unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
+pub(super) unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
     assert!(!ctx.is_null());
 
     let mut ctx = unsafe { Box::from_raw(ctx) };
@@ -69,8 +80,23 @@ unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
 /// [`FFIConnection`]: super::FFIConnection
 #[derive(Debug)]
 pub struct Ctx {
+    /// An OS thread dedicated to driving an async runtime to execute
+    /// [`crate::entrypoint()`] and all child tasks.
     runtime: std::thread::JoinHandle<()>,
+
+    /// A shutdown signal for the [`crate::entrypoint()`] to gracefully stop all
+    /// work and return within the [`GRACEFUL_SHUTDOWN_TIMEOUT`].
     shutdown: ShutdownCtl,
+
+    /// The [`ConnectionId`] value that is assigned to the next call to
+    /// [`Ctx::new_connection()`].
+    next_connection_id: AtomicUsize,
+
+    /// A sink through which [`ConnectionUpdate`] events are published.
+    ///
+    /// This publisher handle is shared with each [`FFIConnection`] constructed
+    /// from this [`Ctx`].
+    connection_events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
 }
 
 #[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
@@ -78,6 +104,10 @@ impl Ctx {
     /// Initialise a new [`Ctx`], typically called from [`rc_init()`].
     pub(crate) fn new() -> Box<Self> {
         let (signal, shutdown) = ShutdownSignal::new();
+
+        // Initialise a channel through which connection lifecycle events will
+        // be published to the non-FFI code.
+        let (connection_events, conn_rx) = mpsc::unbounded_channel();
 
         // Spawn a background thread to drive the async runtime for this client
         // instance.
@@ -91,7 +121,7 @@ impl Ctx {
 
                 // Execute the client library "main" entrypoint function to
                 // completion.
-                runtime.block_on(entrypoint(signal));
+                runtime.block_on(entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
 
                 // Allow spawned tasks to observe the shutdown signal and
                 // perform cleanup before the runtime exits.
@@ -99,7 +129,12 @@ impl Ctx {
             })
             .expect("failed to spawn worker thread for rc-x509-client");
 
-        Box::new(Self { runtime, shutdown })
+        Box::new(Self {
+            runtime,
+            shutdown,
+            next_connection_id: AtomicUsize::new(0),
+            connection_events,
+        })
     }
 
     /// Gracefully stop the library context, releasing all resources.
@@ -113,6 +148,13 @@ impl Ctx {
         self.runtime
             .join()
             .expect("rc-x509-client worker thread panic")
+    }
+
+    /// Initialise a new [`FFIConnection`] registered to this [`Ctx`].
+    pub(super) fn new_connection(&self) -> Box<FFIConnection> {
+        let id = ConnectionId::new(self.next_connection_id.fetch_add(1, Ordering::SeqCst));
+
+        FFIConnection::new(id, self.connection_events.clone())
     }
 }
 

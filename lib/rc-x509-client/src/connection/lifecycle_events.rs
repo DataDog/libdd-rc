@@ -19,6 +19,13 @@ use crate::connection::IOHandle;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub(crate) struct ConnectionId(usize);
 
+impl ConnectionId {
+    /// Construct a new [`ConnectionId`] over the ID counter value.
+    pub(crate) fn new(v: usize) -> Self {
+        Self(v)
+    }
+}
+
 /// Lifecycle events for a single I/O connection brokered by the FFI host.
 ///
 /// The lifecycle event is associated with a [`ConnectionId`] identifying the
@@ -92,6 +99,11 @@ pub(crate) struct ConnectionUpdate<IO> {
 }
 
 impl<IO> ConnectionUpdate<IO> {
+    /// Construct a new update for the connection previously tagged with `id`.
+    pub(crate) fn new(id: ConnectionId, event: ConnectionEvent<IO>) -> Self {
+        Self { id, event }
+    }
+
     /// Get the [`ConnectionId`] this [`ConnectionEvent`] this update applies
     /// to.
     pub(crate) fn id(&self) -> ConnectionId {

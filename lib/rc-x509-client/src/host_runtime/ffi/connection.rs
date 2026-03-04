@@ -16,11 +16,13 @@
 
 use std::{
     ffi::{c_int, c_uchar, c_void},
-    sync::{
-        atomic::AtomicBool,
-        mpsc::{self, Receiver, Sender},
-    },
+    sync::atomic::AtomicBool,
 };
+
+use assert_matches::assert_matches;
+use tokio::sync::mpsc;
+
+use crate::connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle};
 
 use super::Ctx;
 
@@ -32,13 +34,14 @@ use super::Ctx;
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection {
-    // TODO(dom): init an FFIConnection
+    assert!(!ctx.is_null());
 
-    // TODO(dom): register it with the Ctx
+    let conn = {
+        let mut ctx = unsafe { &*ctx };
+        ctx.new_connection()
+    };
 
-    // TODO(dom): spawn a connection handler?
-
-    unimplemented!()
+    Box::into_raw(conn)
 }
 
 /// Mark the connection as established.
@@ -126,7 +129,11 @@ pub(super) unsafe extern "C" fn rc_conn_send_callback(mut conn: *mut FFIConnecti
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) {
-    unimplemented!()
+    assert!(!conn.is_null());
+
+    let mut conn = unsafe { Box::from_raw(conn) };
+
+    conn.free()
 }
 
 /// Result of sending data to the RC delivery backend, returned by the host
@@ -151,6 +158,47 @@ pub(super) enum RecvRet {
     QueueFull = 1,
 }
 
+/// The internal configuration state of a [`FFIConnection`].
+///
+/// ```text
+///                          ┌──────────────┐
+///                          │     Init     │
+///                          └──────────────┘
+///                                  │
+///                                  ▼
+///                          ┌──────────────┐
+///                          │  Configured  │◀──┐
+///                          └──────────────┘   │
+///                                  │          │ Disconnect
+///                                  ▼          │
+///                          ┌──────────────┐   │
+///                          │  Connected   │───┘
+///                          └──────────────┘
+/// ```
+///
+/// This type statically asserts the lifecycle of an FFI brokered connection by
+/// requiring the `rc_init() -> rc_conn_send_callback() -> rc_conn_connected()`
+/// progression in order to construct the [`State::Connected`] state.
+#[derive(Debug)]
+enum State {
+    /// The connection has been initialised, but not yet configured or
+    /// connected.
+    Init,
+
+    /// The connection is in a state where it can transition to
+    /// [`State::Connected`].
+    Configured {
+        /// Send `data` from the client library to the RC backend over the existing
+        /// network connection managed by the host runtime.
+        ///
+        /// See [`SendCb`].
+        send: SendCb,
+    },
+
+    /// The connection is currently open to the RC backend.
+    Connected { send: SendCb },
+}
+
 /// An [`FFIConnection`] brokers I/O between the client library and the FFI host
 /// runtime, modelling a single connection to the RC backend.
 ///
@@ -167,13 +215,72 @@ pub(super) enum RecvRet {
 /// host runtime can reference the handle when making subsequent FFI functions,
 /// but cannot interact with the internal fields.
 ///
+/// This type is expected to emit [`ConnectionEvent`] lifecycle updates.
+///
 /// [opaque handle]: https://interrupt.memfault.com/blog/opaque-pointers
 #[derive(Debug)]
 #[repr(Rust)] // Explicitly not exposing internals across FFI boundary.
 pub(super) struct FFIConnection {
-    /// Send `data` from the client library to the RC backend over the existing
-    /// network connection managed by the host runtime.
-    ///
-    /// See [`SendCb`].
-    send: Option<SendCb>,
+    id: ConnectionId,
+
+    /// An event sink through which updates for this connection are published.
+    events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
+
+    state: State,
+}
+
+#[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
+impl FFIConnection {
+    pub(super) fn new(
+        id: ConnectionId,
+        events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
+    ) -> Box<Self> {
+        let s = Self {
+            id,
+            events,
+            state: State::Init,
+        };
+
+        // Publish that a new connection has been initialised.
+        s.publish_event(ConnectionEvent::Init);
+
+        Box::new(s)
+    }
+
+    /// A helper function to publish a [`ConnectionUpdate`] for this connection.
+    fn publish_event(&self, event: ConnectionEvent<IOHandle>) {
+        self.events.send(ConnectionUpdate::new(self.id, event));
+    }
+
+    /// Free this [`FFIConnection`] and emit a [`ConnectionEvent::Release`] to
+    /// any event observers.
+    fn free(self: Box<Self>) {
+        assert_matches!(self.state, State::Init | State::Configured { .. });
+
+        self.publish_event(ConnectionEvent::Release);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::host_runtime::ffi::{rc_free, rc_init};
+
+    use super::*;
+
+    fn is_send<T: Send>(t: T) {}
+    fn static_assert_ctx_send(c: &mut FFIConnection) {
+        is_send(c);
+    }
+
+    #[test]
+    fn test_connection_init_free() {
+        let ctx = unsafe { rc_init() };
+        assert!(!ctx.is_null());
+
+        let conn = unsafe { rc_conn_new(ctx) };
+        assert!(!conn.is_null());
+
+        unsafe { rc_conn_free(conn) };
+        unsafe { rc_free(ctx) };
+    }
 }
