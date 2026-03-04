@@ -43,9 +43,9 @@ pub(super) unsafe extern "C" fn rc_conn_new(ctx: *mut Ctx) -> *mut FFIConnection
 
 /// Mark the connection as established.
 ///
-/// The caller MUST have made a previous call to [`rc_set_send_callback`],
-/// else this call will return an error and the connection will not be
-/// marked as available internally.
+/// The caller MUST have made a previous call to [`rc_conn_send_callback()`], else
+/// this call will return an error and the connection will not be marked as
+/// available internally.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of [`FFIConnection`] to client
@@ -115,7 +115,7 @@ pub(super) type SendCb = unsafe extern "C" fn(data: *const u8, length: i32) -> S
 ///     call.
 ///
 #[unsafe(no_mangle)]
-pub(super) unsafe extern "C" fn rc_set_send_callback(mut conn: *mut FFIConnection, cb: SendCb) {
+pub(super) unsafe extern "C" fn rc_conn_send_callback(mut conn: *mut FFIConnection, cb: SendCb) {
     unimplemented!()
 }
 
