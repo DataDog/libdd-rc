@@ -8,6 +8,7 @@ anstyle-wincon,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+assert_matches,https://github.com/murarth/assert_matches,MIT OR Apache-2.0,Murarth <murarth@gmail.com>
 autocfg,https://github.com/cuviper/autocfg,Apache-2.0 OR MIT,Josh Stone <cuviper@gmail.com>
 aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
@@ -104,6 +105,7 @@ time-core,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-so
 time-macros,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+tokio-stream,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-util,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 toml_datetime,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
