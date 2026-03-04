@@ -15,13 +15,12 @@
 #![doc = "../README.md"]
 // Nothing is used yet.
 #![allow(unused)]
-// The use of unsafe code should be contained to the FFI module, which has
-// additional checks (miri) run in CI.
-#![warn(unsafe_code)]
 
+mod abort_on_drop;
 pub(crate) mod connection;
 mod entrypoint;
 mod shutdown_signal;
+pub(crate) use abort_on_drop::*;
 pub(crate) use entrypoint::*;
 pub(crate) use shutdown_signal::*;
 

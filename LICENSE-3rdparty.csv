@@ -116,6 +116,9 @@ tokio-util,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.
 toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 toml_datetime,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
+tracing,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>
+tracing-attributes,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>, Eliza Weisman <eliza@buoyant.io>, David Barsky <dbarsky@amazon.com>
+tracing-core,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 utf8parse,https://github.com/alacritty/vte,Apache-2.0 OR MIT,Joe Wilm <joe@jwilm.com>, Christian Duerr <contact@christianduerr.com>
