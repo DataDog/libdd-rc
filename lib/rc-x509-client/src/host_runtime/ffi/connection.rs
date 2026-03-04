@@ -19,7 +19,6 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-use assert_matches::assert_matches;
 use tokio::sync::mpsc;
 
 use crate::connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle};
@@ -119,7 +118,10 @@ pub(super) type SendCb = unsafe extern "C" fn(data: *const u8, length: i32) -> S
 ///
 #[unsafe(no_mangle)]
 pub(super) unsafe extern "C" fn rc_conn_send_callback(mut conn: *mut FFIConnection, cb: SendCb) {
-    unimplemented!()
+    assert!(!conn.is_null());
+
+    let mut conn = unsafe { &mut *conn };
+    conn.set_send_callback(cb);
 }
 
 /// Release the resources held by this `conn`.
@@ -255,14 +257,41 @@ impl FFIConnection {
     /// Free this [`FFIConnection`] and emit a [`ConnectionEvent::Release`] to
     /// any event observers.
     fn free(self: Box<Self>) {
-        assert_matches!(self.state, State::Init | State::Configured { .. });
+        match &self.state {
+            State::Init | State::Configured { .. } => { /* allowed */ }
+            State::Connected { .. } => {
+                panic!("must disconnect connection before free")
+            }
+        }
 
         self.publish_event(ConnectionEvent::Release);
+    }
+
+    /// Set the [`SendCb`] for this [`FFIConnection`].
+    ///
+    /// # Panics
+    ///
+    /// This call panics if the connection is in use ([`State::Connected`]).
+    fn set_send_callback(&mut self, cb: SendCb) {
+        // Correctness: the callback can only be changed when the connection is
+        // not in use (and therefore the caller has an exclusive ref).
+        //
+        // A callback MAY be changed after being set.
+        match &self.state {
+            State::Init | State::Configured { .. } => { /* allowed */ }
+            State::Connected { .. } => {
+                panic!("must disconnect connection before changing send callbacks")
+            }
+        }
+
+        self.state = State::Configured { send: cb };
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+
     use crate::host_runtime::ffi::{rc_free, rc_init};
 
     use super::*;
@@ -279,6 +308,16 @@ mod tests {
 
         let conn = unsafe { rc_conn_new(ctx) };
         assert!(!conn.is_null());
+        assert_matches!(unsafe { &*conn }.state, State::Init);
+
+        unsafe extern "C" fn do_send(data: *const u8, length: i32) -> SendRet {
+            SendRet::Unknown
+        }
+
+        unsafe {
+            rc_conn_send_callback(conn, do_send);
+            assert_matches!((&*conn).state, State::Configured { send });
+        }
 
         unsafe { rc_conn_free(conn) };
         unsafe { rc_free(ctx) };
