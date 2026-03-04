@@ -21,3 +21,22 @@ members = [
 	"lib/rc-crypto",
 	"lib/rc-x509-client",
 ]
+
+[workspace.lints.clippy]
+unsafe_code = "warn"      # Contained to FFI crate with explicit allow only
+clone_on_ref_ptr = "warn" # A ref +1 is not the same as a deep copy
+future_not_send = "warn"  # Required for multithreaded runtimes
+dbg_macro = "warn"        # Used for debugging, should not be in committed code
+todo = "warn"             # Should not be in committed code - use unreachable!("reason")
+
+field_reassign_with_default = "allow"      # Default values, plus a field override.
+default_constructed_unit_structs = "allow" # Unit structs do not appear as values.
+
+[workspace.lints.rustdoc]
+private_intra_doc_links = "allow" # Code comments that link to non-pub items.
+
+[workspace.lints.rust]
+missing_docs = "warn"                  # We should document our code for humans.
+unreachable_pub = "warn"               # Visibility is part of communicating with humans
+missing_debug_implementations = "warn" # Frequently used bound on data structures
+unused_crate_dependencies = "warn"     # Warn for unused dependencies

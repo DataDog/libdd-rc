@@ -15,9 +15,6 @@
 #![doc = "../README.md"]
 // Nothing is used yet.
 #![allow(unused)]
-// The use of unsafe code should be contained to the FFI module, which has
-// additional checks (miri) run in CI.
-#![warn(unsafe_code)]
 
 pub(crate) mod connection;
 mod entrypoint;
