@@ -64,14 +64,16 @@ pub(crate) struct ConnectionId(usize);
 ///     back to the [`Self::Connected`] state.
 ///
 #[derive(Debug)]
-pub(crate) enum ConnectionEvent {
+pub(crate) enum ConnectionEvent<IO> {
     /// A new connection has been created by the FFI host.
     Init,
 
     /// The FFI host has established a connection to the RC backend for a
     /// [`ConnectionId`] that has previously received an
     /// [`ConnectionEvent::Init`].
-    Connected(IOHandle),
+    ///
+    /// Data can be sent / received through the provided handle.
+    Connected(IO),
 
     /// The FFI host has lost (or closed) the connection to the RC backend.
     Disconnected,
@@ -84,12 +86,12 @@ pub(crate) enum ConnectionEvent {
 /// A [`ConnectionUpdate`] contains a [`ConnectionEvent`] update, and the
 /// corresponding [`ConnectionId`] it applies to.
 #[derive(Debug)]
-pub(crate) struct ConnectionUpdate {
+pub(crate) struct ConnectionUpdate<IO> {
     id: ConnectionId,
-    event: ConnectionEvent,
+    event: ConnectionEvent<IO>,
 }
 
-impl ConnectionUpdate {
+impl<IO> ConnectionUpdate<IO> {
     /// Get the [`ConnectionId`] this [`ConnectionEvent`] this update applies
     /// to.
     pub(crate) fn id(&self) -> ConnectionId {
@@ -97,12 +99,12 @@ impl ConnectionUpdate {
     }
 
     /// Peek at the underlying [`ConnectionEvent`] in this update.
-    pub(crate) fn event(&self) -> &ConnectionEvent {
+    pub(crate) fn event(&self) -> &ConnectionEvent<IO> {
         &self.event
     }
 
     /// Extract the owned [`ConnectionEvent`].
-    pub(crate) fn into_event(self) -> ConnectionEvent {
+    pub(crate) fn into_event(self) -> ConnectionEvent<IO> {
         self.event
     }
 }
