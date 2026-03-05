@@ -69,6 +69,8 @@ pub unsafe extern "C" fn rc_conn_new(ctx: *const Ctx) -> *mut FFIConnection {
 /// This call is not concurrency safe.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
+    assert!(!conn.is_null());
+
     let conn = unsafe { &mut *conn };
     conn.set_connected();
 }
@@ -92,6 +94,8 @@ pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
 /// This call is not concurrency safe.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rc_conn_disconnected(conn: *mut FFIConnection) {
+    assert!(!conn.is_null());
+
     let conn = unsafe { &mut *conn };
     conn.set_disconnected();
 }
