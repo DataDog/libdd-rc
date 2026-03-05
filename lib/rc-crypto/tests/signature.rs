@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused_crate_dependencies, missing_docs)] // Used in crate, not in tests.
+
 use std::sync::{Arc, LazyLock};
 
 use aws_lc_rs::rand;

@@ -120,7 +120,6 @@ mod tests {
     use std::{sync::atomic::fence, thread::yield_now};
 
     use assert_matches::assert_matches;
-    use futures::executor::block_on;
     use tokio::sync::oneshot;
 
     use super::*;

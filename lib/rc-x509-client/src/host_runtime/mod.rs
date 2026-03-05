@@ -31,7 +31,7 @@
 
 mod api;
 mod correlation_id;
-pub(crate) mod ffi;
+pub mod ffi;
 
 pub(crate) use api::*;
 pub(crate) use correlation_id::*;

@@ -18,6 +18,9 @@ version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
 
+[lints]
+workspace = true
+
 [dependencies]
 aws-lc-rs = { version = "1.16.1", default-features = false, features = ["alloc", "fips"] }
 bytes = "1"
