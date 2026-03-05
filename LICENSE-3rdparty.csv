@@ -8,7 +8,6 @@ anstyle-wincon,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
-assert_matches,https://github.com/murarth/assert_matches,MIT OR Apache-2.0,Murarth <murarth@gmail.com>
 autocfg,https://github.com/cuviper/autocfg,Apache-2.0 OR MIT,Josh Stone <cuviper@gmail.com>
 aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
