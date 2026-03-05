@@ -39,7 +39,6 @@ enum recv_ret_t {
      The message was successfully passed.
      */
     RECV_RET_T_SUCCESS = 0,
-    RECV_RET_T_QUEUE_FULL = 1,
 };
 typedef int32_t recv_ret_t;
 
@@ -48,9 +47,17 @@ typedef int32_t recv_ret_t;
  runtime.
  */
 enum send_ret_t {
+    /*
+     The FFI host accepted this request.
+     */
     SEND_RET_T_SUCCESS = 0,
+    /*
+     The connection is closed on the FFI side.
+     */
     SEND_RET_T_CLOSED = 1,
-    SEND_RET_T_QUEUE_FULL = 2,
+    /*
+     An unknown error occurred.
+     */
     SEND_RET_T_UNKNOWN = INT32_MAX,
 };
 typedef int32_t send_ret_t;
@@ -87,11 +94,42 @@ typedef struct Ctx Ctx;
  client library by calling FFI functions with the appropriate
  [`FFIConnection`] handle.
 
+ # Handling I/O
+
+ Once the [`FFIConnection`] is in the [`State::Connected`] state, it can be
+ used to send outgoing I/O from the library, to the RC backend, and delivery
+ incoming payloads from the RC backend to the library.
+
+ All I/O is handled through an [`IOHandle`] presented to the non-FFI library
+ code as a safe, decoupled interface. Each [`FFIConnection`] runs an
+ [`io_task`] when in the [`State::Connected`] state to handle outgoing
+ payloads.
+
+ Outgoing I/O:
+
+   1. A call to [`IOHandle::send()`] is made, and the payload is added to an
+      internal FIFO queue.
+   2. Asynchronously the [`io_task`] assigned to this [`FFIConnection`] wakes
+      up, and pulls the payload from the queue.
+   3. The [`io_task`] calls the [`SendCb`] registered to the
+      [`FFIConnection`], invoking the callback on the FFI host.
+   4. The [`io_task`] frees the memory held by the payload.
+
+ Incoming I/O:
+
+   1. The FFI host calls into this library with [`rc_conn_recv()`] which
+      copies the payload into an internal queue.
+   2. A consumer in the non-FFI code eventually pulls this incoming message
+      from the queue and processes it.
+
+ # FFI Interface
+
  This type is represented across the FFI boundary as an [opaque handle]; the
  host runtime can reference the handle when making subsequent FFI functions,
  but cannot interact with the internal fields.
 
- This type is expected to emit [`ConnectionEvent`] lifecycle updates.
+ This type is expected to emit [`ConnectionEvent`] lifecycle updates to
+ inform the main (non-FFI) library code of state changes.
 
  [opaque handle]: https://interrupt.memfault.com/blog/opaque-pointers
  */
@@ -116,28 +154,38 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, int32_t length);
 /*
  Mark the connection as established.
 
- The caller MUST have made a previous call to [`rc_conn_send_callback()`], else
- this call will return an error and the connection will not be marked as
+ The caller MUST have made a previous call to [`rc_conn_send_callback()`],
+ else this call will return an error and the connection will not be marked as
  available internally.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
      library for the duration of the call.
 
+ # Safety
+
+ This call is not concurrency safe.
  */
 void rc_conn_connected(struct FFIConnection *conn);
 
 /*
  Mark the connection as closed.
 
- The caller MUST NOT call [`rc_conn_recv()`] for this `conn` after this
- call, but MAY subsequently call [`rc_conn_connected()`] for the same
- `conn` to resume communication.
+ The caller MUST NOT call [`rc_conn_recv()`] for this `conn` after this call,
+ but MAY subsequently call [`rc_conn_connected()`] for the same `conn` to
+ resume communication.
+
+ This call blocks until in-flight [`SendCb`] calls are completed and the
+ internal I/O task exists cleanly, after which time it is guaranteed no more
+ calls to the [`SendCb`] will be made.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
      library for the duration of the call.
 
+ # Safety
+
+ This call is not concurrency safe.
  */
 void rc_conn_disconnected(struct FFIConnection *conn);
 
@@ -147,6 +195,10 @@ void rc_conn_disconnected(struct FFIConnection *conn);
    * Called by: `host runtime`.
    * Ownership: passes ownership of [`FFIConnection`] to client library.
 
+ # Safety
+
+ The `conn` MUST be marked as disconnected ([`rc_conn_disconnected()`]) prior
+ to freeing the connection.
  */
 void rc_conn_free(struct FFIConnection *conn);
 
@@ -157,20 +209,28 @@ void rc_conn_free(struct FFIConnection *conn);
    * Ownership: passes mutable reference of `conn` for the duration of the
      call, and returns ownership of [`FFIConnection`].
 
+ # Safety
+
+ This call is safe iff `ctx` points to a handle obtained from a [`rc_init()`]
+ call that has not yet been freed, and is concurrency safe.
  */
-struct FFIConnection *rc_conn_new(struct Ctx *ctx);
+struct FFIConnection *rc_conn_new(const struct Ctx *ctx);
 
 /*
- Pass data received from the RC delivery backend for the `conn`
- connection.
+ Pass data received from the RC delivery backend for the `conn` connection.
 
    * Called by: `host runtime`.
-   * Ownership: passes shared reference of [`FFIConnection`] and `data`
-     to client library for the duration of the call.
+   * Ownership: passes shared reference of [`FFIConnection`] and `data` to
+     client library for the duration of the call.
 
- NOTE: the host runtime retains ownership of `data` after this call, and
- is responsible for freeing the memory backing it after this call
- completes.
+ NOTE: the host runtime retains ownership of `data` after this call, and is
+ responsible for freeing the memory backing it after this call completes.
+
+ # Safety
+
+ The `conn` MUST have previously been marked as ready using
+ [`rc_conn_connected()`], and the provided `data` MUST be valid for a read of
+ `length` bytes for the duration of this function call.
  */
 recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, int32_t length);
 
@@ -185,6 +245,11 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, i
    * Ownership: passes mutable reference of `conn` for the duration of the
      call.
 
+ # Safety
+
+ This call MUST provide a `cb` that is valid and safe to call concurrently at
+ all times after [`rc_conn_connected()`] is called for `conn`, until a
+ subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
  */
 void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb);
 
@@ -199,6 +264,11 @@ void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb);
    * Called by: `host runtime`.
    * Ownership: passes ownership of [`Ctx`] to client library.
 
+ # Safety
+
+ Must be called exactly once per `ctx` obtained from a prior call to
+ [`rc_init()`].
+
  [`rc_conn_disconnected()`]: super::rc_conn_disconnected()
  [`rc_conn_free()`]: super::rc_conn_free()
  */
@@ -211,6 +281,9 @@ void rc_free(struct Ctx *ctx);
    * Called by: `host runtime`.
    * Ownership: returns ownership of [`Ctx`] to host runtime.
 
+ # Safety
+
+ This call is always safe.
  */
 struct Ctx *rc_init(void);
 

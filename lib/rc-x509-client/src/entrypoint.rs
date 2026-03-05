@@ -19,13 +19,9 @@ use std::time::Duration;
 use futures::{Stream, StreamExt};
 use tracing::{debug, info};
 
-use tokio::{pin, sync::mpsc};
+use tokio::pin;
 
-use crate::{
-    AbortOnDrop, ShutdownSignal,
-    connection::{ConnectionEvent, ConnectionUpdate},
-    host_runtime::Connection,
-};
+use crate::{AbortOnDrop, ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
 
 pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -77,7 +73,7 @@ where
 }
 
 async fn handle_connection_events<IO>(
-    mut incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
 ) where
     IO: std::fmt::Debug,
 {
