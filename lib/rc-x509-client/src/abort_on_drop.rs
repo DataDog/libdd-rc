@@ -45,6 +45,8 @@ impl<T> Drop for AbortOnDrop<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use assert_matches::assert_matches;
     use tokio::sync::{mpsc, oneshot};
 
@@ -58,7 +60,9 @@ mod tests {
             // Signal the main task to abort.
             tx.send(()).await.unwrap();
 
-            todo!()
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
         }));
 
         rx.recv().await.expect("task is running");

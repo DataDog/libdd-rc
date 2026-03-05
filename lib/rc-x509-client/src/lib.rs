@@ -24,5 +24,5 @@ pub(crate) use abort_on_drop::*;
 pub(crate) use entrypoint::*;
 pub(crate) use shutdown_signal::*;
 
-pub(crate) mod host_runtime;
+pub mod host_runtime;
 pub(crate) mod payload;
