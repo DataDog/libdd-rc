@@ -16,9 +16,16 @@
 
 use std::time::Duration;
 
-use tracing::info;
+use futures::{Stream, StreamExt};
+use tracing::{debug, info};
 
-use crate::ShutdownSignal;
+use tokio::{pin, sync::mpsc};
+
+use crate::{
+    AbortOnDrop, ShutdownSignal,
+    connection::{ConnectionEvent, ConnectionUpdate},
+    host_runtime::Connection,
+};
 
 pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -29,11 +36,37 @@ pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 /// When `shutdown` is signalled, work should cease and this function should
 /// complete within [`GRACEFUL_SHUTDOWN_TIMEOUT`] else they are killed at an
 /// arbitrary execution point.
-pub(crate) async fn entrypoint(shutdown: ShutdownSignal) {
+///
+/// Additionally the `conn_events` channel will be closed, but the order w.r.t
+/// the shutdown signal is undefined.
+pub(crate) async fn entrypoint<IO>(
+    shutdown: ShutdownSignal,
+    conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+) where
+    IO: Connection,
+{
     info!(
         version = env!("CARGO_PKG_VERSION"),
         "starting rc-x509-client instance"
     );
 
+    let _conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
     shutdown.wait_for_shutdown().await;
+
+    info!("stopping rc-x509-client instance");
+}
+
+async fn handle_connection_events<IO>(
+    mut incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+) where
+    IO: std::fmt::Debug,
+{
+    debug!("starting connection event handler");
+    pin!(incoming);
+
+    while let Some(event) = incoming.next().await {
+        debug!(?event, "received connection lifecycle event");
+    }
+
+    debug!("stopping connection event handler");
 }

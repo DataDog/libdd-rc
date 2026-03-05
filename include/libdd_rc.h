@@ -91,6 +91,8 @@ typedef struct Ctx Ctx;
  host runtime can reference the handle when making subsequent FFI functions,
  but cannot interact with the internal fields.
 
+ This type is expected to emit [`ConnectionEvent`] lifecycle updates.
+
  [opaque handle]: https://interrupt.memfault.com/blog/opaque-pointers
  */
 typedef struct FFIConnection FFIConnection;
@@ -114,9 +116,9 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, int32_t length);
 /*
  Mark the connection as established.
 
- The caller MUST have made a previous call to [`rc_set_send_callback`],
- else this call will return an error and the connection will not be
- marked as available internally.
+ The caller MUST have made a previous call to [`rc_conn_send_callback()`], else
+ this call will return an error and the connection will not be marked as
+ available internally.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
@@ -173,6 +175,20 @@ struct FFIConnection *rc_conn_new(struct Ctx *ctx);
 recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, int32_t length);
 
 /*
+ Configure the callback used by the client library to request data be sent to
+ the RC backend.
+
+ This call MUST be made before the first call to [`rc_conn_connected()`] for
+ the same `conn`.
+
+   * Called by: `host runtime`.
+   * Ownership: passes mutable reference of `conn` for the duration of the
+     call.
+
+ */
+void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb);
+
+/*
  Stop the client running in [`Ctx`], and release all resources held by
  [`Ctx`].
 
@@ -197,19 +213,5 @@ void rc_free(struct Ctx *ctx);
 
  */
 struct Ctx *rc_init(void);
-
-/*
- Configure the callback used by the client library to request data be sent to
- the RC backend.
-
- This call MUST be made before the first call to [`rc_conn_connected()`] for
- the same `conn`.
-
-   * Called by: `host runtime`.
-   * Ownership: passes mutable reference of `conn` for the duration of the
-     call.
-
- */
-void rc_set_send_callback(struct FFIConnection *conn, SendCb cb);
 
 #endif  /* LIBDD_RC_H */

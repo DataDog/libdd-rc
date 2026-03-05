@@ -8,6 +8,7 @@ anstyle-wincon,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+assert_matches,https://github.com/murarth/assert_matches,MIT OR Apache-2.0,Murarth <murarth@gmail.com>
 autocfg,https://github.com/cuviper/autocfg,Apache-2.0 OR MIT,Josh Stone <cuviper@gmail.com>
 aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
@@ -37,8 +38,15 @@ errno,https://github.com/lambda-fairy/rust-errno,MIT OR Apache-2.0,Chris Wong <l
 fastrand,https://github.com/smol-rs/fastrand,Apache-2.0 OR MIT,Stjepan Glavina <stjepang@gmail.com>
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
+futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-channel,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-core,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-executor,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-io,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-macro,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-sink,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-task,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
+futures-util,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 getrandom,https://github.com/rust-random/getrandom,MIT OR Apache-2.0,The Rand Project Developers
 glob,https://github.com/rust-lang/glob,MIT OR Apache-2.0,The Rust Project Developers
@@ -92,6 +100,7 @@ serde_derive,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar
 serde_json,https://github.com/serde-rs/json,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
 serde_spanned,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
+slab,https://github.com/tokio-rs/slab,MIT,Carl Lerche <me@carllerche.com>
 smallvec,https://github.com/servo/rust-smallvec,MIT OR Apache-2.0,The Servo Project Developers
 strsim,https://github.com/rapidfuzz/strsim-rs,MIT,Danny Guo <danny@dannyguo.com>, maxbachmann <oss@maxbachmann.de>
 syn,https://github.com/dtolnay/syn,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
@@ -104,6 +113,7 @@ time-core,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-so
 time-macros,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 tokio,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-macros,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
+tokio-stream,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 tokio-util,https://github.com/tokio-rs/tokio,MIT,Tokio Contributors <team@tokio.rs>
 toml,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 toml_datetime,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
