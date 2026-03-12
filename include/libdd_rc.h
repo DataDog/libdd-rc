@@ -97,7 +97,7 @@ typedef struct Ctx Ctx;
  # Handling I/O
 
  Once the [`FFIConnection`] is in the [`State::Connected`] state, it can be
- used to send outgoing I/O from the library, to the RC backend, and delivery
+ used to send outgoing I/O from the library, to the RC backend, and deliver
  incoming payloads from the RC backend to the library.
 
  All I/O is handled through an [`IOHandle`] presented to the non-FFI library
@@ -186,7 +186,7 @@ typedef struct FFIConnection FFIConnection;
  NOTE: the client library retains ownership of `data` after this call, and it
  may be freed or modified at any time after this function returns.
  */
-typedef send_ret_t (*SendCb)(const uint8_t *data, int32_t length);
+typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length);
 
 /*
  Mark the connection as established.
@@ -269,7 +269,7 @@ struct FFIConnection *rc_conn_new(const struct Ctx *ctx);
  [`rc_conn_connected()`], and the provided `data` MUST be valid for a read of
  `length` bytes for the duration of this function call.
  */
-recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, int32_t length);
+recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, uint32_t length);
 
 /*
  Configure the callback used by the client library to request data be sent to

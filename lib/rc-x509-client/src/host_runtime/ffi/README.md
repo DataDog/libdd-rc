@@ -49,7 +49,7 @@ let conn = unsafe { rc_conn_new(ctx) };
 
 // Configure the callback the library uses to ask the FFI host to forward data
 // to the RC server.
-unsafe extern "C" fn do_send(_data: *const u8, _length: i32) -> SendRet {
+unsafe extern "C" fn do_send(_data: *const u8, _length: u32) -> SendRet {
     // Host sends data using native sockets here.
 	SendRet::Success
 }

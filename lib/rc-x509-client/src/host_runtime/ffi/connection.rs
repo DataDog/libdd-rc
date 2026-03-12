@@ -118,12 +118,12 @@ pub unsafe extern "C" fn rc_conn_disconnected(conn: *mut FFIConnection) {
 pub unsafe extern "C" fn rc_conn_recv(
     conn: *const FFIConnection,
     data: *const u8,
-    length: i32,
+    length: u32,
 ) -> RecvRet {
     assert!(!conn.is_null());
     assert!(!data.is_null());
 
-    if length <= 0 {
+    if length == 0 {
         return RecvRet::Success;
     }
 
@@ -153,7 +153,7 @@ pub unsafe extern "C" fn rc_conn_recv(
 ///
 /// NOTE: the client library retains ownership of `data` after this call, and it
 /// may be freed or modified at any time after this function returns.
-pub type SendCb = unsafe extern "C" fn(data: *const u8, length: i32) -> SendRet;
+pub type SendCb = unsafe extern "C" fn(data: *const u8, length: u32) -> SendRet;
 
 /// Configure the callback used by the client library to request data be sent to
 /// the RC backend.
@@ -299,7 +299,7 @@ enum State {
 /// # Handling I/O
 ///
 /// Once the [`FFIConnection`] is in the [`State::Connected`] state, it can be
-/// used to send outgoing I/O from the library, to the RC backend, and delivery
+/// used to send outgoing I/O from the library, to the RC backend, and deliver
 /// incoming payloads from the RC backend to the library.
 ///
 /// All I/O is handled through an [`IOHandle`] presented to the non-FFI library
@@ -458,7 +458,7 @@ impl FFIConnection {
         //
         // This I/O task captures the send callback and MUST be stopped before
         // the send callback can be freed by the host, meaning the task MUST
-        // have stopped prior to set_disconnected() returning complete to avoid
+        // have stopped prior to set_disconnected() returning complete to a®void
         // this race (and similar):
         //
         //  1. set_connected() spawns I/O task.
@@ -617,7 +617,7 @@ fn io_task(mut lib2ffi: mpsc::Receiver<Vec<u8>>, stop: CancellationToken, send: 
         // [`rc_conn_disconnected()`] returning. The FFI host is responsible for
         // and guarantees the callback is valid between these two FFI function
         // calls.
-        let ret = unsafe { send(payload.as_slice().as_ptr(), payload.len() as i32) };
+        let ret = unsafe { send(payload.as_slice().as_ptr(), payload.len() as u32) };
 
         match ret {
             SendRet::Success => {}
@@ -706,7 +706,7 @@ mod tests {
         assert!(!conn.is_null());
         assert_matches!(unsafe { &*conn }.state, State::Init);
 
-        unsafe extern "C" fn do_send(_data: *const u8, _length: i32) -> SendRet {
+        unsafe extern "C" fn do_send(_data: *const u8, _length: u32) -> SendRet {
             SendRet::Unknown
         }
 
@@ -735,7 +735,7 @@ mod tests {
         static PAYLOAD: [u8; 4] = [1, 2, 3, 4];
 
         // A send callback that records if it was called at any point.
-        unsafe extern "C" fn do_send(data: *const u8, length: i32) -> SendRet {
+        unsafe extern "C" fn do_send(data: *const u8, length: u32) -> SendRet {
             let got = unsafe { slice::from_raw_parts(data, length as _) };
             assert_eq!(got, PAYLOAD);
 
@@ -792,7 +792,7 @@ mod tests {
         // Simulate incoming data.
         let data = vec![24, 42, 24];
         unsafe {
-            rc_conn_recv(conn, data.as_slice().as_ptr(), data.len() as i32);
+            rc_conn_recv(conn, data.as_slice().as_ptr(), data.len() as u32);
         }
         let got = io.recv().await.expect("data must arrive");
         assert_eq!(data, got);
