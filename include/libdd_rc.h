@@ -107,6 +107,26 @@ typedef struct Ctx Ctx;
 
  Outgoing I/O:
 
+ ```text
+                               libdd-rc
+                                  │
+                                  ▼
+                              IOHandle::send()
+                                  │
+                                  ▼
+                              lib2ffi channel
+                                  |
+                                  │       io_task pulls from the
+                                  ▼       lib2ffi & calls SendCb
+                                SendCb
+                                  │
+                                  ▼
+                            FFI Host Runtime
+                                  │
+                                  ▼
+                            RC Backend Server
+ ```
+
    1. A call to [`IOHandle::send()`] is made, and the payload is added to an
       internal FIFO queue.
    2. Asynchronously the [`io_task`] assigned to this [`FFIConnection`] wakes
@@ -116,6 +136,23 @@ typedef struct Ctx Ctx;
    4. The [`io_task`] frees the memory held by the payload.
 
  Incoming I/O:
+
+ ```text
+                            RC Backend Server
+                                  │
+                                  ▼
+                            FFI Host Runtime
+                                  │
+                                  │ rc_conn_recv()
+                                  ▼
+                              ffi2lib channel
+                                  │
+                                  ▼
+                              IOHandle::recv()
+                                  │
+                                  ▼
+                               libdd-rc
+ ```
 
    1. The FFI host calls into this library with [`rc_conn_recv()`] which
       copies the payload into an internal queue.
