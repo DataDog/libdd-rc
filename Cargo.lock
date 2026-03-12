@@ -1028,6 +1028,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "proptest-derive"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c57924a81864dddafba92e1bf92f9bf82f97096c44489548a60e888e1547549b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "prost"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,6 +1201,8 @@ dependencies = [
 name = "rc-x509-proto"
 version = "0.1.0"
 dependencies = [
+ "proptest",
+ "proptest-derive",
  "prost",
  "prost-build",
 ]

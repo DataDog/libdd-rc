@@ -26,3 +26,7 @@ workspace = true
 
 [build-dependencies]
 prost-build = "0.14.3"
+
+[dev-dependencies]
+proptest = "1.10.0"
+proptest-derive = "0.8.0"
