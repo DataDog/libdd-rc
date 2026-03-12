@@ -30,16 +30,6 @@ fn main() {
     // Read cbindgen config from workspace root
     let config_path = workspace_dir.join("cbindgen.toml");
 
-    // Tell cargo to rerun if the output file is missing or changed
-    // This ensures the build script runs when the header is deleted
-    if !output_file.exists() {
-        println!(
-            "cargo:warning=Output header {} does not exist, will trigger regeneration",
-            output_file.display()
-        );
-        println!("cargo:rerun-if-changed={}", output_file.display());
-    }
-
     let config = cbindgen::Config::from_file(&config_path).expect("Failed to load cbindgen.toml");
 
     cbindgen::Builder::new()
