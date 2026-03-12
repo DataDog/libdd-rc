@@ -48,9 +48,4 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(&output_file);
-
-    println!(
-        "cargo:warning=Generated C header at {}",
-        output_file.display()
-    );
 }
