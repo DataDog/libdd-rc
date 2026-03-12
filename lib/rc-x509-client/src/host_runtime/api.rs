@@ -33,6 +33,10 @@ pub(crate) enum ConnectionErr {
 
     #[error("connection is closed")]
     Closed,
+
+    /// The outgoing payload queue is full.
+    #[error("tx queue full")]
+    QueueFull,
 }
 
 /// Boundary layer between calls from this library, to some abstract

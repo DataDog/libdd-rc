@@ -34,5 +34,5 @@
 mod connection;
 mod ctx;
 
-pub(crate) use connection::*;
+pub use connection::*;
 pub use ctx::*;

@@ -14,65 +14,56 @@ connection to the RC backend, informing the client library of connection
 lifecycle events (e.g. disconnects) while brokering data received from and sent
 to the RC backend.
 
+### FFI Isolation
+
+The FFI system is isolated from the rest of the library; it is designed to be a
+thin layer that "bridges" the unsafe FFI interface into the rest of the system
+in order to simplify the integration code and FFI ownership semantics, and
+therefore minimise bug risk.
+
+All interaction with the non-FFI parts of the library are bridged through
+channels:
+
+  * Connection lifecycle events ([`ConnectionEvent`]) pass through a per-[`Ctx`]
+    channel, which the library [`entrypoint`] consumes to react to FFI-driven
+    connection state changes.
+
+  * Each connection initialised and marked as ready to perform I/O by the FFI
+    interface ([`FFIConnection`]) has it's own [`IOHandle`], through which
+    payloads are exchanged with the FFI layer, and in turn, FFI host.
+
+
+
 ## Example Usage
 
-```c
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+An example using the FFI interface from rust:
 
-// Assuming the header provided is named "rc_client.h"
-#include "rc_client.h"
+```rust
+use rc_x509_client::host_runtime::ffi::*;
 
-// Define a callback function for handling outgoing network data (from the RC
-// client lib -> RC backend).
-SendRet socket_send_cb(const uint8_t* data, int32_t length) {
-    printf("Sending %d bytes of data...\n", length);
-    // TODO: host sends data over connection to RC backend asynchronously.
-    return Success;
+// Initialise the library Ctx and obtain a handle to this library instance
+let ctx = unsafe { rc_init() };
+
+// Initialising a new connection
+let conn = unsafe { rc_conn_new(ctx) };
+
+// Configure the callback the library uses to ask the FFI host to forward data
+// to the RC server.
+unsafe extern "C" fn do_send(_data: *const u8, _length: u32) -> SendRet {
+    // Host sends data using native sockets here.
+	SendRet::Success
 }
+unsafe { rc_conn_send_callback(conn, do_send) };
 
-int main() {
-    // Initialize the RC library.
-    struct Ctx *ctx = rc_init();
-    if (!ctx) {
-        fprintf(stderr, "Failed to initialize context\n");
-        return 1;
-	}
+// Mark the connection as available.
+unsafe { rc_conn_connected(conn) };
 
-    // Create a new connection handle.
-    struct Conn *conn = rc_conn_new(ctx);
-    if (!conn) {
-        fprintf(stderr, "Failed to create connection\n");
-        rc_free(ctx);
-        return 1;
-    }
+//
+// At this point, I/O is allowed to flow in either direction.
+//
 
-	// TODO: host application dials a new connection here.
-
-    // Setup the send callback and mark the connection as ready.
-    rc_set_send_callback(conn, socket_send_cb);
-    rc_conn_connected(conn);
-
-    // EXAMPLE: simulate receiving data from the RC backend.
-    const char *incoming_payload = "bananas!";
-    int32_t payload_len = (int32_t)strlen(incoming_payload);
-
-	// Pass the message bytes to the RC library.
-    RecvRet result = rc_conn_recv(conn, (const uint8_t*)incoming_payload, payload_len);
-
-    if (result == Success) {
-        printf("Data processed successfully.\n");
-    } else if (result == QueueFull) {
-        printf("Warning: Receive queue is full.\n");
-    }
-
-    // Cleanup
-	// TODO: host closes the network connection to the RC backend here.
-    rc_conn_disconnected(conn);
-    rc_conn_free(conn);
-    rc_free(ctx);
-
-    return 0;
-}
+// Clean up:
+unsafe { rc_conn_disconnected(conn) };
+unsafe { rc_conn_free(conn) };
+unsafe { rc_free(ctx) };
 ```

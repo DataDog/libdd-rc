@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, error::TrySendError};
 
 use crate::host_runtime::{Connection, ConnectionErr};
 
@@ -32,10 +32,11 @@ impl IOHandle {
 
 impl Connection for IOHandle {
     async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr> {
-        self.tx
-            .send(payload)
-            .await
-            .map_err(|_| ConnectionErr::Closed)
+        match self.tx.try_send(payload) {
+            Ok(()) => Ok(()),
+            Err(TrySendError::Closed(_)) => Err(ConnectionErr::Closed),
+            Err(TrySendError::Full(_)) => Err(ConnectionErr::QueueFull),
+        }
     }
 
     async fn recv(&mut self) -> Option<Vec<u8>> {

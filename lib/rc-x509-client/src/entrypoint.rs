@@ -19,45 +19,61 @@ use std::time::Duration;
 use futures::{Stream, StreamExt};
 use tracing::{debug, info};
 
-use tokio::{pin, sync::mpsc};
+use tokio::pin;
 
-use crate::{
-    AbortOnDrop, ShutdownSignal,
-    connection::{ConnectionEvent, ConnectionUpdate},
-    host_runtime::Connection,
-};
+use crate::{AbortOnDrop, ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
 
 pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
-/// The "main" function for an instance of the `rc-x509-client` library.
+/// Defines the library entrypoint that is invoked by the FFI host.
+pub(crate) trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
+    /// The "main" function for an instance of the `rc-x509-client` library.
+    ///
+    /// # Graceful Shutdown
+    ///
+    /// When `shutdown` is signalled, work should cease and this function should
+    /// complete within [`GRACEFUL_SHUTDOWN_TIMEOUT`] else they are killed at an
+    /// arbitrary execution point.
+    ///
+    /// Additionally the `conn_events` channel will be closed, but the order w.r.t
+    /// the shutdown signal is undefined.
+    async fn entrypoint(
+        self,
+        shutdown: ShutdownSignal,
+        conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    );
+}
+
+/// The entrypoint for the non-FFI layer of the client library.
 ///
-/// # Graceful Shutdown
-///
-/// When `shutdown` is signalled, work should cease and this function should
-/// complete within [`GRACEFUL_SHUTDOWN_TIMEOUT`] else they are killed at an
-/// arbitrary execution point.
-///
-/// Additionally the `conn_events` channel will be closed, but the order w.r.t
-/// the shutdown signal is undefined.
-pub(crate) async fn entrypoint<IO>(
-    shutdown: ShutdownSignal,
-    conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
-) where
+/// This struct exists to provide an indirection point / impl of
+/// [`LibraryEntrypoint`] callable from the FFI layer.
+#[derive(Debug, Default)]
+pub(crate) struct Main;
+
+impl<IO> LibraryEntrypoint<IO> for Main
+where
     IO: Connection,
 {
-    info!(
-        version = env!("CARGO_PKG_VERSION"),
-        "starting rc-x509-client instance"
-    );
+    async fn entrypoint(
+        self,
+        shutdown: ShutdownSignal,
+        conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    ) {
+        info!(
+            version = env!("CARGO_PKG_VERSION"),
+            "starting rc-x509-client instance"
+        );
 
-    let _conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
-    shutdown.wait_for_shutdown().await;
+        let _conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
+        shutdown.wait_for_shutdown().await;
 
-    info!("stopping rc-x509-client instance");
+        info!("stopping rc-x509-client instance");
+    }
 }
 
 async fn handle_connection_events<IO>(
-    mut incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
 ) where
     IO: std::fmt::Debug,
 {

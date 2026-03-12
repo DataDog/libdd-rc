@@ -25,9 +25,8 @@ use tokio::{runtime::Handle, sync::mpsc};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{
-    GRACEFUL_SHUTDOWN_TIMEOUT, ShutdownCtl, ShutdownSignal,
+    GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main, ShutdownCtl, ShutdownSignal,
     connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
-    entrypoint::entrypoint,
     host_runtime::ffi::FFIConnection,
 };
 
@@ -37,9 +36,12 @@ use crate::{
 ///   * Called by: `host runtime`.
 ///   * Ownership: returns ownership of [`Ctx`] to host runtime.
 ///
+/// # Safety
+///
+/// This call is always safe.
 #[unsafe(no_mangle)]
-pub(super) unsafe extern "C" fn rc_init() -> *mut Ctx {
-    Box::into_raw(Ctx::new())
+pub unsafe extern "C" fn rc_init() -> *mut Ctx {
+    Box::into_raw(Ctx::new(Main::default()))
 }
 
 /// Stop the client running in [`Ctx`], and release all resources held by
@@ -52,10 +54,15 @@ pub(super) unsafe extern "C" fn rc_init() -> *mut Ctx {
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes ownership of [`Ctx`] to client library.
 ///
+/// # Safety
+///
+/// Must be called exactly once per `ctx` obtained from a prior call to
+/// [`rc_init()`].
+///
 /// [`rc_conn_disconnected()`]: super::rc_conn_disconnected()
 /// [`rc_conn_free()`]: super::rc_conn_free()
 #[unsafe(no_mangle)]
-pub(super) unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
+pub unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
     assert!(!ctx.is_null());
 
     let mut ctx = unsafe { Box::from_raw(ctx) };
@@ -82,7 +89,11 @@ pub(super) unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
 pub struct Ctx {
     /// An OS thread dedicated to driving an async runtime to execute
     /// [`crate::entrypoint()`] and all child tasks.
-    runtime: std::thread::JoinHandle<()>,
+    runtime_thread: std::thread::JoinHandle<()>,
+
+    /// A [`Handle`] to the async runtime, used to spawn tasks into the runtime
+    /// for execution.
+    runtime_handle: tokio::runtime::Handle,
 
     /// A shutdown signal for the [`crate::entrypoint()`] to gracefully stop all
     /// work and return within the [`GRACEFUL_SHUTDOWN_TIMEOUT`].
@@ -102,26 +113,37 @@ pub struct Ctx {
 #[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
 impl Ctx {
     /// Initialise a new [`Ctx`], typically called from [`rc_init()`].
-    pub(crate) fn new() -> Box<Self> {
+    pub(crate) fn new<T>(main: T) -> Box<Self>
+    where
+        T: LibraryEntrypoint<IOHandle>,
+    {
         let (signal, shutdown) = ShutdownSignal::new();
 
         // Initialise a channel through which connection lifecycle events will
         // be published to the non-FFI code.
         let (connection_events, conn_rx) = mpsc::unbounded_channel();
 
+        // Channel to pass the runtime handle out of the dedicated runtime
+        // thread, to the Ctx.
+        let (handle_tx, handle_rx) = std::sync::mpsc::channel();
+
         // Spawn a background thread to drive the async runtime for this client
         // instance.
-        let runtime = std::thread::Builder::new()
+        let runtime_thread = std::thread::Builder::new()
             .name("rc-x509-worker".into())
             .spawn(move || {
                 let runtime = tokio::runtime::Builder::new_current_thread()
                     .thread_name("rc-x509-runtime")
+                    .thread_keep_alive(Duration::from_secs(60 * 60))
                     .build()
                     .expect("tokio runtime init for rc-x509-client");
 
+                let handle = runtime.handle().clone();
+                handle_tx.send(handle).expect("handle transfer tx");
+
                 // Execute the client library "main" entrypoint function to
                 // completion.
-                runtime.block_on(entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
+                runtime.block_on(main.entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
 
                 // Allow spawned tasks to observe the shutdown signal and
                 // perform cleanup before the runtime exits.
@@ -129,8 +151,12 @@ impl Ctx {
             })
             .expect("failed to spawn worker thread for rc-x509-client");
 
+        // Obtain a handle to spawn tasks into the runtime.
+        let runtime_handle = handle_rx.recv().expect("handle transfer rx");
+
         Box::new(Self {
-            runtime,
+            runtime_thread,
+            runtime_handle,
             shutdown,
             next_connection_id: AtomicUsize::new(0),
             connection_events,
@@ -144,8 +170,12 @@ impl Ctx {
         // Signal all tasks to stop.
         self.shutdown.shutdown_now();
 
+        // Close the connection lifecycle events stream prior to blocking for
+        // runtime cleanup.
+        drop(self.connection_events);
+
         // Wait for the background runtime thread to finish.
-        self.runtime
+        self.runtime_thread
             .join()
             .expect("rc-x509-client worker thread panic")
     }
@@ -154,7 +184,11 @@ impl Ctx {
     pub(super) fn new_connection(&self) -> Box<FFIConnection> {
         let id = ConnectionId::new(self.next_connection_id.fetch_add(1, Ordering::SeqCst));
 
-        FFIConnection::new(id, self.connection_events.clone())
+        FFIConnection::new(
+            self.runtime_handle.clone(),
+            id,
+            self.connection_events.clone(),
+        )
     }
 }
 
@@ -167,10 +201,8 @@ mod tests {
 
     use super::*;
 
-    fn is_send<T: Send>(t: T) {}
-    fn static_assert_ctx_send(c: &mut Ctx) {
-        is_send(c);
-    }
+    const fn is_send<T: Send>() {}
+    const _: () = is_send::<FFIConnection>();
 
     /// Test the lifecycle of the library [`Ctx`] through the FFI interface,
     /// ensuring it is correctly initialised and gracefully stopped.
@@ -184,9 +216,9 @@ mod tests {
         {
             let inner = unsafe { ctx.as_mut() }.expect("non-null ref to ctx");
 
-            assert!(!inner.runtime.is_finished());
+            assert!(!inner.runtime_thread.is_finished());
             assert_eq!(
-                inner.runtime.thread().name().expect("must be named"),
+                inner.runtime_thread.thread().name().expect("must be named"),
                 "rc-x509-worker"
             );
         }
