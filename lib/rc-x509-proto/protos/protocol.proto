@@ -1,0 +1,34 @@
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+// Protocol message definitions.
+//
+// All messages exchanged over an "RC connection" MUST be either:
+//
+//   * ServerToClient: for messages originating from the server
+//   * ClientToServer: for messages originating from the client
+//
+// Messages should be added to the one_of enum in each, and MUST always refer to
+// a variant specific message type and NOT a primitive value type to enable
+// backwards compatible changes to the variant's data in the future.
+//
+// Prefer versioning within message types using protobuf's tooling ("reserved"
+// fields), instead of versioning at the enum level (not: thing_v1, thing_v2,
+// etc).
+
+// Messages from the RC backend server, to an RC client.
+message ServerToClient {
+  oneof message {
+    Placeholder dummy = 1;
+  }
+}
+
+// Messages from an RC client, to the RC backend server.
+message ClientToServer {
+  oneof message {
+    ClientHello client_hello = 1;
+  }
+}
+
+message Placeholder {}
+message ClientHello {}

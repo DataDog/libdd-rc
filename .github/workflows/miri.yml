@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies for aws-lc-rs
         run: apt-get update && apt-get install -y golang-go cmake clang
 
+      - name: Install protobuf compiler
+        run: apt-get install -y protobuf-compiler
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
