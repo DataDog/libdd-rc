@@ -8,7 +8,7 @@ package rc.x509.protocol.v1;
 //   * ServerToClient: for messages originating from the server
 //   * ClientToServer: for messages originating from the client
 //
-// Messages should be added to the one_of enum in each, and MUST always refer to
+// Messages should be added to the oneof enum in each, and MUST always refer to
 // a variant specific message type and NOT a primitive value type to enable
 // backwards compatible changes to the variant's data in the future.
 //
