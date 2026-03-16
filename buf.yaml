@@ -1,0 +1,15 @@
+version: v2
+modules:
+  - path: .
+
+# https://buf.build/docs/lint/rules/#standard
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_DIRECTORY_MATCH # Excessive for single package protos
+
+# https://buf.build/docs/breaking/
+breaking:
+  use:
+    - WIRE
