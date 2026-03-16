@@ -1,26 +1,15 @@
 # Rust source code quality checks.
 
-name: rust
+name: miri
 permissions:
   contents: read
 
 on:
-  push:
-    paths: &paths
-      # This section defines when this CI will run:
-      #
-      # Be sure to update the crates miri is run against in the job itself if
-      # adding new crates.
-      - "rc-x509-client/src/host_runtime/ffi/**"
-    branches:
-      - main
-
-  pull_request:
-    paths: *paths
-  merge_group:
-    paths: *paths
   workflow_call:
-    paths: *paths
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
 
 env:
   # https://github.com/aws/aws-lc-rs/issues/569
