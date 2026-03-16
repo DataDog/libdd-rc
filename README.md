@@ -145,10 +145,10 @@ All messages use `oneof` fields for backwards-compatiblility.
 
 `rc-crypto` wraps all crypto operations behind a simple API. This crate is for wrapping the crypto modules only - not for general code.
 
-```
+```text
 PrivateKey (ECDSA-P256)
     │
-    ├── sign(data) → Signature          (ASN.1 DER, SHA-256)
+    ├── sign(data) → Signature
     └── public_key() → PublicKey
             │
             └── verify(data, sig) → Result
@@ -163,9 +163,9 @@ Certificate::from_pem(pem)
 
 All cryptography is backed by [aws-lc-rs](https://github.com/aws/aws-lc-rs) (FIPS-compatible).
 
-→ Keys: [`lib/rc-crypto/src/keys/`](lib/rc-crypto/src/keys/)
-→ Certificates: [`lib/rc-crypto/src/certificate/`](lib/rc-crypto/src/certificate/)
-→ Signer trait: [`lib/rc-crypto/src/signer.rs`](lib/rc-crypto/src/signer.rs)
+→ Keys: [`lib/rc-crypto/src/keys/`](lib/rc-crypto/src/keys/)  
+→ Certificates: [`lib/rc-crypto/src/certificate/`](lib/rc-crypto/src/certificate/)  
+→ Signer trait: [`lib/rc-crypto/src/signer.rs`](lib/rc-crypto/src/signer.rs)  
 
 ---
 
