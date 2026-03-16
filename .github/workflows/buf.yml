@@ -31,19 +31,18 @@ jobs:
           persist-credentials: false
 
       - uses: bufbuild/buf-action@fd21066df7214747548607aaa45548ba2b9bc1ff # v1.4.0
+        id: buf
         with:
           lint: true
           format: true
-          breaking: false
+          breaking: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'breaking-proto') }}
           push: false
           archive: false
           pr_comment: false
           github_token: ${{ secrets.GITHUB_TOKEN }} # Private repo access
 
-      - name: Check for breaking changes
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'breaking-proto')
+      - name: Bypass message
+        if: failure() && steps.buf.outcome == 'failure'
         run: |
-          if ! buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main" --error-format github-actions; then
-            echo "::error::Breaking protobuf changes detected. Add the breaking-proto label to allow breaking changes to be merged."
-            exit 1
-          fi
+          echo "::error::Add the breaking-proto label to the PR to allow breaking changes to be merged."
+          exit 1
