@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Verify cbindgen C Header
+name: cbindgen
 
 on:
   push:
@@ -23,7 +23,7 @@ on:
       - main
 
 jobs:
-  cbindgen-verify-header:
+  verify-header:
     name: Verify generated C header is up-to-date
     runs-on: ubuntu-latest
     container:
