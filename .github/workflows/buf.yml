@@ -38,6 +38,7 @@ jobs:
           push: false
           archive: false
           pr_comment: false
+          github_token: ${{ secrets.GITHUB_TOKEN }} # Private repo access
 
       - name: Check for breaking changes
         if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'breaking-proto')
