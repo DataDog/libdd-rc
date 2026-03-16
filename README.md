@@ -15,12 +15,21 @@ libdd-rc/
 └── lib/rc-x509-proto/      # Protobuf message definitions
 ```
 
-```mermaid
-graph TD
-    A[rc-x509-client] -->|uses| B[rc-crypto]
-    A -->|uses| C[rc-x509-proto]
-    C -->|serializes| D[protocol.proto]
-    B -->|backed by| E[FIPS compatible crypto modules]
+```text
+┌──────────────────────────────────────────┐
+│               rc-x509-client             │
+└───────────│────────────────────│─────────┘
+           uses                 uses
+            │                    │
+    ┌───────▼────────┐  ┌────────▼───────┐  
+    │  rc-crypto     │  │  rc-x509-proto │  
+    └───────┼────────┘  └────────┼───────┘  
+        backed by           serializes
+            │                    │
+    ┌───────▼────────┐  ┌────────▼───────┐  
+    │ FIPS compatible│  │ protocol.proto │  
+    │ crypto modules │  │                │
+    └────────────────┘  └────────────────┘         
 ```
 
 ---
