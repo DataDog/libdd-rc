@@ -590,7 +590,7 @@ impl FFIConnection {
 
 /// A task run in a dedicated OS thread per [`FFIConnection`] to make outgoing
 /// FFI calls via `send`.
-fn io_task(mut lib2ffi: mpsc::Receiver<Vec<u8>>, stop: CancellationToken, send: SendCb) {
+fn io_task(mut lib2ffi: mpsc::Receiver<ClientToServer>, stop: CancellationToken, send: SendCb) {
     debug!("starting connection I/O task");
 
     loop {
@@ -613,8 +613,8 @@ fn io_task(mut lib2ffi: mpsc::Receiver<Vec<u8>>, stop: CancellationToken, send: 
             }
         };
 
-        // Call into the FFI host to send this data, blocking this thread until
-        // send() returns.
+        // Serialise the message into a RPC payload, and call into the FFI host
+        // to send this data, blocking this thread until send() returns.
         //
         // Safety: this I/O task is spawned only after a FFI host indicates the
         // connection can be used as currently configured via a call to
@@ -622,7 +622,8 @@ fn io_task(mut lib2ffi: mpsc::Receiver<Vec<u8>>, stop: CancellationToken, send: 
         // [`rc_conn_disconnected()`] returning. The FFI host is responsible for
         // and guarantees the callback is valid between these two FFI function
         // calls.
-        let ret = unsafe { send(payload.as_slice().as_ptr(), payload.len() as u32) };
+        let buf = Vec::from(&payload);
+        let ret = unsafe { send(buf.as_slice().as_ptr(), buf.len() as u32) };
 
         match ret {
             SendRet::Success => {}
@@ -738,12 +739,12 @@ mod tests {
     #[tokio::test]
     async fn test_connection_lifecycle() {
         static DID_SEE_WRITE: AtomicUsize = AtomicUsize::new(0);
-        static PAYLOAD: [u8; 4] = [1, 2, 3, 4];
+        static PAYLOAD: ClientToServer = ClientToServer::Pong;
 
         // A send callback that records if it was called at any point.
         unsafe extern "C" fn do_send(data: *const u8, length: u32) -> SendRet {
             let got = unsafe { slice::from_raw_parts(data, length as _) };
-            assert_eq!(got, PAYLOAD);
+            assert_eq!(got, Vec::from(&PAYLOAD).as_slice());
 
             DID_SEE_WRITE.store(length as usize, Ordering::SeqCst);
             SendRet::Success
@@ -779,14 +780,15 @@ mod tests {
         //
 
         // Drive outgoing data through the I/O task, via the IOHandle.
-        io.send(PAYLOAD.to_vec()).await.expect("allowed to send");
+        io.send(PAYLOAD.clone()).await.expect("allowed to send");
 
         // Verify the outgoing payload was delivered through the I/O task, to
         // the callback. This completes asynchronously, so spin waiting for it
         // to occur:
         tokio::time::timeout(Duration::from_secs(10), async {
+            let want_len = Vec::from(&PAYLOAD).len();
             loop {
-                if DID_SEE_WRITE.load(Ordering::SeqCst) == PAYLOAD.len() {
+                if DID_SEE_WRITE.load(Ordering::SeqCst) == want_len {
                     return;
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -827,7 +829,10 @@ mod tests {
         //
         // If the I/O task is still running, the Send callback may now be
         // invalid, causing a potential UAF.
-        assert_matches!(io.send(vec![42]).await, Err(ConnectionErr::Closed));
+        assert_matches!(
+            io.send(ClientToServer::Pong).await,
+            Err(ConnectionErr::Closed)
+        );
 
         unsafe {
             rc_conn_free(conn);
