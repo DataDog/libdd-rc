@@ -17,7 +17,7 @@
 use rc_x509_proto::{
     encode,
     protocol::v1::{
-        self, ClientHello,
+        self,
         client_to_server::{self, Message},
     },
 };
@@ -27,6 +27,11 @@ use rc_x509_proto::{
 #[derive(Debug, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub(crate) enum ClientToServer {
+    /// A response to a [`ServerToClient::Ping`].
+    ///
+    /// [`ServerToClient::Ping`]: super::ServerToClient::Ping
+    Pong,
+
     /// An opening handshake message sent at the start of a new connection.
     ClientHello,
 }
@@ -36,7 +41,8 @@ impl From<&ClientToServer> for Vec<u8> {
     fn from(value: &ClientToServer) -> Self {
         // Construct the wire type for this `value`.
         let wire = match value {
-            ClientToServer::ClientHello => Message::ClientHello(ClientHello::default()),
+            ClientToServer::ClientHello => Message::ClientHello(v1::ClientHello::default()),
+            ClientToServer::Pong => Message::Pong(v1::Pong::default()),
         };
 
         encode(&v1::ClientToServer {

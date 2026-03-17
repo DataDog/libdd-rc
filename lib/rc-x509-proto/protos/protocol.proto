@@ -19,16 +19,33 @@ package rc.x509.protocol.v1;
 // Messages from the RC backend server, to an RC client.
 message ServerToClient {
   oneof message {
-    Placeholder dummy = 1;
+    Ping ping = 1;
   }
 }
 
 // Messages from an RC client, to the RC backend server.
 message ClientToServer {
   oneof message {
-    ClientHello client_hello = 1;
+    Pong pong = 1;
+    ClientHello client_hello = 2;
   }
 }
 
-message Placeholder {}
+// An application-level ping message.
+//
+// While the WebSocket transport to the RC delivery backend has a transport
+// level "ping" control frame, it doesn't capture the full end-to-end delivery
+// path as it never transits through the client library.
+//
+// This application-level ping frame arrives as a standard message to the client
+// library, and transits through the FFI layer in addition to the WebSocket
+// transport.
+//
+// This message is useful for ensuring the client is still alive, in addition to
+// the WebSocket connection.
+message Ping {}
+
+// The response to a `Ping` message from the server.
+message Pong {}
+
 message ClientHello {}

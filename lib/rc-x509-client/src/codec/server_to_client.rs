@@ -40,7 +40,7 @@ pub(crate) enum DecodingError {
 /// client.
 #[derive(Debug, PartialEq)]
 pub(crate) enum ServerToClient {
-    Placeholder,
+    Ping,
 }
 
 /// Try to parse a protobuf encoded payload into a [`ServerToClient`].
@@ -52,7 +52,7 @@ impl TryFrom<&[u8]> for ServerToClient {
 
         // Construct the application type from this wire type.
         Ok(match got.message.ok_or(DecodingError::NoMessage)? {
-            Message::Dummy(_) => Self::Placeholder,
+            Message::Ping(_) => Self::Ping,
         })
     }
 }
