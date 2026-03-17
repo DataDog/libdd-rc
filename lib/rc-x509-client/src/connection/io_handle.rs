@@ -15,18 +15,24 @@
 use tokio::sync::mpsc::{self, error::TrySendError};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::host_runtime::{Connection, ConnectionErr};
+use crate::{
+    codec::{DecodingError, ServerToClient},
+    host_runtime::{Connection, ConnectionErr},
+};
 
 /// An [`IOHandle`] provides a [`Connection`] implementation brokered through
 /// the FFI host.
 #[derive(Debug)]
 pub(crate) struct IOHandle {
     tx: mpsc::Sender<Vec<u8>>,
-    rx: Option<mpsc::Receiver<Vec<u8>>>,
+    rx: Option<mpsc::Receiver<Result<ServerToClient, DecodingError>>>,
 }
 
 impl IOHandle {
-    pub(crate) fn new(tx: mpsc::Sender<Vec<u8>>, rx: mpsc::Receiver<Vec<u8>>) -> Self {
+    pub(crate) fn new(
+        tx: mpsc::Sender<Vec<u8>>,
+        rx: mpsc::Receiver<Result<ServerToClient, DecodingError>>,
+    ) -> Self {
         Self { tx, rx: Some(rx) }
     }
 }
@@ -40,7 +46,7 @@ impl Connection for IOHandle {
         }
     }
 
-    type Incoming = tokio_stream::wrappers::ReceiverStream<Vec<u8>>;
+    type Incoming = tokio_stream::wrappers::ReceiverStream<Result<ServerToClient, DecodingError>>;
 
     fn take_recv_stream(&mut self) -> Option<Self::Incoming> {
         self.rx.take().map(ReceiverStream::new)
@@ -49,6 +55,7 @@ impl Connection for IOHandle {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use tokio_stream::StreamExt;
 
     use super::*;
@@ -70,7 +77,10 @@ mod tests {
         let mut rx_stream = handle.take_recv_stream().expect("must yield stream");
         assert!(handle.take_recv_stream().is_none()); // Only yielded once
 
-        tx_ffi_layer.send(vec![13]).await.unwrap();
-        assert_eq!(rx_stream.next().await.as_deref(), Some([13_u8].as_slice()));
+        tx_ffi_layer
+            .send(Err(DecodingError::NoMessage))
+            .await
+            .unwrap();
+        assert_matches!(rx_stream.next().await, Some(Err(DecodingError::NoMessage)));
     }
 }
