@@ -15,6 +15,8 @@ aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
 aws-lc-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall Pierce <marshall@mpierce.org>
 bindgen,https://github.com/rust-lang/rust-bindgen,BSD-3-Clause,Jyun-Yan You <jyyou.tw@gmail.com>, Emilio Cobos Álvarez <emilio@crisal.io>, Nick Fitzgerald <fitzgen@gmail.com>, The Servo project developers
+bit-set,https://github.com/contain-rs/bit-set,Apache-2.0 OR MIT,Alexis Beingessner <a.beingessner@gmail.com>
+bit-vec,https://github.com/contain-rs/bit-vec,Apache-2.0 OR MIT,Alexis Beingessner <a.beingessner@gmail.com>
 bitflags,https://github.com/bitflags/bitflags,MIT OR Apache-2.0,The Rust Project Developers
 bytes,https://github.com/tokio-rs/bytes,MIT,Carl Lerche <me@carllerche.com>, Sean McArthur <sean@seanmonstar.com>
 cbindgen,https://github.com/mozilla/cbindgen,MPL-2.0,Emilio Cobos Álvarez <emilio@crisal.io>, Jeff Muizelaar <jmuizelaar@mozilla.com>, Kartikaya Gupta <kats@mozilla.com>, Ryan Hunt <rhunt@eqrion.net>
@@ -38,6 +40,7 @@ errno,https://github.com/lambda-fairy/rust-errno,MIT OR Apache-2.0,Chris Wong <l
 fastrand,https://github.com/smol-rs/fastrand,Apache-2.0 OR MIT,Stjepan Glavina <stjepang@gmail.com>
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fixedbitset,https://github.com/petgraph/fixedbitset,MIT OR Apache-2.0,bluss
+fnv,https://github.com/servo/rust-fnv,Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
 foldhash,https://github.com/orlp/foldhash,Zlib,Orson Peters <orsonpeters@gmail.com>
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
 futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
@@ -83,14 +86,22 @@ pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@th
 petgraph,https://github.com/petgraph/petgraph,MIT OR Apache-2.0,bluss, mitchmindtree
 pin-project-lite,https://github.com/taiki-e/pin-project-lite,Apache-2.0 OR MIT,N/A
 powerfmt,https://github.com/jhpratt/powerfmt,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
+ppv-lite86,https://github.com/cryptocorrosion/cryptocorrosion,MIT OR Apache-2.0,The CryptoCorrosion Contributors
 prettyplease,https://github.com/dtolnay/prettyplease,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 proc-macro2,https://github.com/dtolnay/proc-macro2,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>, Alex Crichton <alex@alexcrichton.com>
+proptest,https://github.com/proptest-rs/proptest,MIT OR Apache-2.0,Jason Lingle
+proptest-derive,https://github.com/proptest-rs/proptest,MIT OR Apache-2.0,Mazdak Farrokhzad <twingoow@gmail.com>
 prost,https://github.com/tokio-rs/prost,Apache-2.0,Dan Burkert <dan@danburkert.com>, Lucio Franco <luciofranco14@gmail.com>, Casper Meijn <casper@meijn.net>, Tokio Contributors <team@tokio.rs>
 prost-build,https://github.com/tokio-rs/prost,Apache-2.0,Dan Burkert <dan@danburkert.com>, Lucio Franco <luciofranco14@gmail.com>, Casper Meijn <casper@meijn.net>, Tokio Contributors <team@tokio.rs>
 prost-derive,https://github.com/tokio-rs/prost,Apache-2.0,Dan Burkert <dan@danburkert.com>, Lucio Franco <luciofranco14@gmail.com>, Casper Meijn <casper@meijn.net>, Tokio Contributors <team@tokio.rs>
 prost-types,https://github.com/tokio-rs/prost,Apache-2.0,Dan Burkert <dan@danburkert.com>, Lucio Franco <luciofranco14@gmail.com>, Casper Meijn <casper@meijn.net>, Tokio Contributors <team@tokio.rs>
+quick-error,http://github.com/tailhook/quick-error,MIT OR Apache-2.0,Paul Colomiets <paul@colomiets.name>, Colin Kiegel <kiegel@gmx.de>
 quote,https://github.com/dtolnay/quote,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 r-efi,https://github.com/r-efi/r-efi,MIT OR Apache-2.0 OR LGPL-2.1-or-later,N/A
+rand,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
+rand_chacha,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers, The CryptoCorrosion Contributors
+rand_core,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
+rand_xorshift,https://github.com/rust-random/rngs,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
 rc-crypto,N/A,Apache-2.0,N/A
 rc-x509-client,N/A,Apache-2.0,N/A
 rc-x509-proto,N/A,Apache-2.0,N/A
@@ -103,6 +114,7 @@ rustc-hash,https://github.com/rust-lang/rustc-hash,Apache-2.0 OR MIT,The Rust Pr
 rusticata-macros,https://github.com/rusticata/rusticata-macros.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 rustix,https://github.com/bytecodealliance/rustix,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com>
 rustls-pki-types,https://github.com/rustls/pki-types,MIT OR Apache-2.0,N/A
+rusty-fork,https://github.com/altsysrq/rusty-fork,MIT OR Apache-2.0,Jason Lingle
 scopeguard,https://github.com/bluss/scopeguard,MIT OR Apache-2.0,bluss
 serde,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
 serde_core,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
@@ -131,11 +143,13 @@ toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 tracing,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>
 tracing-attributes,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>, Eliza Weisman <eliza@buoyant.io>, David Barsky <dbarsky@amazon.com>
 tracing-core,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
+unarray,https://github.com/cameron1024/unarray,MIT OR Apache-2.0,N/A
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 utf8parse,https://github.com/alacritty/vte,Apache-2.0 OR MIT,Joe Wilm <joe@jwilm.com>, Christian Duerr <contact@christianduerr.com>
 valuable,https://github.com/tokio-rs/valuable,MIT,N/A
 valuable-derive,https://github.com/tokio-rs/valuable,MIT,N/A
+wait-timeout,https://github.com/alexcrichton/wait-timeout,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 wasip2,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,N/A
 wasip3,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,N/A
 windows-link,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
@@ -144,5 +158,7 @@ winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 wit-bindgen,https://github.com/bytecodealliance/wit-bindgen,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
 x509-parser,https://github.com/rusticata/x509-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 yasna,https://github.com/qnighy/yasna.rs,MIT OR Apache-2.0,Masaki Hara <ackie.h.gmai@gmail.com>
+zerocopy,https://github.com/google/zerocopy,BSD-2-Clause OR Apache-2.0 OR MIT,Joshua Liebow-Feeser <joshlf@google.com>, Jack Wrenn <jswrenn@amazon.com>
+zerocopy-derive,https://github.com/google/zerocopy,BSD-2-Clause OR Apache-2.0 OR MIT,Joshua Liebow-Feeser <joshlf@google.com>, Jack Wrenn <jswrenn@amazon.com>
 zeroize,https://github.com/RustCrypto/utils,Apache-2.0 OR MIT,The RustCrypto Project Developers
 zmij,https://github.com/dtolnay/zmij,MIT,David Tolnay <dtolnay@gmail.com>
