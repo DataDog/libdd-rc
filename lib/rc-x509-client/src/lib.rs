@@ -17,6 +17,7 @@
 #![allow(unused)]
 
 mod abort_on_drop;
+pub(crate) mod codec;
 pub(crate) mod connection;
 mod entrypoint;
 mod shutdown_signal;
