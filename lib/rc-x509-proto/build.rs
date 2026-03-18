@@ -15,6 +15,9 @@
 //! Protobuf compilation / codegen.
 
 fn main() -> std::io::Result<()> {
-    prost_build::compile_protos(&["protos/protocol.proto"], &["protos/"])?;
+    prost_build::Config::new()
+        .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
+        .compile_protos(&["protos/protocol.proto"], &["protos/"])?;
+
     Ok(())
 }
