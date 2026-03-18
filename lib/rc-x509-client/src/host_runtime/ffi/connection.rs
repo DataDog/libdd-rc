@@ -794,7 +794,12 @@ mod tests {
         unsafe {
             rc_conn_recv(conn, data.as_slice().as_ptr(), data.len() as u32);
         }
-        let got = io.recv().await.expect("data must arrive");
+        let got = io
+            .take_recv_stream()
+            .expect("first call yields stream")
+            .next()
+            .await
+            .expect("data must arrive");
         assert_eq!(data, got);
 
         //

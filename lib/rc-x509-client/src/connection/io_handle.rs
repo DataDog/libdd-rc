@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use tokio::sync::mpsc::{self, error::TrySendError};
+use tokio_stream::wrappers::ReceiverStream;
 
 use crate::host_runtime::{Connection, ConnectionErr};
 
@@ -21,12 +22,12 @@ use crate::host_runtime::{Connection, ConnectionErr};
 #[derive(Debug)]
 pub(crate) struct IOHandle {
     tx: mpsc::Sender<Vec<u8>>,
-    rx: mpsc::Receiver<Vec<u8>>,
+    rx: Option<mpsc::Receiver<Vec<u8>>>,
 }
 
 impl IOHandle {
     pub(crate) fn new(tx: mpsc::Sender<Vec<u8>>, rx: mpsc::Receiver<Vec<u8>>) -> Self {
-        Self { tx, rx }
+        Self { tx, rx: Some(rx) }
     }
 }
 
@@ -39,13 +40,17 @@ impl Connection for IOHandle {
         }
     }
 
-    async fn recv(&mut self) -> Option<Vec<u8>> {
-        self.rx.recv().await
+    type Incoming = tokio_stream::wrappers::ReceiverStream<Vec<u8>>;
+
+    fn take_recv_stream(&mut self) -> Option<Self::Incoming> {
+        self.rx.take().map(ReceiverStream::new)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use tokio_stream::StreamExt;
+
     use super::*;
 
     #[tokio::test]
@@ -62,7 +67,10 @@ mod tests {
             Some([42_u8].as_slice())
         );
 
+        let mut rx_stream = handle.take_recv_stream().expect("must yield stream");
+        assert!(handle.take_recv_stream().is_none()); // Only yielded once
+
         tx_ffi_layer.send(vec![13]).await.unwrap();
-        assert_eq!(handle.recv().await.as_deref(), Some([13_u8].as_slice()));
+        assert_eq!(rx_stream.next().await.as_deref(), Some([13_u8].as_slice()));
     }
 }

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use futures::Stream;
 use thiserror::Error;
 
 use crate::{host_runtime::CorrelationId, payload::PayloadTopic};
@@ -131,6 +132,8 @@ pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
 
 /// An abstract broker of I/O to the RC delivery backend.
 pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
+    type Incoming: Stream<Item = Vec<u8>> + std::fmt::Debug + Send + Sync;
+
     /// Enqueue a complete data payload received from RC into the internal
     /// receive queue, specifying the encoding used by the frame.
     ///
@@ -144,15 +147,15 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
     /// messages are lost.
     async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr>;
 
-    /// Enqueue a complete data payload received from RC into the internal
-    /// receive queue, specifying the encoding used by the frame.
+    /// Obtain the incoming stream of encoded messages from the RC backend
+    /// server.
     ///
-    /// This call returns [`None`] if the connection is closed; all subsequent
-    /// operations will fail.
+    /// This call returns [`None`] if the stream has already been taken. The
+    /// returned stream is closed when the connection is disconnected.
     ///
     /// # Delivery Guarantees
     ///
     /// Data received from the RC backend is returned by this function in the
     /// order it is read from the RC backend by the host runtime.
-    async fn recv(&mut self) -> Option<Vec<u8>>;
+    fn take_recv_stream(&mut self) -> Option<Self::Incoming>;
 }
