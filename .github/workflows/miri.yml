@@ -58,6 +58,7 @@ jobs:
             /usr/local/cargo/registry/index
             /usr/local/cargo/registry/cache
             /usr/local/cargo/git/db
+            **/target
           key: ${{ runner.os }}-cargo-miri-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-miri-${{ hashFiles('**/Cargo.lock') }}
