@@ -39,7 +39,7 @@ pub fn encode<T>(value: &T) -> Vec<u8>
 where
     T: Message + Default,
 {
-    T::encode_length_delimited_to_vec(value)
+    T::encode_to_vec(value)
 }
 
 /// Decode a `T` from `buf`, previously encoded with [`encode()`].
@@ -47,15 +47,38 @@ pub fn decode<T>(buf: impl Buf) -> Result<T, DecodeError>
 where
     T: Message + Default,
 {
-    T::decode_length_delimited(buf)
+    T::decode(buf)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::protocol::v1::ServerToClient;
+
     use super::*;
 
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
+
+    /// Ensure the encoding of a sample payload does not change (e.g.
+    /// serialisation configuration changes).
+    #[test]
+    fn test_fixture() {
+        const WANT: [u8; 2] = [10, 0];
+
+        let payload = ServerToClient {
+            message: Some(protocol::v1::server_to_client::Message::Ping(
+                protocol::v1::Ping::default(),
+            )),
+        };
+
+        let got = encode(&payload);
+        assert_eq!(got, WANT);
+
+        assert_eq!(
+            decode::<ServerToClient>(got.as_slice()).expect("must round trip"),
+            payload
+        );
+    }
 
     /// A struct that contains all primitive protobuf types.
     #[derive(prost::Message, PartialEq, Arbitrary)]
