@@ -37,3 +37,6 @@ proptest-derive = "0.8.0"
 
 [build-dependencies]
 cbindgen = "0.29.0"
+
+[features]
+_test_harness = []

@@ -231,7 +231,7 @@ pub enum SendRet {
 
 /// Result of pushing data received from the RC delivery backend into the
 /// internal client library recv queue (returned by the client library).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(i32)]
 pub enum RecvRet {
     /// The message was successfully passed.
