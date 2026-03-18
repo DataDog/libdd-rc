@@ -23,7 +23,7 @@ workspace = true
 
 [dependencies]
 futures = "0.3.32"
-rc-x509-proto = { path = "../rc-x509-proto" }
+rc-x509-proto = { version = "0.1.0", path = "../rc-x509-proto" }
 thiserror = "2.0.18"
 tokio = { version = "1.50.0", features = ["macros", "parking_lot", "rt", "sync", "time"] }
 tokio-stream = "0.1.18"
