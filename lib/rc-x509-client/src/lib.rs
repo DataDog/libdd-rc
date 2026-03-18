@@ -19,10 +19,9 @@
 mod abort_on_drop;
 pub(crate) mod codec;
 pub(crate) mod connection;
-mod entrypoint;
+pub(crate) mod entrypoint;
 mod shutdown_signal;
 pub(crate) use abort_on_drop::*;
-pub(crate) use entrypoint::*;
 pub(crate) use shutdown_signal::*;
 
 pub mod host_runtime;

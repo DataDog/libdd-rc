@@ -706,7 +706,7 @@ mod tests {
     use tokio::pin;
 
     use crate::{
-        LibraryEntrypoint,
+        entrypoint::LibraryEntrypoint,
         host_runtime::{
             Connection, ConnectionErr,
             ffi::ctx::{rc_free, rc_init},
