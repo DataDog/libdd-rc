@@ -22,7 +22,7 @@ use thiserror::Error;
 
 /// Errors parsing incoming messages from the RC delivery backend.
 #[derive(Debug, Error)]
-pub(crate) enum EncodingError {
+pub(crate) enum DecodingError {
     /// The message on the wire cannot be deserialised into a message due to
     /// invalid encoding.
     #[error("deserialisation error: {0}")]
@@ -45,13 +45,13 @@ pub(crate) enum ServerToClient {
 
 /// Try to parse a protobuf encoded payload into a [`ServerToClient`].
 impl TryFrom<&[u8]> for ServerToClient {
-    type Error = EncodingError;
+    type Error = DecodingError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         let got: v1::ServerToClient = decode::<_>(value)?;
 
         // Construct the application type from this wire type.
-        Ok(match got.message.ok_or(EncodingError::NoMessage)? {
+        Ok(match got.message.ok_or(DecodingError::NoMessage)? {
             Message::Dummy(_) => Self::Placeholder,
         })
     }
@@ -65,20 +65,20 @@ mod tests {
     use super::*;
 
     /// Encode and then decode `v`, returning the result.
-    fn round_trip(v: &v1::ServerToClient) -> Result<ServerToClient, EncodingError> {
+    fn round_trip(v: &v1::ServerToClient) -> Result<ServerToClient, DecodingError> {
         ServerToClient::try_from(rc_x509_proto::encode(v).as_slice())
     }
 
     #[test]
     fn test_bad_wire_encoding() {
         let got = ServerToClient::try_from([42].as_slice());
-        assert_matches!(got, Err(EncodingError::Wire(_)));
+        assert_matches!(got, Err(DecodingError::Wire(_)));
     }
 
     #[test]
     fn test_no_message() {
         let got = round_trip(&v1::ServerToClient { message: None });
-        assert_matches!(got, Err(EncodingError::NoMessage));
+        assert_matches!(got, Err(DecodingError::NoMessage));
     }
 
     /// Generate a [`ServerToClient`] messages that should successfully encode &
