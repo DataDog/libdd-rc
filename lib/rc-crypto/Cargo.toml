@@ -22,7 +22,7 @@ license = "Apache-2.0"
 workspace = true
 
 [dependencies]
-aws-lc-rs = { version = "1.16.1", default-features = false, features = ["alloc", "fips"] }
+aws-lc-rs = { version = "1", default-features = false, features = ["alloc", "fips"] }
 bytes = "1"
 thiserror = "2"
 valuable = { version = "0.1.1", features = ["derive"] }
