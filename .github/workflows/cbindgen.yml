@@ -24,7 +24,6 @@ on:
 
 jobs:
   verify-header:
-    name: Verify generated C header is up-to-date
     runs-on: ubuntu-latest
     container:
       image: rust:1.93.0
@@ -32,6 +31,9 @@ jobs:
       contents: read
 
     steps:
+      - name: Install protobuf compiler
+        run: apt-get update && apt-get install -y protobuf-compiler
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:

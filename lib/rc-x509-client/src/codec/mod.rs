@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
-// Nothing is used yet.
-#![allow(unused)]
+//! Message (de-)serialisation codec implementations.
+//!
+//! This module defines the message types used by this application, and their
+//! on-wire representation.
 
-mod abort_on_drop;
-pub(crate) mod codec;
-pub(crate) mod connection;
-mod entrypoint;
-mod shutdown_signal;
-pub(crate) use abort_on_drop::*;
-pub(crate) use entrypoint::*;
-pub(crate) use shutdown_signal::*;
+mod client_to_server;
+mod server_to_client;
 
-pub mod host_runtime;
-pub(crate) mod payload;
+pub(crate) use client_to_server::*;
+pub(crate) use server_to_client::*;
