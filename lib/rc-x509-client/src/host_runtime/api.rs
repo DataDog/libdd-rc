@@ -15,7 +15,11 @@
 use futures::Stream;
 use thiserror::Error;
 
-use crate::{host_runtime::CorrelationId, payload::PayloadTopic};
+use crate::{
+    codec::{DecodingError, ServerToClient},
+    host_runtime::CorrelationId,
+    payload::PayloadTopic,
+};
 
 #[derive(Debug, Error)]
 pub(crate) enum DialError {}
@@ -132,7 +136,10 @@ pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
 
 /// An abstract broker of I/O to the RC delivery backend.
 pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
-    type Incoming: Stream<Item = Vec<u8>> + std::fmt::Debug + Send + Sync;
+    type Incoming: Stream<Item = Result<ServerToClient, DecodingError>>
+        + std::fmt::Debug
+        + Send
+        + Sync;
 
     /// Enqueue a complete data payload received from RC into the internal
     /// receive queue, specifying the encoding used by the frame.
@@ -147,8 +154,8 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
     /// messages are lost.
     async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr>;
 
-    /// Obtain the incoming stream of encoded messages from the RC backend
-    /// server.
+    /// Obtain the incoming stream of deserialised messages (or a corresponding
+    /// deserialisation error) from the RC backend server.
     ///
     /// This call returns [`None`] if the stream has already been taken. The
     /// returned stream is closed when the connection is disconnected.

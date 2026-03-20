@@ -23,6 +23,7 @@ use tracing::{debug, error, warn};
 
 use crate::{
     AbortOnDrop,
+    codec::{ClientToServer, DecodingError, ServerToClient},
     connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
 };
 
@@ -130,13 +131,17 @@ pub unsafe extern "C" fn rc_conn_recv(
     // Build a slice from the raw pointer + length tuple.
     let payload = unsafe { slice::from_raw_parts(data, length as usize) };
 
-    // Copy the data into an owned Vec, as the caller owns the memory pointed to
-    // by "data".
-    let payload = payload.to_vec();
+    // Deserialise the byte buffer ref into an owned in-memory representation.
+    //
+    /// This impl is guaranteed to copy all values from the source into the
+    /// destination struct (by Form<slice> impl); ownership of the "data" buffer
+    /// is retained by the caller.
+    let message = ServerToClient::try_from(payload);
 
-    // Call into the connection to deliver the payload.
+    // Call into the connection to enqueue the deserialised message (or
+    // deserialisation error).
     let conn = unsafe { &*conn };
-    conn.recv_incoming(payload);
+    conn.recv_incoming(message);
 
     RecvRet::Success
 }
@@ -273,7 +278,7 @@ enum State {
 
         /// The channel through which the FFI [`rc_conn_recv()`] callback
         /// publishes incoming payloads from the RC backend.
-        ffi2lib: mpsc::Sender<Vec<u8>>,
+        ffi2lib: mpsc::Sender<Result<ServerToClient, DecodingError>>,
 
         /// A task running in a dedicated OS thread, passing outgoing payloads
         /// through the FFI boundary to the FFI host to send to the RC backend.
@@ -489,7 +494,7 @@ impl FFIConnection {
     /// # Panics
     ///
     /// This call panics if the connection is not in the "connected" state.
-    fn recv_incoming(&self, payload: Vec<u8>) {
+    fn recv_incoming(&self, payload: Result<ServerToClient, DecodingError>) {
         match &self.state {
             State::Connected { ffi2lib, .. } => {
                 // Pass the payload to the I/O handle.
@@ -660,6 +665,7 @@ mod tests {
 
     use assert_matches::assert_matches;
     use futures::StreamExt;
+    use rc_x509_proto::protocol::v1;
     use tokio::pin;
 
     use crate::{
@@ -790,7 +796,9 @@ mod tests {
         .expect("timeout waiting for send callback observation");
 
         // Simulate incoming data.
-        let data = vec![24, 42, 24];
+        let data = rc_x509_proto::encode(&v1::ServerToClient {
+            message: Some(v1::server_to_client::Message::Ping(v1::Ping::default())),
+        });
         unsafe {
             rc_conn_recv(conn, data.as_slice().as_ptr(), data.len() as u32);
         }
@@ -800,7 +808,7 @@ mod tests {
             .next()
             .await
             .expect("data must arrive");
-        assert_eq!(data, got);
+        assert_matches!(got, Ok(ServerToClient::Ping));
 
         //
         // The connection is now being closed by the FFI host.
