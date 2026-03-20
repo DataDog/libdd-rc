@@ -30,6 +30,7 @@ valuable = { version = "0.1.1", features = ["derive"] }
 # NOTE: both of these dependencies currently enable non-FIPS crypto backends.
 rcgen = { version = "0.14.7", default-features = false, features = ["fips", "pem", "aws_lc_rs", "x509-parser"] }
 x509-parser = { version = "0.18", features = ["verify-aws"] }
+pem = "3.0.6"
 
 [dev-dependencies]
 criterion = "0.8"

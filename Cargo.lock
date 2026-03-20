@@ -1176,6 +1176,7 @@ dependencies = [
  "bytes",
  "criterion",
  "hex",
+ "pem",
  "proptest",
  "rcgen",
  "thiserror",
