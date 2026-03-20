@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use bytes::Bytes;
+use pem as pem_crate;
 use thiserror::Error;
 use valuable::Valuable;
 use x509_parser::{
@@ -61,11 +62,9 @@ pub enum InvalidPem {
 /// verified to cryptographically chain to a trust anchor / known root.
 #[derive(Debug, Clone, Valuable)]
 pub struct Certificate {
-    /// X509 certificate as a PEM string.
-    ///
-    /// Invariant: always equal to the PEM-encoding of "cert".
-    #[valuable(skip)] // Do not want PEM blocks in logs.
-    pem: String,
+    /// DER encoded certificate.
+    #[valuable(skip)]
+    der: Bytes,
 
     /// A copy of the raw public key DER bytes in `cert`.
     #[valuable(skip)]
@@ -80,8 +79,8 @@ pub struct Certificate {
 
 impl Certificate {
     /// Construct this certificate from a PEM string.
-    pub fn from_pem(pem_string: String) -> Result<Self, InvalidPem> {
-        let mut pem_iter = Pem::iter_from_buffer(pem_string.as_bytes());
+    pub fn from_pem(pem: &[u8]) -> Result<Self, InvalidPem> {
+        let mut pem_iter = Pem::iter_from_buffer(pem);
         let pem = pem_iter.next().ok_or(InvalidPem::NoPEM)??;
 
         // It is an error to provide multiple certificates to this constructor.
@@ -97,6 +96,7 @@ impl Certificate {
             return Err(InvalidPem::ExcessDER);
         }
 
+        let der = Bytes::copy_from_slice(cert.as_raw());
         let fingerprint = Fingerprint::from(&cert);
         let serial_number = SerialNumber::from(&cert);
 
@@ -104,16 +104,22 @@ impl Certificate {
         let public_key_der = Bytes::from(cert.public_key().subject_public_key.data.to_vec());
 
         Ok(Self {
-            pem: pem_string,
+            der,
             serial_number,
             fingerprint,
             public_key_der,
         })
     }
 
+    /// Return the raw DER bytes for this certificate.
+    pub fn as_der(&self) -> Bytes {
+        self.der.clone() // ref copy
+    }
+
     /// Return this [`Certificate`] as a PEM string.
-    pub fn as_pem(&self) -> &str {
-        &self.pem
+    pub fn generate_pem(&self) -> String {
+        let pem = pem_crate::Pem::new("CERTIFICATE", self.der.as_ref());
+        pem_crate::encode(&pem)
     }
 
     /// Return the serial number of this certificate.
@@ -133,7 +139,7 @@ impl Certificate {
 
 impl From<rcgen::Certificate> for Certificate {
     fn from(value: rcgen::Certificate) -> Self {
-        Certificate::from_pem(value.pem()).expect("valid cert round-trip")
+        Certificate::from_pem(value.pem().as_bytes()).expect("valid cert round-trip")
     }
 }
 
@@ -191,7 +197,7 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         let pem =
             format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
 
-        let cert = Certificate::from_pem(pem).expect("valid PEM");
+        let cert = Certificate::from_pem(pem.as_bytes()).expect("valid PEM");
 
         assert_eq!(
             cert.serial_number().as_hex_str(),
@@ -220,7 +226,7 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         let pem =
             format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
 
-        Certificate::from_pem(pem).expect("valid PEM")
+        Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
     }
 
     #[test]
@@ -257,6 +263,16 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             cert.fingerprint().as_hex_str(),
             "49:ef:bb:e5:7f:3d:ff:9c:6d:b5:6a:15:b7:24:ba:8b:78:76:9c:16:a6:58:75:f9:b7:76:ae:ee:21:53:e5:e5"
         );
+    }
+
+    #[test]
+    fn test_round_trip_pem() {
+        let cert = cert_fixture();
+
+        let got = Certificate::from_pem(cert.generate_pem().as_bytes()).expect("valid cert");
+        assert_eq!(got.der, cert.der);
+        assert_eq!(got.public_key_der, cert.public_key_der);
+        assert_eq!(got.fingerprint(), cert.fingerprint());
     }
 
     /// Fragments of a potentially invalid PEM block.
@@ -303,6 +319,15 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         ) {
             prop_from_pem_test(parts);
         }
+
+        /// Parse a Certificate from random invalid bytes, ensuring no panic
+        /// occurs.
+        #[test]
+        fn prop_invalid_pem_bytes(
+            binary in prop::collection::vec(any::<u8>(), 0..200),
+        ) {
+            let _ = Certificate::from_pem(&binary).expect_err("non-pem input");
+        }
     }
 
     fn prop_from_pem_test(parts: Vec<PemPart>) {
@@ -310,7 +335,7 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         let pem: String = parts.iter().map(ToString::to_string).collect();
 
         // Attempt to parse the certificate from this string.
-        match Certificate::from_pem(pem) {
+        match Certificate::from_pem(pem.as_bytes()) {
             Ok(_) => {
                 // Continue and verify below.
             }
