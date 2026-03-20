@@ -40,17 +40,26 @@ pub enum InvalidPem {
     DeserialisePEM(#[from] PEMError),
 
     /// The PEM was valid, but the encoded certificate was not.
-    #[error("pem deserialised to invalid x509 cert: {0}")]
-    ParseX509(#[from] x509_parser::nom::Err<X509Error>),
+    #[error("pem deserialised to: {0}")]
+    ParseX509(#[from] InvalidDer),
+
+    /// More than one PEM-encoded something was provided.
+    #[error("expected 1 PEM block but more provided")]
+    TooManyBlocks,
+}
+
+/// Errors when parsing a DER certificate.
+#[derive(Debug, Error)]
+#[error("invalid der when parsing x509 cert: {0}")]
+pub enum InvalidDer {
+    /// DER bytes provided to a [`Certificate`] constructor did not contain a valid
+    /// X509 certificate.
+    Parse(#[from] x509_parser::nom::Err<X509Error>),
 
     /// After parsing the X509 certificate, there was unparsed data remaining
     /// (parser error).
     #[error("excess der bytes")]
     ExcessDER,
-
-    /// More than one PEM-encoded something was provided.
-    #[error("expected 1 PEM block but more provided")]
-    TooManyBlocks,
 }
 
 /// An X509 [`Certificate`].
@@ -88,12 +97,21 @@ impl Certificate {
             return Err(InvalidPem::TooManyBlocks);
         }
 
+        Self::from_der(pem.contents).map_err(InvalidPem::from)
+    }
+
+    /// Construct a [`Certificate`] by parsing DER bytes that contain an X509
+    /// certificate.
+    pub fn from_der(der: impl Into<Bytes>) -> Result<Self, InvalidDer> {
+        let der = der.into();
+
         let (rem, cert) = X509CertificateParser::new()
             .with_deep_parse_extensions(false) // Skip parsing unnecessary data.
-            .parse(&*pem.contents)?;
+            .parse(&der)
+            .map_err(InvalidDer::Parse)?;
         if !rem.is_empty() {
             // The provided PEM has trailing data after parsing the certificate.
-            return Err(InvalidPem::ExcessDER);
+            return Err(InvalidDer::ExcessDER);
         }
 
         let der = Bytes::copy_from_slice(cert.as_raw());
@@ -192,6 +210,15 @@ PQQDAgNIADBFAiANQrCtWI0ejFhyydcpsrqQ5vSlL26PIWBjurEsF7i9JwIhAMTX
 YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
 ";
 
+    /// Assert two certificates contain the same content without implementing
+    /// PartialEq on the cert (fingerprints should be used for equality matching
+    /// in the public API).
+    fn assert_certs_equal(a: &Certificate, b: &Certificate) {
+        assert_eq!(a.der, b.der);
+        assert_eq!(a.public_key_der, b.public_key_der);
+        assert_eq!(a.fingerprint, b.fingerprint);
+    }
+
     #[test]
     fn test_fixture() {
         let pem =
@@ -270,9 +297,7 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         let cert = cert_fixture();
 
         let got = Certificate::from_pem(cert.generate_pem().as_bytes()).expect("valid cert");
-        assert_eq!(got.der, cert.der);
-        assert_eq!(got.public_key_der, cert.public_key_der);
-        assert_eq!(got.fingerprint(), cert.fingerprint());
+        assert_certs_equal(&got, &cert);
     }
 
     /// Fragments of a potentially invalid PEM block.
@@ -335,15 +360,25 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         let pem: String = parts.iter().map(ToString::to_string).collect();
 
         // Attempt to parse the certificate from this string.
-        match Certificate::from_pem(pem.as_bytes()) {
-            Ok(_) => {
+        let cert = match Certificate::from_pem(pem.as_bytes()) {
+            Ok(cert) => {
                 // Continue and verify below.
+                cert
             }
             Err(_) => {
                 // Did not accept input, and did not panic.
                 return;
             }
-        }
+        };
+
+        // Invariant: a cert that was parsed from PEM, should round trip.
+        assert_certs_equal(
+            &cert,
+            &Certificate::from_pem(cert.generate_pem().as_bytes()).unwrap(),
+        );
+
+        // Invariant: certs parsed from DER should also be equal.
+        assert_certs_equal(&cert, &Certificate::from_der(cert.as_der()).unwrap());
 
         // The success case must be the only valid sequence of PEM fragments.
         //
