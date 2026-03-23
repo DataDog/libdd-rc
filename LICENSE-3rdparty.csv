@@ -12,7 +12,7 @@ asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre C
 autocfg,https://github.com/cuviper/autocfg,Apache-2.0 OR MIT,Josh Stone <cuviper@gmail.com>
 aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
-aws-lc-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
+aws-lc-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR MIT OR BSD-3-Clause OR MIT-0,AWS-LC
 base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall Pierce <marshall@mpierce.org>
 bindgen,https://github.com/rust-lang/rust-bindgen,BSD-3-Clause,Jyun-Yan You <jyyou.tw@gmail.com>, Emilio Cobos Álvarez <emilio@crisal.io>, Nick Fitzgerald <fitzgen@gmail.com>, The Servo project developers
 bit-set,https://github.com/contain-rs/bit-set,Apache-2.0 OR MIT,Alexis Beingessner <a.beingessner@gmail.com>
