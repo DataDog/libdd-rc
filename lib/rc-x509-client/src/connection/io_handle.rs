@@ -16,7 +16,7 @@ use tokio::sync::mpsc::{self, error::TrySendError};
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::{
-    codec::{DecodingError, ServerToClient},
+    codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::{Connection, ConnectionErr},
 };
 
@@ -24,13 +24,13 @@ use crate::{
 /// the FFI host.
 #[derive(Debug)]
 pub(crate) struct IOHandle {
-    tx: mpsc::Sender<Vec<u8>>,
+    tx: mpsc::Sender<ClientToServer>,
     rx: Option<mpsc::Receiver<Result<ServerToClient, DecodingError>>>,
 }
 
 impl IOHandle {
     pub(crate) fn new(
-        tx: mpsc::Sender<Vec<u8>>,
+        tx: mpsc::Sender<ClientToServer>,
         rx: mpsc::Receiver<Result<ServerToClient, DecodingError>>,
     ) -> Self {
         Self { tx, rx: Some(rx) }
@@ -38,7 +38,7 @@ impl IOHandle {
 }
 
 impl Connection for IOHandle {
-    async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr> {
+    async fn send(&mut self, payload: ClientToServer) -> Result<(), ConnectionErr> {
         match self.tx.try_send(payload) {
             Ok(()) => Ok(()),
             Err(TrySendError::Closed(_)) => Err(ConnectionErr::Closed),
@@ -68,11 +68,8 @@ mod tests {
         let mut handle = IOHandle::new(tx, rx);
 
         // Sending through the handle.
-        handle.send(vec![42]).await.unwrap();
-        assert_eq!(
-            rx_ffi_layer.recv().await.as_deref(),
-            Some([42_u8].as_slice())
-        );
+        handle.send(ClientToServer::Pong).await.unwrap();
+        assert_matches!(rx_ffi_layer.recv().await, Some(ClientToServer::Pong));
 
         let mut rx_stream = handle.take_recv_stream().expect("must yield stream");
         assert!(handle.take_recv_stream().is_none()); // Only yielded once

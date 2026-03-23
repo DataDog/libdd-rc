@@ -24,7 +24,7 @@ use rc_x509_proto::{
 
 /// All possible messages originating from this client library, sent to the RC
 /// delivery backend.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub(crate) enum ClientToServer {
     /// A response to a [`ServerToClient::Ping`].

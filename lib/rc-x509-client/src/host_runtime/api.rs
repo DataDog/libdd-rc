@@ -16,7 +16,7 @@ use futures::Stream;
 use thiserror::Error;
 
 use crate::{
-    codec::{DecodingError, ServerToClient},
+    codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::CorrelationId,
     payload::PayloadTopic,
 };
@@ -141,8 +141,8 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
         + Send
         + Sync;
 
-    /// Enqueue a complete data payload received from RC into the internal
-    /// receive queue, specifying the encoding used by the frame.
+    /// Enqueue an outgoing message from this client library to the RC delivery
+    /// backend for delivery.
     ///
     /// # Delivery Guarantees
     ///
@@ -152,7 +152,7 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
     ///
     /// If the send fails, the connection is eventually closed, and in-flight
     /// messages are lost.
-    async fn send(&mut self, payload: Vec<u8>) -> Result<(), ConnectionErr>;
+    async fn send(&mut self, payload: ClientToServer) -> Result<(), ConnectionErr>;
 
     /// Obtain the incoming stream of deserialised messages (or a corresponding
     /// deserialisation error) from the RC backend server.
