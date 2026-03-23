@@ -179,6 +179,9 @@ typedef struct FFIConnection FFIConnection;
  Passes a reference to a byte slice of `length` number of bytes that is valid
  for the lifetime of the function call.
 
+ The callback is invoked with the `user_data` value provided by the caller
+ when configuring the send callback.
+
    * Called by: `client library`.
    * Ownership: passes shared reference to the `data` array to the host
      runtime for the duration of the call.
@@ -186,7 +189,7 @@ typedef struct FFIConnection FFIConnection;
  NOTE: the client library retains ownership of `data` after this call, and it
  may be freed or modified at any time after this function returns.
  */
-typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length);
+typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *user_data);
 
 /*
  Mark the connection as established.
@@ -278,6 +281,10 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
  This call MUST be made before the first call to [`rc_conn_connected()`] for
  the same `conn`.
 
+ The `user_data` pointer is for use by the caller to pass state to the
+ subsequent [`SendCb`] calls, and is never referenced internally. It MAY be
+ null, but it MUST be safe pass between threads.
+
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of `conn` for the duration of the
      call.
@@ -288,7 +295,7 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
  all times after [`rc_conn_connected()`] is called for `conn`, until a
  subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
  */
-void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb);
+void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *user_data);
 
 /*
  Stop the client running in [`Ctx`], and release all resources held by

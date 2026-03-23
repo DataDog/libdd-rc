@@ -15,6 +15,7 @@
 //! FFI functions to manage the lifecycle of connections to the RC backend.
 
 use core::slice;
+use std::ffi::c_void;
 
 use futures::executor::block_on;
 use tokio::{select, sync::mpsc};
@@ -152,19 +153,27 @@ pub unsafe extern "C" fn rc_conn_recv(
 /// Passes a reference to a byte slice of `length` number of bytes that is valid
 /// for the lifetime of the function call.
 ///
+/// The callback is invoked with the `user_data` value provided by the caller
+/// when configuring the send callback.
+///
 ///   * Called by: `client library`.
 ///   * Ownership: passes shared reference to the `data` array to the host
 ///     runtime for the duration of the call.
 ///
 /// NOTE: the client library retains ownership of `data` after this call, and it
 /// may be freed or modified at any time after this function returns.
-pub type SendCb = unsafe extern "C" fn(data: *const u8, length: u32) -> SendRet;
+pub type SendCb =
+    unsafe extern "C" fn(data: *const u8, length: u32, user_data: *const c_void) -> SendRet;
 
 /// Configure the callback used by the client library to request data be sent to
 /// the RC backend.
 ///
 /// This call MUST be made before the first call to [`rc_conn_connected()`] for
 /// the same `conn`.
+///
+/// The `user_data` pointer is for use by the caller to pass state to the
+/// subsequent [`SendCb`] calls, and is never referenced internally. It MAY be
+/// null, but it MUST be safe pass between threads.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of `conn` for the duration of the
@@ -176,11 +185,15 @@ pub type SendCb = unsafe extern "C" fn(data: *const u8, length: u32) -> SendRet;
 /// all times after [`rc_conn_connected()`] is called for `conn`, until a
 /// subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_send_callback(conn: *mut FFIConnection, cb: SendCb) {
+pub unsafe extern "C" fn rc_conn_send_callback(
+    conn: *mut FFIConnection,
+    cb: SendCb,
+    user_data: *const c_void,
+) {
     assert!(!conn.is_null());
 
     let conn = unsafe { &mut *conn };
-    conn.set_send_callback(cb);
+    conn.set_send_callback(cb, SendCbUserData(user_data));
 }
 
 /// Release the resources held by this `conn`.
@@ -225,6 +238,16 @@ pub enum RecvRet {
     Success = 0,
 }
 
+/// A container to hold the callback context pointer for a [`SendCb`] call.
+///
+/// NOTE: the pointer MAY be null and MUST never be dereferenced or modified.
+#[derive(Debug, Clone, Copy)]
+struct SendCbUserData(*const c_void);
+
+// Safety: caller guarantees the pointer can be sent between threads. This
+// pointer is never dereferenced by this library.
+unsafe impl Send for SendCbUserData {}
+
 /// The internal configuration state of a [`FFIConnection`].
 ///
 /// ```text
@@ -262,6 +285,7 @@ enum State {
         /// [`rc_conn_disconnected()`] by the FFI host to indicate it is safe to
         /// use.
         send: SendCb,
+        user_data: SendCbUserData,
     },
 
     /// The connection is currently open to the RC backend.
@@ -275,6 +299,7 @@ enum State {
         /// has explicitly indicated it can be used by calling
         /// [`rc_conn_connected()`].
         send: SendCb,
+        user_data: SendCbUserData,
 
         /// The channel through which the FFI [`rc_conn_recv()`] callback
         /// publishes incoming payloads from the RC backend.
@@ -432,8 +457,8 @@ impl FFIConnection {
         // not in use (and therefore the caller has an exclusive ref).
         //
         // A callback MAY be changed after being set.
-        let send = match self.state {
-            State::Configured { send } => send,
+        let (send, user_data) = match self.state {
+            State::Configured { send, user_data } => (send, user_data),
             State::Init | State::Connected { .. } => {
                 panic!("connection not in configured state")
             }
@@ -476,11 +501,12 @@ impl FFIConnection {
         // eventually be exited by the runtime if unused.
         let io_task = AbortOnDrop::from(self.runtime.spawn_blocking({
             let io_task_stop = io_task_stop.clone();
-            move || io_task(lib2ffi, io_task_stop, send)
+            move || io_task(lib2ffi, io_task_stop, send, user_data)
         }));
 
         self.state = State::Connected {
             send,
+            user_data,
             io_task,
             io_task_stop,
             ffi2lib,
@@ -527,6 +553,7 @@ impl FFIConnection {
         match last_state {
             State::Connected {
                 send,
+                user_data,
                 io_task,
                 io_task_stop,
                 ..
@@ -544,7 +571,7 @@ impl FFIConnection {
                 // Safety: this callback pointer may be dangling, but is not
                 // referenced until the FFI host indicates it is safe to do so
                 // again.
-                self.state = State::Configured { send };
+                self.state = State::Configured { send, user_data };
             }
             State::Init | State::Configured { .. } => {
                 panic!("disconnect on connection not in connected state")
@@ -559,7 +586,7 @@ impl FFIConnection {
     /// # Panics
     ///
     /// This call panics if the connection is in use ([`State::Connected`]).
-    fn set_send_callback(&mut self, cb: SendCb) {
+    fn set_send_callback(&mut self, cb: SendCb, user_data: SendCbUserData) {
         // Correctness: the callback can only be changed when the connection is
         // not in use (and therefore the caller has an exclusive ref).
         //
@@ -571,7 +598,10 @@ impl FFIConnection {
             }
         }
 
-        self.state = State::Configured { send: cb };
+        self.state = State::Configured {
+            send: cb,
+            user_data,
+        };
     }
 
     /// Free this [`FFIConnection`] and emit a [`ConnectionEvent::Release`] to
@@ -590,7 +620,12 @@ impl FFIConnection {
 
 /// A task run in a dedicated OS thread per [`FFIConnection`] to make outgoing
 /// FFI calls via `send`.
-fn io_task(mut lib2ffi: mpsc::Receiver<ClientToServer>, stop: CancellationToken, send: SendCb) {
+fn io_task(
+    mut lib2ffi: mpsc::Receiver<ClientToServer>,
+    stop: CancellationToken,
+    send: SendCb,
+    user_data: SendCbUserData,
+) {
     debug!("starting connection I/O task");
 
     loop {
@@ -623,7 +658,7 @@ fn io_task(mut lib2ffi: mpsc::Receiver<ClientToServer>, stop: CancellationToken,
         // and guarantees the callback is valid between these two FFI function
         // calls.
         let buf = Vec::from(&payload);
-        let ret = unsafe { send(buf.as_slice().as_ptr(), buf.len() as u32) };
+        let ret = unsafe { send(buf.as_slice().as_ptr(), buf.len() as u32, user_data.0) };
 
         match ret {
             SendRet::Success => {}
@@ -660,6 +695,7 @@ fn io_task(mut lib2ffi: mpsc::Receiver<ClientToServer>, stop: CancellationToken,
 mod tests {
     use std::{
         fmt::Debug,
+        ptr,
         sync::atomic::{AtomicUsize, Ordering},
         time::Duration,
     };
@@ -713,13 +749,17 @@ mod tests {
         assert!(!conn.is_null());
         assert_matches!(unsafe { &*conn }.state, State::Init);
 
-        unsafe extern "C" fn do_send(_data: *const u8, _length: u32) -> SendRet {
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
             SendRet::Unknown
         }
 
         unsafe {
-            rc_conn_send_callback(conn, do_send);
-            assert_matches!((&*conn).state, State::Configured { send });
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            assert_matches!((&*conn).state, State::Configured { send, user_data: _ });
         }
 
         unsafe { rc_conn_free(conn) };
@@ -735,18 +775,26 @@ mod tests {
     ///   * Incoming I/O is delivered from the FFI call, into the IOHandle.
     ///   * Closure of the lifecycle events channel during shutdown (else the
     ///     mock Entrypoint blocks forever and leaks).
+    ///   * The SendCb user data from the caller is passed to the callback.
     ///
     #[tokio::test]
     async fn test_connection_lifecycle() {
-        static DID_SEE_WRITE: AtomicUsize = AtomicUsize::new(0);
-        static PAYLOAD: ClientToServer = ClientToServer::Pong;
+        // A channel to notify the main thread that the callback succeeded, and
+        // provide the payload it saw for verification.
+        let (cb_tx, cb_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+        let cb_tx = Box::new(cb_tx);
 
         // A send callback that records if it was called at any point.
-        unsafe extern "C" fn do_send(data: *const u8, length: u32) -> SendRet {
-            let got = unsafe { slice::from_raw_parts(data, length as _) };
-            assert_eq!(got, Vec::from(&PAYLOAD).as_slice());
+        unsafe extern "C" fn do_send(
+            data: *const u8,
+            length: u32,
+            user_data: *const c_void,
+        ) -> SendRet {
+            let got_data = unsafe { slice::from_raw_parts(data, length as _) }.to_vec();
+            let got_tx: Box<std::sync::mpsc::Sender<Vec<u8>>> =
+                unsafe { Box::from_raw(user_data as _) };
 
-            DID_SEE_WRITE.store(length as usize, Ordering::SeqCst);
+            got_tx.send(got_data); // Signal the callback was executed.
             SendRet::Success
         }
 
@@ -767,7 +815,7 @@ mod tests {
 
         unsafe {
             // Configure the send callback and mark as connected.
-            rc_conn_send_callback(conn, do_send);
+            rc_conn_send_callback(conn, do_send, Box::into_raw(cb_tx) as _);
             rc_conn_connected(conn);
         }
 
@@ -780,22 +828,15 @@ mod tests {
         //
 
         // Drive outgoing data through the I/O task, via the IOHandle.
-        io.send(PAYLOAD.clone()).await.expect("allowed to send");
+        io.send(ClientToServer::Pong)
+            .await
+            .expect("allowed to send");
 
         // Verify the outgoing payload was delivered through the I/O task, to
-        // the callback. This completes asynchronously, so spin waiting for it
-        // to occur:
-        tokio::time::timeout(Duration::from_secs(10), async {
-            let want_len = Vec::from(&PAYLOAD).len();
-            loop {
-                if DID_SEE_WRITE.load(Ordering::SeqCst) == want_len {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("timeout waiting for send callback observation");
+        // the callback. This completes asynchronously, so wait on the channel
+        // as a signal for it to occur:
+        let got = cb_rx.recv().expect("must see callback payload");
+        assert_eq!(got, Vec::from(&ClientToServer::Pong));
 
         // Simulate incoming data.
         let data = rc_x509_proto::encode(&v1::ServerToClient {
