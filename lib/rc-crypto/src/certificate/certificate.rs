@@ -114,7 +114,6 @@ impl Certificate {
             return Err(InvalidDer::ExcessDER);
         }
 
-        let der = Bytes::copy_from_slice(cert.as_raw());
         let fingerprint = Fingerprint::from(&cert);
         let serial_number = SerialNumber::from(&cert);
 
@@ -298,6 +297,31 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
 
         let got = Certificate::from_pem(cert.generate_pem().as_bytes()).expect("valid cert");
         assert_certs_equal(&got, &cert);
+    }
+
+    #[test]
+    fn test_der_zero_copy_construction() {
+        // Force a copy from a Vec to obtain a unique bytes buffer.
+        let buf = Bytes::from(cert_fixture().as_der().to_vec());
+        assert!(buf.is_unique());
+
+        // Pass a ref copy of the buffer to the constructor.
+        let cert = Certificate::from_der(buf.clone()).expect("valid DER");
+
+        // At this point, either:
+        //
+        //  - The der bytes buffer was retained by the Certificate constructor
+        //    and the original ref is no longer unique, or
+        //  - The constructor copied data from the byte buffer and then dropped
+        //    it, so the original ref is now unique again.
+        //
+        // We expect the constructor to be zero-copy and retain a ref to the
+        // original buffer.
+        assert!(!buf.is_unique());
+
+        // As an additional check, the buffer returned by the DER accessor is a
+        // zero-copy ref.
+        assert!(!cert.as_der().is_unique());
     }
 
     /// Fragments of a potentially invalid PEM block.
