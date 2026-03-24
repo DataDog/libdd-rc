@@ -104,7 +104,7 @@ rand,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Deve
 rand_chacha,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers, The CryptoCorrosion Contributors
 rand_core,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
 rand_xorshift,https://github.com/rust-random/rngs,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
-rc-client-fuzz,N/A,,N/A
+rc-client-fuzz,N/A,Apache-2.0,N/A
 rc-crypto,N/A,Apache-2.0,N/A
 rc-x509-client,N/A,Apache-2.0,N/A
 rc-x509-proto,N/A,Apache-2.0,N/A
