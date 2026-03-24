@@ -9,11 +9,11 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-rc-x509-client = { path = "../", features = ["_test_harness"] }
-rc-x509-proto = { path = "../../rc-x509-proto" }
+rc-x509-client = { version = "0.1.0", path = "../", features = ["_test_harness"] }
+rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
 
 [build-dependencies]
-rc-x509-proto = { path = "../../rc-x509-proto" }
+rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
 twox-hash = "2.1.2"
 
 [[bin]]
