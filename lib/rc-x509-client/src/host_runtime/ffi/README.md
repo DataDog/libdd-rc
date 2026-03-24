@@ -39,6 +39,7 @@ channels:
 An example using the FFI interface from rust:
 
 ```rust
+use std::{ptr, ffi::c_void};
 use rc_x509_client::host_runtime::ffi::*;
 
 // Initialise the library Ctx and obtain a handle to this library instance
@@ -49,11 +50,18 @@ let conn = unsafe { rc_conn_new(ctx) };
 
 // Configure the callback the library uses to ask the FFI host to forward data
 // to the RC server.
-unsafe extern "C" fn do_send(_data: *const u8, _length: u32) -> SendRet {
-    // Host sends data using native sockets here.
+//
+// The "user_data" pointer is set by the caller, and provided to all subsequent
+// callback invocations.
+unsafe extern "C" fn do_send(
+  _data: *const u8,
+  _length: u32,
+  _user_data: *const c_void
+) -> SendRet {
+  // Host sends data using native sockets here.
 	SendRet::Success
 }
-unsafe { rc_conn_send_callback(conn, do_send) };
+unsafe { rc_conn_send_callback(conn, do_send, ptr::null()) };
 
 // Mark the connection as available.
 unsafe { rc_conn_connected(conn) };
