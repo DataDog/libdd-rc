@@ -283,7 +283,7 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
 
  The `user_data` pointer is for use by the caller to pass state to the
  subsequent [`SendCb`] calls, and is never referenced internally. It MAY be
- null, but it MUST be safe pass between threads.
+ null, but it MUST be safe to pass between threads.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of `conn` for the duration of the

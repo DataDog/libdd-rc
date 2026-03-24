@@ -173,7 +173,7 @@ pub type SendCb =
 ///
 /// The `user_data` pointer is for use by the caller to pass state to the
 /// subsequent [`SendCb`] calls, and is never referenced internally. It MAY be
-/// null, but it MUST be safe pass between threads.
+/// null, but it MUST be safe to pass between threads.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of `conn` for the duration of the
