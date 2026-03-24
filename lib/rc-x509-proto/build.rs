@@ -15,6 +15,8 @@
 //! Protobuf compilation / codegen.
 
 fn main() -> std::io::Result<()> {
+    println!("cargo::rerun-if-changed=protos/protocol.proto");
+
     prost_build::Config::new()
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
         .compile_protos(&["protos/protocol.proto"], &["protos/"])?;
