@@ -27,7 +27,7 @@
 //! To run run this fuzzer:
 //!
 //!   cargo +nightly fuzz run ffi_io -- \
-//!     -timeout 2 \
+//!     -timeout=2 \
 //!     -malloc_limit_mb=256 \
 //!     -rss_limit_mb=4096
 //!
