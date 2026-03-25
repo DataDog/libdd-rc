@@ -148,6 +148,21 @@ All messages use `oneof` fields for backwards-compatiblility.
 
 → Proto schema: [`lib/rc-x509-proto/protos/protocol.proto`](lib/rc-x509-proto/protos/protocol.proto)
 
+### Regenerating Go Protobuf Bindings
+
+The Go wrapper includes generated protobuf bindings in `wrapper/go/internal/testproto/`.
+
+To regenerate after modifying `lib/rc-x509-proto/protos/protocol.proto`:
+
+```bash
+cd wrapper/go
+go generate ./internal/testproto
+```
+
+**Prerequisites:**
+- `protoc` (Protocol Buffer Compiler)
+- `protoc-gen-go` (Install: `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`)
+
 ---
 
 ## Cryptography

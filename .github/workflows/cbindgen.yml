@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: cbindgen
+name: generated-files
 
 on:
   push:
@@ -40,19 +40,31 @@ jobs:
         with:
           cache-key-prefix: dev
 
-      - name: Save committed header
-        run: cp include/libdd_rc.h include/libdd_rc.h.committed
-
-      - name: Generate C header via build.rs
+      - name: Install protoc-gen-go
         run: |
-          cargo build --package rc-x509-ffi --all-features
-          echo "Header generated at include/libdd_rc.h"
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          echo "PROTOC_GEN_GO=$(go env GOPATH)/bin/protoc-gen-go" >> $GITHUB_ENV
 
-      - name: Check for differences
+      - name: Save committed generated files
+        run: |
+          cp include/libdd_rc.h include/libdd_rc.h.committed
+          cp wrapper/go/internal/testproto/protocol.pb.go wrapper/go/internal/testproto/protocol.pb.go.committed
+
+      - name: Generate C header via Rust build
+        env:
+          AWS_LC_FIPS_SYS_CC: clang
+        run: cargo build --package rc-x509-client
+
+      - name: Generate Go protobuf via go generate
+        working-directory: wrapper/go
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go generate ./internal/testproto
+
+      - name: Check C header for differences
         run: |
           if diff -u include/libdd_rc.h.committed include/libdd_rc.h; then
             echo "Generated C header matches committed version"
-            exit 0
           else
             echo "ERROR: Generated C header differs from committed version!"
             echo ""
@@ -62,6 +74,25 @@ jobs:
             echo "  cargo build --package rc-x509-ffi --all-features"
             echo "  git add include/libdd_rc.h"
             echo "  git commit -m 'chore: update generated C header'"
+            echo ""
+            echo "Differences shown above."
+            exit 1
+          fi
+
+      - name: Check Go proto for differences
+        run: |
+          if diff -u wrapper/go/internal/testproto/protocol.pb.go.committed wrapper/go/internal/testproto/protocol.pb.go; then
+            echo "Generated protocol.pb.go matches committed version"
+          else
+            echo "ERROR: Generated protocol.pb.go differs from committed version!"
+            echo ""
+            echo "The wrapper/go/internal/testproto/protocol.pb.go file is out of sync with the proto definition."
+            echo ""
+            echo "To fix this, run the following commands locally:"
+            echo "  cd wrapper/go"
+            echo "  go generate ./internal/testproto"
+            echo "  git add internal/testproto/protocol.pb.go"
+            echo "  git commit -m 'chore: update generated Go proto bindings'"
             echo ""
             echo "Differences shown above."
             exit 1

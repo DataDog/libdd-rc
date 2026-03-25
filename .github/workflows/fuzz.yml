@@ -56,6 +56,9 @@ jobs:
         with:
           cache-key-prefix: fuzz
 
+      - name: Install cargo-fuzz
+        run: command -v cargo-fuzz || cargo install cargo-fuzz --all-features
+
       - name: Restore corpus cache
         uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
@@ -119,6 +122,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: fuzz
+
+      - name: Install cargo-fuzz
+        run: command -v cargo-fuzz || cargo install cargo-fuzz --all-features
 
       - name: Restore corpus cache
         uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4

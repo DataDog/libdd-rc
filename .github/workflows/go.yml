@@ -1,0 +1,70 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: go
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.93.0
+    permissions:
+      contents: read
+
+    steps:
+      - name: Install dependencies
+        run: apt-get update && apt-get install -y protobuf-compiler golang-go cmake clang
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Install protoc-gen-go
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          echo "PROTOC_GEN_GO=$(go env GOPATH)/bin/protoc-gen-go" >> $GITHUB_ENV
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Rust library
+        env:
+          AWS_LC_FIPS_SYS_CC: clang
+        run: cargo build --package rc-x509-ffi --release
+
+      - name: Run Go tests
+        working-directory: wrapper/go
+        run: |
+          export CGO_LDFLAGS="-L../../target/release"
+          export LD_LIBRARY_PATH="../../target/release:$LD_LIBRARY_PATH"
+          go test -v ./...
