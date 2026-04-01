@@ -6,6 +6,7 @@ anstyle-parse,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 anstyle-query,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 anstyle-wincon,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 anyhow,https://github.com/dtolnay/anyhow,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
+arbitrary,https://github.com/rust-fuzz/arbitrary/,MIT OR Apache-2.0,The Rust-Fuzz Project Developers, Nick Fitzgerald <fitzgen@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>, Simonas Kazlauskas <arbitrary@kazlauskas.me>, Brian L. Troutwine <brian@troutwine.us>, Corey Farwell <coreyf@rwell.org>
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
@@ -65,6 +66,7 @@ itoa,https://github.com/dtolnay/itoa,MIT OR Apache-2.0,David Tolnay <dtolnay@gma
 jobserver,https://github.com/rust-lang/jobserver-rs,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 lazy_static,https://github.com/rust-lang-nursery/lazy-static.rs,MIT OR Apache-2.0,Marvin Löbel <loebel.marvin@gmail.com>
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
+libfuzzer-sys,https://github.com/rust-fuzz/libfuzzer,MIT OR Apache-2.0 OR NCSA,The rust-fuzz Project Developers
 libloading,https://github.com/nagisa/rust_libloading/,ISC,Simonas Kazlauskas <libloading@kazlauskas.me>
 linux-raw-sys,https://github.com/sunfishcode/linux-raw-sys,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>
 lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
@@ -102,6 +104,7 @@ rand,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Deve
 rand_chacha,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers, The CryptoCorrosion Contributors
 rand_core,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
 rand_xorshift,https://github.com/rust-random/rngs,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
+rc-client-fuzz,N/A,Apache-2.0,N/A
 rc-crypto,N/A,Apache-2.0,N/A
 rc-x509-client,N/A,Apache-2.0,N/A
 rc-x509-proto,N/A,Apache-2.0,N/A
@@ -143,6 +146,7 @@ toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 tracing,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>
 tracing-attributes,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>, Eliza Weisman <eliza@buoyant.io>, David Barsky <dbarsky@amazon.com>
 tracing-core,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
+twox-hash,https://github.com/shepmaster/twox-hash,MIT,Jake Goulding <jake.goulding@gmail.com>
 unarray,https://github.com/cameron1024/unarray,MIT OR Apache-2.0,N/A
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>

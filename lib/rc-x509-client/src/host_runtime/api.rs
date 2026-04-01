@@ -152,7 +152,10 @@ pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
     ///
     /// If the send fails, the connection is eventually closed, and in-flight
     /// messages are lost.
-    async fn send(&mut self, payload: ClientToServer) -> Result<(), ConnectionErr>;
+    fn send(
+        &mut self,
+        payload: ClientToServer,
+    ) -> impl Future<Output = Result<(), ConnectionErr>> + Send + Sync;
 
     /// Obtain the incoming stream of deserialised messages (or a corresponding
     /// deserialisation error) from the RC backend server.

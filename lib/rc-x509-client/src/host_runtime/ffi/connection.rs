@@ -231,7 +231,7 @@ pub enum SendRet {
 
 /// Result of pushing data received from the RC delivery backend into the
 /// internal client library recv queue (returned by the client library).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(i32)]
 pub enum RecvRet {
     /// The message was successfully passed.
@@ -706,7 +706,7 @@ mod tests {
     use tokio::pin;
 
     use crate::{
-        LibraryEntrypoint,
+        entrypoint::LibraryEntrypoint,
         host_runtime::{
             Connection, ConnectionErr,
             ffi::ctx::{rc_free, rc_init},

@@ -26,18 +26,18 @@ pub(crate) mod rc {
     }
 }
 
-use prost::{Message, bytes::Buf};
+use prost::bytes::Buf;
 
 // Re-exports for callers to import, instead of having to depend on `prost`
 // directly.
 pub use crate::rc::x509::protocol;
-pub use prost::DecodeError;
+pub use prost::{DecodeError, Message as Serialisable};
 
 /// Encode an instance of `T` into a byte array that can be decoded with
 /// [`decode()`].
 pub fn encode<T>(value: &T) -> Vec<u8>
 where
-    T: Message + Default,
+    T: Serialisable + Default,
 {
     T::encode_to_vec(value)
 }
@@ -45,7 +45,7 @@ where
 /// Decode a `T` from `buf`, previously encoded with [`encode()`].
 pub fn decode<T>(buf: impl Buf) -> Result<T, DecodeError>
 where
-    T: Message + Default,
+    T: Serialisable + Default,
 {
     T::decode(buf)
 }

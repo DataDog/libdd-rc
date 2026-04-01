@@ -25,8 +25,9 @@ use tokio::{runtime::Handle, sync::mpsc};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::{
-    GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main, ShutdownCtl, ShutdownSignal,
+    ShutdownCtl, ShutdownSignal,
     connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
+    entrypoint::{GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main},
     host_runtime::ffi::FFIConnection,
 };
 
