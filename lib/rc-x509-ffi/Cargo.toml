@@ -16,7 +16,8 @@
 name = "rc-x509-ffi"
 version = "0.1.0"
 edition.workspace = true
-license.workspace = true
+license = "Apache-2.0"
+
 
 [dependencies]
 futures = "0.3.32"
