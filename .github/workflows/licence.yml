@@ -58,7 +58,7 @@ jobs:
 
       - name: Cache cargo-deny
         id: cache-cargo-deny
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: /usr/local/cargo/bin/cargo-deny
           key: ${{ runner.os }}-cargo-deny-${{ hashFiles('**/Cargo.lock') }}
