@@ -20,12 +20,12 @@ package.license = "Apache-2.0"
 members = [
 	"lib/rc-crypto",
 	"lib/rc-x509-client",
-	"lib/rc-x509-client/fuzz",
+	"lib/rc-x509-ffi",
+	"lib/rc-x509-ffi/fuzz",
 	"lib/rc-x509-proto",
 ]
 
 [workspace.lints.clippy]
-unsafe_code = "warn"      # Contained to FFI crate with explicit allow only
 clone_on_ref_ptr = "warn" # A ref +1 is not the same as a deep copy
 future_not_send = "warn"  # Required for multithreaded runtimes
 dbg_macro = "warn"        # Used for debugging, should not be in committed code
@@ -38,6 +38,7 @@ default_constructed_unit_structs = "allow" # Unit structs do not appear as value
 private_intra_doc_links = "allow" # Code comments that link to non-pub items.
 
 [workspace.lints.rust]
+unsafe_code = "warn"                   # Contained to FFI crate with explicit allow only
 missing_docs = "warn"                  # We should document our code for humans.
 unreachable_pub = "warn"               # Visibility is part of communicating with humans
 missing_debug_implementations = "warn" # Frequently used bound on data structures

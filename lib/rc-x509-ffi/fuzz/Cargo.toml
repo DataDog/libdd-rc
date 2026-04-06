@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [package]
-name = "rc-client-fuzz"
+name = "rc-x509-ffi-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2024"
@@ -23,9 +23,12 @@ license = "Apache-2.0"
 cargo-fuzz = true
 
 [dependencies]
+futures = "0.3.32"
 libfuzzer-sys = "0.4"
-rc-x509-client = { version = "0.1.0", path = "../", features = ["_test_harness"] }
+rc-x509-client = { version = "0.1.0", path = "../../rc-x509-client" }
+rc-x509-ffi = { path = "../../rc-x509-ffi" }
 rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
+tokio = { version = "1.50.0", features = ["macros", "parking_lot", "rt", "sync", "time"] }
 
 [build-dependencies]
 rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }

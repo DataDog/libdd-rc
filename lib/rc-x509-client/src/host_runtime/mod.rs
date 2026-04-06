@@ -19,7 +19,6 @@
 
 mod api;
 mod correlation_id;
-pub mod ffi;
 
-pub(crate) use api::*;
-pub(crate) use correlation_id::*;
+pub use api::*;
+pub use correlation_id::*;

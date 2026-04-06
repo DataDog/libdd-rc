@@ -23,16 +23,17 @@ use tokio_util::sync::CancellationToken;
 /// This is not a general purpose cancellation primitive; it should be used
 /// specifically for graceful shutdown of client library instances.
 #[derive(Debug, Clone)]
-pub(crate) struct ShutdownSignal(CancellationToken);
+pub struct ShutdownSignal(CancellationToken);
 
 impl ShutdownSignal {
-    pub(crate) fn new() -> (Self, ShutdownCtl) {
+    /// Construct a new [`ShutdownSignal`].
+    pub fn new() -> (Self, ShutdownCtl) {
         let token = CancellationToken::new();
         (Self(token.clone()), ShutdownCtl(token))
     }
 
     /// Wait for the shutdown signal.
-    pub(crate) async fn wait_for_shutdown(&self) {
+    pub async fn wait_for_shutdown(&self) {
         self.0.cancelled().await
     }
 }
@@ -40,16 +41,16 @@ impl ShutdownSignal {
 /// A handle to initiate a graceful shutdown of all workers consuming the
 /// [`ShutdownSignal`] this type controls.
 #[derive(Debug)]
-pub(crate) struct ShutdownCtl(CancellationToken);
+pub struct ShutdownCtl(CancellationToken);
 
 impl ShutdownCtl {
     /// Wait for the shutdown signal.
-    pub(crate) fn shutdown_now(self) {
+    pub fn shutdown_now(self) {
         self.0.cancel();
     }
 
     /// Obtain a new [`ShutdownSignal`] tied to this [`ShutdownCtl`].
-    pub(crate) fn get_signal(&self) -> ShutdownSignal {
+    pub fn get_signal(&self) -> ShutdownSignal {
         ShutdownSignal(self.0.clone())
     }
 }

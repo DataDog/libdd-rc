@@ -15,21 +15,20 @@
 //! Client library executor handle for FFI callers.
 
 use std::{
-    ptr,
     sync::atomic::{AtomicUsize, Ordering},
-    thread::JoinHandle,
     time::Duration,
 };
 
-use tokio::{runtime::Handle, sync::mpsc};
+use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{
+use rc_x509_client::{
     ShutdownCtl, ShutdownSignal,
-    connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
+    connection::{ConnectionId, ConnectionUpdate},
     entrypoint::{GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main},
-    host_runtime::ffi::FFIConnection,
 };
+
+use crate::{FFIConnection, io_handle::IOHandle};
 
 /// Initialise a new client [`Ctx`], starting a background thread to drive
 /// internal execution.
@@ -66,7 +65,7 @@ pub unsafe extern "C" fn rc_init() -> *mut Ctx {
 pub unsafe extern "C" fn rc_free(ctx: *mut Ctx) {
     assert!(!ctx.is_null());
 
-    let mut ctx = unsafe { Box::from_raw(ctx) };
+    let ctx = unsafe { Box::from_raw(ctx) };
 
     ctx.shutdown()
 }
@@ -114,7 +113,7 @@ pub struct Ctx {
 #[allow(clippy::boxed_local)] // FFI init/free calls made through box only.
 impl Ctx {
     /// Initialise a new [`Ctx`], typically called from [`rc_init()`].
-    pub(crate) fn new<T>(main: T) -> Box<Self>
+    pub fn new<T>(main: T) -> Box<Self>
     where
         T: LibraryEntrypoint<IOHandle>,
     {
@@ -195,11 +194,6 @@ impl Ctx {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::atomic::fence, thread::yield_now};
-
-    use assert_matches::assert_matches;
-    use tokio::sync::oneshot;
-
     use super::*;
 
     const fn is_send<T: Send>() {}

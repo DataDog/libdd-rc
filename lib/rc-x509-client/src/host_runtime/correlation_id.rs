@@ -12,5 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// An identifier that uniquely identifies messages and their expected a
+/// response.
 #[derive(Debug)]
-pub(crate) struct CorrelationId(u64);
+pub struct CorrelationId(u64);

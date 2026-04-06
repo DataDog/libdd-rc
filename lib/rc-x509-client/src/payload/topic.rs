@@ -14,6 +14,6 @@
 
 #[derive(Debug)]
 #[repr(C)]
-pub(crate) enum PayloadTopic {
+pub enum PayloadTopic {
     Unknown = 0,
 }

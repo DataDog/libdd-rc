@@ -47,8 +47,12 @@
 use std::{ffi::c_void, slice};
 
 use libfuzzer_sys::fuzz_target;
-use rc_x509_client::{host_runtime::ffi::*, non_public_do_not_use::new_echo_ctx};
+use rc_x509_ffi::*;
 use rc_x509_proto::{decode, protocol::v1::ClientToServer};
+
+use crate::test_harness::new_echo_ctx;
+
+mod test_harness;
 
 fuzz_target!(|data: &[u8]| {
     // Register a new testing context that parses any incoming data, and replies

@@ -23,10 +23,11 @@ use tokio::pin;
 
 use crate::{AbortOnDrop, ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
 
-pub(crate) const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
+/// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
+pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Defines the library entrypoint that is invoked by the FFI host.
-pub(crate) trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
+pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
     /// The "main" function for an instance of the `rc-x509-client` library.
     ///
     /// # Graceful Shutdown
@@ -37,11 +38,11 @@ pub(crate) trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static 
     ///
     /// Additionally the `conn_events` channel will be closed, but the order w.r.t
     /// the shutdown signal is undefined.
-    async fn entrypoint(
+    fn entrypoint(
         self,
         shutdown: ShutdownSignal,
         conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
-    );
+    ) -> impl Future<Output = ()> + Send;
 }
 
 /// The entrypoint for the non-FFI layer of the client library.
@@ -49,7 +50,7 @@ pub(crate) trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static 
 /// This struct exists to provide an indirection point / impl of
 /// [`LibraryEntrypoint`] callable from the FFI layer.
 #[derive(Debug, Default)]
-pub(crate) struct Main;
+pub struct Main;
 
 impl<IO> LibraryEntrypoint<IO> for Main
 where

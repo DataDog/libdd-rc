@@ -22,7 +22,7 @@ use thiserror::Error;
 
 /// Errors parsing incoming messages from the RC delivery backend.
 #[derive(Debug, Error)]
-pub(crate) enum DecodingError {
+pub enum DecodingError {
     /// The message on the wire cannot be deserialised into a message due to
     /// invalid encoding.
     #[error("deserialisation error: {0}")]
@@ -39,7 +39,8 @@ pub(crate) enum DecodingError {
 /// All possible messages originating from the RC delivery backend, to an RC
 /// client.
 #[derive(Debug, PartialEq)]
-pub(crate) enum ServerToClient {
+pub enum ServerToClient {
+    /// The server has requested an immediate PONG response.
     Ping,
 }
 
