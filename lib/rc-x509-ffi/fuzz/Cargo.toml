@@ -26,7 +26,7 @@ cargo-fuzz = true
 futures = "0.3.32"
 libfuzzer-sys = "0.4"
 rc-x509-client = { version = "0.1.0", path = "../../rc-x509-client" }
-rc-x509-ffi = { path = "../../rc-x509-ffi" }
+rc-x509-ffi = { version = "0.1.0", path = "../../rc-x509-ffi" }
 rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
 tokio = { version = "1.50.0", features = ["macros", "parking_lot", "rt", "sync", "time"] }
 
