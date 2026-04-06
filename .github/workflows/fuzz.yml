@@ -104,7 +104,7 @@ jobs:
   # avoids blocking PRs while the minimisation runs.
   minimise:
     needs: fuzz
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' }}
     strategy:
       matrix:
         fuzzer:
