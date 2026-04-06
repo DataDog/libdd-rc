@@ -1,0 +1,64 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Common setup for Rust CI jobs running in a Rust container image.
+#
+# The repository must already be checked out before using this action (the
+# action is referenced via a local path, so it must exist on disk).
+
+name: Setup Rust environment
+description: Install build dependencies and configure cargo caching.
+
+inputs:
+  cache-key-prefix:
+    description: Prefix for the cargo cache key (e.g. "dev", "release", "fuzz")
+    required: true
+  install-aws-lc-deps:
+    description: Install build dependencies for aws-lc-rs (golang, cmake, clang)
+    default: "true"
+  install-protobuf:
+    description: Install the protobuf compiler
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure node is installed for act
+      if: ${{ env.ACT }}
+      shell: bash
+      run: command -v node || (apt update && apt install -y nodejs zstd)
+
+    - name: Install dependencies for aws-lc-rs
+      if: ${{ inputs.install-aws-lc-deps == 'true' }}
+      shell: bash
+      run: apt-get update && apt-get install -y golang-go cmake clang
+
+    - name: Install protobuf compiler
+      if: ${{ inputs.install-protobuf == 'true' }}
+      shell: bash
+      run: apt-get install -y protobuf-compiler
+
+    - name: Cache Rust dependencies
+      id: rust-cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          **/target
+          /usr/local/cargo/registry/index
+          /usr/local/cargo/registry/cache
+          /usr/local/cargo/git/db
+        key: ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-
