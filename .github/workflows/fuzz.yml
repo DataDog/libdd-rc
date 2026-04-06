@@ -1,0 +1,190 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This workflow performs continuous fuzzing on PRs, and against the main branch.
+#
+# Each run executes the configured fuzzers for 2 minutes, and any failures are
+# captured and uploaded as CI artefacts.
+#
+# The generated corpus of "interesting" inputs is incrementally built over time,
+# caching the results of one fuzz run and feeding them into the next.
+
+name: fuzz
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+env:
+  # https://github.com/aws/aws-lc-rs/issues/569
+  AWS_LC_FIPS_SYS_CC: clang
+
+jobs:
+  fuzz:
+    strategy:
+      matrix:
+        fuzzer:
+          - name: "ffi_io"
+            dir: lib/rc-x509-client
+
+    runs-on: ubuntu-latest
+    container:
+      image: rustlang/rust:nightly
+    steps:
+      - name: Ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - name: Install dependencies for aws-lc-rs
+        run: apt-get update && apt-get install -y golang-go cmake clang
+
+      - name: Install protobuf compiler
+        run: apt-get install -y protobuf-compiler
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust dependencies
+        id: rust-cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            target
+            /usr/local/cargo/registry/index
+            /usr/local/cargo/registry/cache
+            /usr/local/cargo/git/db
+          key: ${{ runner.os }}-cargo-fuzz-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-fuzz-
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --all-features
+
+      - name: Restore corpus cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          enableCrossOsArchive: true # Corpus is OS independent
+          key: fuzz-corpus-${{ matrix.fuzzer.name }}-
+          restore-keys: |
+            fuzz-corpus-${{ matrix.fuzzer.name }}-
+          path: |
+            **/fuzz/corpus/
+
+      - name: fuzz
+        id: fuzz
+        run: >
+          cargo +nightly fuzz run
+          --fuzz-dir ${{ matrix.fuzzer.dir }}/fuzz
+          ${{ matrix.fuzzer.name }}
+          --
+          -malloc_limit_mb=256
+          -rss_limit_mb=2048
+          -print_final_stats=1
+          -max_total_time=120
+
+      - name: Save corpus cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        # If the fuzzer finds a crash, we definitely want to upload the corpus.
+        if: always()
+        with:
+          enableCrossOsArchive: true
+          key: fuzz-corpus-${{ matrix.fuzzer.name }}-${{ github.run_id }}
+          path: |
+            **/fuzz/corpus/
+
+      - name: Upload crash
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure() && steps.fuzz.outcome == 'failure'
+        with:
+          name: fuzz-crash-${{ matrix.fuzzer.name }}
+          path: ${{ matrix.fuzzer.dir }}/fuzz/artifacts/${{ matrix.fuzzer.name }}
+
+  # minimise the corpus on main after merge, so subsequent runs (including PR
+  # fuzzing) start from a smaller, deduplicated seed set. This avoids unbounded
+  # corpus growth while preserving coverage, and running on commits to main
+  # avoids blocking PRs while the minimisation runs.
+  minimise:
+    needs: fuzz
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        fuzzer:
+          - name: "ffi_io"
+            dir: lib/rc-x509-client
+
+    runs-on: ubuntu-latest
+    container:
+      image: rustlang/rust:nightly
+    steps:
+      - name: Ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - name: Install dependencies for aws-lc-rs
+        run: apt-get update && apt-get install -y golang-go cmake clang
+
+      - name: Install protobuf compiler
+        run: apt-get install -y protobuf-compiler
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust dependencies
+        id: rust-cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            target
+            /usr/local/cargo/registry/index
+            /usr/local/cargo/registry/cache
+            /usr/local/cargo/git/db
+          key: ${{ runner.os }}-cargo-fuzz-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-fuzz-
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --all-features
+
+      - name: Restore corpus cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          enableCrossOsArchive: true
+          # Load the corpus that was cached in the "fuzz" job above.
+          key: fuzz-corpus-${{ matrix.fuzzer.name }}-${{ github.run_id }}
+          path: |
+            **/fuzz/corpus/
+
+      - name: minimise corpus
+        run: >
+          cargo +nightly fuzz cmin
+          --fuzz-dir ${{ matrix.fuzzer.dir }}/fuzz
+          ${{ matrix.fuzzer.name }}
+
+      - name: Save minimised corpus
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          enableCrossOsArchive: true
+          key: fuzz-corpus-${{ matrix.fuzzer.name }}-${{ github.run_id }}-min
+          path: |
+            **/fuzz/corpus/
