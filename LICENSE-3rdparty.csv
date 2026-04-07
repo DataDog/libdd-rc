@@ -104,9 +104,10 @@ rand,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Deve
 rand_chacha,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers, The CryptoCorrosion Contributors
 rand_core,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
 rand_xorshift,https://github.com/rust-random/rngs,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
-rc-client-fuzz,N/A,Apache-2.0,N/A
 rc-crypto,N/A,Apache-2.0,N/A
 rc-x509-client,N/A,Apache-2.0,N/A
+rc-x509-ffi,N/A,Apache-2.0,N/A
+rc-x509-ffi-fuzz,N/A,Apache-2.0,N/A
 rc-x509-proto,N/A,Apache-2.0,N/A
 rcgen,https://github.com/rustls/rcgen,MIT OR Apache-2.0,N/A
 redox_syscall,https://gitlab.redox-os.org/redox-os/syscall,MIT,Jeremy Soller <jackpot51@gmail.com>
@@ -158,6 +159,7 @@ wasip2,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exceptio
 wasip3,https://github.com/bytecodealliance/wasi-rs,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,N/A
 windows-link,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
+winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 wit-bindgen,https://github.com/bytecodealliance/wit-bindgen,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
 x509-parser,https://github.com/rusticata/x509-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>

@@ -364,9 +364,9 @@ dependencies = [
 
 [[package]]
 name = "colorchoice"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
+checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "criterion"
@@ -1185,16 +1185,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rc-client-fuzz"
-version = "0.0.0"
-dependencies = [
- "libfuzzer-sys",
- "rc-x509-client",
- "rc-x509-proto",
- "twox-hash",
-]
-
-[[package]]
 name = "rc-crypto"
 version = "0.1.0"
 dependencies = [
@@ -1215,16 +1205,42 @@ name = "rc-x509-client"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
- "cbindgen",
  "futures",
  "proptest",
  "proptest-derive",
  "rc-x509-proto",
  "thiserror",
  "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "rc-x509-ffi"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "cbindgen",
+ "futures",
+ "rc-x509-client",
+ "rc-x509-proto",
+ "tokio",
  "tokio-stream",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "rc-x509-ffi-fuzz"
+version = "0.0.0"
+dependencies = [
+ "futures",
+ "libfuzzer-sys",
+ "rc-x509-client",
+ "rc-x509-ffi",
+ "rc-x509-proto",
+ "tokio",
+ "twox-hash",
 ]
 
 [[package]]
@@ -1595,7 +1611,7 @@ dependencies = [
  "toml_datetime",
  "toml_parser",
  "toml_writer",
- "winnow",
+ "winnow 0.7.15",
 ]
 
 [[package]]
@@ -1609,18 +1625,18 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.0.9+spec-1.1.0"
+version = "1.0.10+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "702d4415e08923e7e1ef96cd5727c0dfed80b4d2fa25db9647fe5eb6f7c5a4c4"
+checksum = "7df25b4befd31c4816df190124375d5a20c6b6921e2cad937316de3fccd63420"
 dependencies = [
- "winnow",
+ "winnow 1.0.0",
 ]
 
 [[package]]
 name = "toml_writer"
-version = "1.0.6+spec-1.1.0"
+version = "1.0.7+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
+checksum = "f17aaa1c6e3dc22b1da4b6bba97d066e354c7945cac2f7852d4e4e7ca7a6b56d"
 
 [[package]]
 name = "tracing"
@@ -1886,9 +1902,15 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.14"
+version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+
+[[package]]
+name = "winnow"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a90e88e4667264a994d34e6d1ab2d26d398dcdca8b7f52bec8668957517fc7d8"
 
 [[package]]
 name = "wit-bindgen"

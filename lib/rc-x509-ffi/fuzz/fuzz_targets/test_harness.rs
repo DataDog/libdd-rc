@@ -23,12 +23,15 @@
 
 use futures::{Stream, StreamExt, pin_mut};
 
-use crate::{
+use rc_x509_client::{
+    ShutdownSignal,
     codec::ClientToServer,
-    connection::ConnectionUpdate,
+    connection::{ConnectionEvent, ConnectionUpdate},
     entrypoint::LibraryEntrypoint,
-    host_runtime::{Connection, ffi::Ctx},
+    host_runtime::Connection,
 };
+
+use crate::Ctx;
 
 /// An [`EchoEntrypoint`] is designed to exercise the FFI layer, I/O handling
 /// primitives, and runtime management in isolation.
@@ -46,13 +49,13 @@ where
 {
     async fn entrypoint(
         self,
-        shutdown: crate::ShutdownSignal,
+        _shutdown: ShutdownSignal,
         conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     ) {
         pin_mut!(conn_events);
 
         while let Some(event) = conn_events.next().await {
-            if let crate::connection::ConnectionEvent::Connected(io) = event.into_event() {
+            if let ConnectionEvent::Connected(io) = event.into_event() {
                 tokio::task::spawn(handle_conn(io));
             }
         }
@@ -66,8 +69,10 @@ where
     let recv = io.take_recv_stream().expect("first use of connection I/O");
     pin_mut!(recv);
 
-    while let Some(v) = recv.next().await {
-        io.send(ClientToServer::Pong).await;
+    while let Some(_v) = recv.next().await {
+        io.send(ClientToServer::Pong)
+            .await
+            .expect("handle must be alive prior to shutdown");
     }
 }
 

@@ -11,32 +11,38 @@ Open source components for [Remote Configuration] — a Rust library that provid
 ```text
 libdd-rc/
 ├── lib/rc-crypto/          # Cryptographic primitives (ECDSA-P256, x509 certs)
-├── lib/rc-x509-client/     # Remote Config client with FFI interface
+├── lib/rc-x509-client/     # Remote Config client library
+├── lib/rc-x509-ffi/        # C-compatible FFI interface for host runtimes
 └── lib/rc-x509-proto/      # Protobuf message definitions
 ```
 
 ```text
 ┌──────────────────────────────────────────┐
+│               rc-x509-ffi               │
+└───────────────────│──────────────────────┘
+                   uses
+                    │
+┌───────────────────▼──────────────────────┐
 │               rc-x509-client             │
 └───────────│────────────────────│─────────┘
            uses                 uses
             │                    │
-    ┌───────▼────────┐  ┌────────▼───────┐  
-    │  rc-crypto     │  │  rc-x509-proto │  
-    └───────┼────────┘  └────────┼───────┘  
+    ┌───────▼────────┐  ┌────────▼───────┐
+    │  rc-crypto     │  │  rc-x509-proto │
+    └───────┼────────┘  └────────┼───────┘
         backed by           serializes
             │                    │
-    ┌───────▼────────┐  ┌────────▼───────┐  
-    │ FIPS compatible│  │ protocol.proto │  
+    ┌───────▼────────┐  ┌────────▼───────┐
+    │ FIPS compatible│  │ protocol.proto │
     │ crypto modules │  │                │
-    └────────────────┘  └────────────────┘         
+    └────────────────┘  └────────────────┘
 ```
 
 ---
 
 ## Architecture
 
-`rc-x509-client` is designed to run inside a host language runtime (Go, Python, etc.) via FFI. It owns all protocol logic; the host runtime owns the actual network I/O.
+`rc-x509-client` owns all protocol logic; `rc-x509-ffi` provides the C-compatible FFI surface that allows it to run inside a host language runtime (Go, Python, etc.). The host runtime owns the actual network I/O.
 
 ```text
 ┌──────────────────────────────────────────┐
@@ -49,23 +55,26 @@ libdd-rc/
 └──────────┼────────────────────┼──────────┘
            │  FFI boundary      │
 ┌──────────┼────────────────────┼──────────┐
-│          │                    ▼          │
-│     rc-x509-client (safe Rust)           │
-│                                          │
+│          │   rc-x509-ffi     ▼          │
 │  ┌─────────────────────────────────┐     │
 │  │  Ctx                            │     │
 │  │  (client handle / entry point)  │     │
 │  └──────────────────┬──────────────┘     │
 └─────────────────────┼────────────────────┘
-                      │  x509
-                      │  (ClientToServer / ServerToClient)
+                      │
+┌─────────────────────┼────────────────────┐
+│     rc-x509-client  ▼  (safe Rust)       │
+│                                          │
+│              x509 protocol               │
+│  (ClientToServer / ServerToClient)       │
+└─────────────────────┼────────────────────┘
                       │
 ┌─────────────────────▼────────────────────┐
 │        Remote Config Backend             │
 └──────────────────────────────────────────┘
 ```
- 
-→ FFI layer: [`lib/rc-x509-client/src/host_runtime/ffi/`](lib/rc-x509-client/src/host_runtime/ffi/)
+
+→ FFI layer: [`lib/rc-x509-ffi/`](lib/rc-x509-ffi/)
 → Host/Rust trait boundary: [`lib/rc-x509-client/src/host_runtime/api.rs`](lib/rc-x509-client/src/host_runtime/api.rs)
 → C-compatible FFI surface (the FFI boundary above): [FFI API](#ffi-api)
 
@@ -88,10 +97,10 @@ rc_conn_free(conn)                            // release resources held by conne
 rc_conn_recv(conn, data, len) → RecvRet       // passes data received for the connection
 ```
 
-For use example: [`lib/rc-x509-client/src/host_runtime/ffi/README.md`](lib/rc-x509-client/src/host_runtime/ffi/README.md)
+For use example: [`lib/rc-x509-ffi/README.md`](lib/rc-x509-ffi/README.md)
 
-→ Connection state: [`lib/rc-x509-client/src/host_runtime/ffi/connection.rs`](lib/rc-x509-client/src/host_runtime/ffi/connection.rs)  
-→ Client context: [`lib/rc-x509-client/src/host_runtime/ffi/ctx.rs`](lib/rc-x509-client/src/host_runtime/ffi/ctx.rs)
+→ Connection state: [`lib/rc-x509-ffi/src/connection.rs`](lib/rc-x509-ffi/src/connection.rs)
+→ Client context: [`lib/rc-x509-ffi/src/ctx.rs`](lib/rc-x509-ffi/src/ctx.rs)
 
 ---
 
@@ -119,7 +128,7 @@ FFI Host Runtime                         libdd-rc
    ▼
 RC Backend Server
 ```
-→ [`include/libdd_rc.h`](include/libdd_rc.h)  
+→ [`include/libdd_rc.h`](include/libdd_rc.h)
 
 ---
 
@@ -163,9 +172,9 @@ Certificate::from_pem(pem)
 
 All cryptography is backed by [aws-lc-rs](https://github.com/aws/aws-lc-rs) (FIPS-compatible).
 
-→ Keys: [`lib/rc-crypto/src/keys/`](lib/rc-crypto/src/keys/)  
-→ Certificates: [`lib/rc-crypto/src/certificate/`](lib/rc-crypto/src/certificate/)  
-→ Signer trait: [`lib/rc-crypto/src/signer.rs`](lib/rc-crypto/src/signer.rs)  
+→ Keys: [`lib/rc-crypto/src/keys/`](lib/rc-crypto/src/keys/)
+→ Certificates: [`lib/rc-crypto/src/certificate/`](lib/rc-crypto/src/certificate/)
+→ Signer trait: [`lib/rc-crypto/src/signer.rs`](lib/rc-crypto/src/signer.rs)
 
 ---
 

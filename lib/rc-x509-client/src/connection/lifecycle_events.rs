@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::connection::IOHandle;
-
 /// A [`ConnectionId`] uniquely identifies a single connection managed by the
 /// FFI host.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub(crate) struct ConnectionId(usize);
+pub struct ConnectionId(usize);
 
 impl ConnectionId {
     /// Construct a new [`ConnectionId`] over the ID counter value.
-    pub(crate) fn new(v: usize) -> Self {
+    pub fn new(v: usize) -> Self {
         Self(v)
     }
 }
@@ -71,7 +69,7 @@ impl ConnectionId {
 ///     back to the [`Self::Connected`] state.
 ///
 #[derive(Debug)]
-pub(crate) enum ConnectionEvent<IO> {
+pub enum ConnectionEvent<IO> {
     /// A new connection has been created by the FFI host.
     Init,
 
@@ -93,30 +91,30 @@ pub(crate) enum ConnectionEvent<IO> {
 /// A [`ConnectionUpdate`] contains a [`ConnectionEvent`] update, and the
 /// corresponding [`ConnectionId`] it applies to.
 #[derive(Debug)]
-pub(crate) struct ConnectionUpdate<IO> {
+pub struct ConnectionUpdate<IO> {
     id: ConnectionId,
     event: ConnectionEvent<IO>,
 }
 
 impl<IO> ConnectionUpdate<IO> {
     /// Construct a new update for the connection previously tagged with `id`.
-    pub(crate) fn new(id: ConnectionId, event: ConnectionEvent<IO>) -> Self {
+    pub fn new(id: ConnectionId, event: ConnectionEvent<IO>) -> Self {
         Self { id, event }
     }
 
     /// Get the [`ConnectionId`] this [`ConnectionEvent`] this update applies
     /// to.
-    pub(crate) fn id(&self) -> ConnectionId {
+    pub fn id(&self) -> ConnectionId {
         self.id
     }
 
     /// Peek at the underlying [`ConnectionEvent`] in this update.
-    pub(crate) fn event(&self) -> &ConnectionEvent<IO> {
+    pub fn event(&self) -> &ConnectionEvent<IO> {
         &self.event
     }
 
     /// Extract the owned [`ConnectionEvent`].
-    pub(crate) fn into_event(self) -> ConnectionEvent<IO> {
+    pub fn into_event(self) -> ConnectionEvent<IO> {
         self.event
     }
 }

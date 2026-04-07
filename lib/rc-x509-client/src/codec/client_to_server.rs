@@ -26,7 +26,7 @@ use rc_x509_proto::{
 /// delivery backend.
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub(crate) enum ClientToServer {
+pub enum ClientToServer {
     /// A response to a [`ServerToClient::Ping`].
     ///
     /// [`ServerToClient::Ping`]: super::ServerToClient::Ping

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = include_str!("README.md")]
+#![doc = include_str!("../README.md")]
 // This module has additional testing (miri) in CI to help with writing correct
 // unsafe code.
 #![allow(unsafe_code)]
 
 mod connection;
 mod ctx;
+mod io_handle;
 
 pub use connection::*;
 pub use ctx::*;

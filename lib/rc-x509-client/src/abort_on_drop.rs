@@ -21,10 +21,12 @@ use tokio::task::JoinHandle;
 /// [`AbortOnDrop::into_inner()`] call.
 #[must_use = "AbortOnDrop immediately aborts the task if not held in scope"]
 #[derive(Debug)]
-pub(crate) struct AbortOnDrop<T>(Option<JoinHandle<T>>);
+pub struct AbortOnDrop<T>(Option<JoinHandle<T>>);
 
 impl<T> AbortOnDrop<T> {
-    pub(crate) fn into_inner(mut self) -> JoinHandle<T> {
+    /// Disarm the abort-on-drop behaviour, returning the [`JoinHandle`] it was
+    /// managing.
+    pub fn into_inner(mut self) -> JoinHandle<T> {
         self.0.take().expect("must contain task")
     }
 }

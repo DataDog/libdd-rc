@@ -22,11 +22,13 @@ use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, warn};
 
-use crate::{
+use rc_x509_client::{
     AbortOnDrop,
     codec::{ClientToServer, DecodingError, ServerToClient},
-    connection::{ConnectionEvent, ConnectionId, ConnectionUpdate, IOHandle},
+    connection::{ConnectionEvent, ConnectionId, ConnectionUpdate},
 };
+
+use crate::io_handle::IOHandle;
 
 use super::Ctx;
 
@@ -134,9 +136,9 @@ pub unsafe extern "C" fn rc_conn_recv(
 
     // Deserialise the byte buffer ref into an owned in-memory representation.
     //
-    /// This impl is guaranteed to copy all values from the source into the
-    /// destination struct (by Form<slice> impl); ownership of the "data" buffer
-    /// is retained by the caller.
+    // This impl is guaranteed to copy all values from the source into the
+    // destination struct (by Form<slice> impl); ownership of the "data" buffer
+    // is retained by the caller.
     let message = ServerToClient::try_from(payload);
 
     // Call into the connection to enqueue the deserialised message (or
@@ -464,8 +466,8 @@ impl FFIConnection {
             }
         };
 
-        let (mut tx, mut lib2ffi) = mpsc::channel(QUEUE_BUFFER_LEN);
-        let (mut ffi2lib, rx) = mpsc::channel(QUEUE_BUFFER_LEN);
+        let (tx, lib2ffi) = mpsc::channel(QUEUE_BUFFER_LEN);
+        let (ffi2lib, rx) = mpsc::channel(QUEUE_BUFFER_LEN);
         let io_handle = IOHandle::new(tx, rx);
 
         let io_task_stop = CancellationToken::new();
@@ -524,7 +526,7 @@ impl FFIConnection {
         match &self.state {
             State::Connected { ffi2lib, .. } => {
                 // Pass the payload to the I/O handle.
-                if let Err(e) = block_on(ffi2lib.send(payload)) {
+                if let Err(_e) = block_on(ffi2lib.send(payload)) {
                     // This can occur if the IOHandle has been dropped before
                     // the connection has closed.
                     error!("IOHandle is not listening for payloads");
@@ -693,24 +695,18 @@ fn io_task(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fmt::Debug,
-        ptr,
-        sync::atomic::{AtomicUsize, Ordering},
-        time::Duration,
-    };
+    use std::{fmt::Debug, ptr};
 
     use assert_matches::assert_matches;
     use futures::StreamExt;
     use rc_x509_proto::protocol::v1;
     use tokio::pin;
 
-    use crate::{
+    use crate::ctx::{rc_free, rc_init};
+    use rc_x509_client::{
+        ShutdownSignal,
         entrypoint::LibraryEntrypoint,
-        host_runtime::{
-            Connection, ConnectionErr,
-            ffi::ctx::{rc_free, rc_init},
-        },
+        host_runtime::{Connection, ConnectionErr},
     };
 
     use super::*;
@@ -730,7 +726,7 @@ mod tests {
     {
         async fn entrypoint(
             self,
-            _shutdown: crate::ShutdownSignal,
+            _shutdown: ShutdownSignal,
             conn_events: impl futures::Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
         ) {
             pin!(conn_events);
@@ -759,7 +755,7 @@ mod tests {
 
         unsafe {
             rc_conn_send_callback(conn, do_send, ptr::null());
-            assert_matches!((&*conn).state, State::Configured { send, user_data: _ });
+            assert_matches!((&*conn).state, State::Configured { .. });
         }
 
         unsafe { rc_conn_free(conn) };
@@ -794,7 +790,9 @@ mod tests {
             let got_tx: Box<std::sync::mpsc::Sender<Vec<u8>>> =
                 unsafe { Box::from_raw(user_data as _) };
 
-            got_tx.send(got_data); // Signal the callback was executed.
+            // Signal the callback was executed.
+            got_tx.send(got_data).expect("must be waiting");
+
             SendRet::Success
         }
 

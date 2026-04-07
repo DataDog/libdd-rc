@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod io_handle;
+//! Types that model connections managed by the runtime host, through which this
+//! client library can perform I/O to the RC backend.
+
 mod lifecycle_events;
 
-pub(crate) use io_handle::*;
-pub(crate) use lifecycle_events::*;
+pub use lifecycle_events::*;

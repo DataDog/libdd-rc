@@ -15,7 +15,7 @@
 use tokio::sync::mpsc::{self, error::TrySendError};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::{
+use rc_x509_client::{
     codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::{Connection, ConnectionErr},
 };
@@ -23,13 +23,13 @@ use crate::{
 /// An [`IOHandle`] provides a [`Connection`] implementation brokered through
 /// the FFI host.
 #[derive(Debug)]
-pub(crate) struct IOHandle {
+pub struct IOHandle {
     tx: mpsc::Sender<ClientToServer>,
     rx: Option<mpsc::Receiver<Result<ServerToClient, DecodingError>>>,
 }
 
 impl IOHandle {
-    pub(crate) fn new(
+    pub fn new(
         tx: mpsc::Sender<ClientToServer>,
         rx: mpsc::Receiver<Result<ServerToClient, DecodingError>>,
     ) -> Self {
@@ -62,8 +62,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_recv() {
-        let (mut tx, mut rx_ffi_layer) = mpsc::channel(2);
-        let (mut tx_ffi_layer, rx) = mpsc::channel(2);
+        let (tx, mut rx_ffi_layer) = mpsc::channel(2);
+        let (tx_ffi_layer, rx) = mpsc::channel(2);
 
         let mut handle = IOHandle::new(tx, rx);
 

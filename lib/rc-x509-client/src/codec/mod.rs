@@ -20,5 +20,5 @@
 mod client_to_server;
 mod server_to_client;
 
-pub(crate) use client_to_server::*;
-pub(crate) use server_to_client::*;
+pub use client_to_server::*;
+pub use server_to_client::*;

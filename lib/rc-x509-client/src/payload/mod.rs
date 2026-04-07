@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Types for non-control / non-RC messages, that are delivered to non-RC code
+//! running in the host runtime, through the dispatch interface.
+
 mod topic;
 
 pub(crate) use topic::*;

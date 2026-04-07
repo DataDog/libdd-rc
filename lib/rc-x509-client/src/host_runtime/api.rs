@@ -21,21 +21,27 @@ use crate::{
     payload::PayloadTopic,
 };
 
+/// The runtime host has rejected a [`RustToHost::dispatch()`] call.
 #[derive(Debug, Error)]
-pub(crate) enum DialError {}
+pub enum DispatchError {}
 
+/// Message delivery errors reported by the runtime host.
+///
+/// These errors indicate that a message dispatched to the runtime host
+/// ([`RustToHost::dispatch()`]) was not successfully delivered to the end
+/// client that should process it (non-RC code).
 #[derive(Debug, Error)]
-pub(crate) enum DispatchError {}
-
-#[derive(Debug, Error)]
-pub(crate) enum InvokeError {}
+pub enum InvokeError {}
 
 /// Errors returned by the FFI host runtime when sending data.
 #[derive(Debug, Error)]
-pub(crate) enum ConnectionErr {
+pub enum ConnectionErr {
+    /// Catch-all if the error reported by the host runtime does not map to one
+    /// of the other variants.
     #[error("unknown connection error")]
     Unknown,
 
+    /// The connection was marked as closed by the host runtime.
     #[error("connection is closed")]
     Closed,
 
@@ -71,7 +77,7 @@ pub(crate) enum ConnectionErr {
 /// This layer presents a rust API, with the FFI implementation of this trait
 /// responsible for performing all conversions between rust types and their FFI
 /// representations, encapsulating any unsafe operations.
-pub(crate) trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
+pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
     /// Call into the host message dispatcher to pass a verified `msg` to the
     /// registered client for `topic`. The call return value is later passed
     /// back providing the same unique `correlation_id`.
@@ -112,14 +118,7 @@ pub(crate) trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
 /// This layer presents a rust API, with the FFI implementation of this trait
 /// responsible for performing all conversions between rust types and their FFI
 /// representations, encapsulating any unsafe operations.
-pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
-    /// The concrete type of the host connection broker.
-    type Connection: Connection;
-
-    /// Connect to the RC backend, returning a [`Connection`] that brokers I/O
-    /// with the host runtime.
-    fn connect(&mut self) -> Result<Self::Connection, DialError>;
-
+pub trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
     /// A `dispatch()` has completed, and the handler returned the provided byte
     /// response.
     ///
@@ -135,7 +134,9 @@ pub(crate) trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
 }
 
 /// An abstract broker of I/O to the RC delivery backend.
-pub(crate) trait Connection: std::fmt::Debug + Send + Sync + 'static {
+pub trait Connection: std::fmt::Debug + Send + Sync + 'static {
+    /// The type of incoming message stream provided by
+    /// [`Self::take_recv_stream()`].
     type Incoming: Stream<Item = Result<ServerToClient, DecodingError>>
         + std::fmt::Debug
         + Send

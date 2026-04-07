@@ -13,23 +13,30 @@
 # limitations under the License.
 
 [package]
-name = "rc-x509-client"
-version = "0.1.0"
-edition.workspace = true
+name = "rc-x509-ffi-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
 license = "Apache-2.0"
 
-[lints]
-workspace = true
+[package.metadata]
+cargo-fuzz = true
 
 [dependencies]
 futures = "0.3.32"
-rc-x509-proto = { version = "0.1.0", path = "../rc-x509-proto" }
-thiserror = "2.0.18"
+libfuzzer-sys = "0.4"
+rc-x509-client = { version = "0.1.0", path = "../../rc-x509-client" }
+rc-x509-ffi = { version = "0.1.0", path = "../../rc-x509-ffi" }
+rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
 tokio = { version = "1.50.0", features = ["macros", "parking_lot", "rt", "sync", "time"] }
-tokio-util = "0.7.18"
-tracing = "0.1.44"
 
-[dev-dependencies]
-assert_matches = "1.5.0"
-proptest = "1.10.0"
-proptest-derive = "0.8.0"
+[build-dependencies]
+rc-x509-proto = { version = "0.1.0", path = "../../rc-x509-proto" }
+twox-hash = "2.1.2"
+
+[[bin]]
+name = "ffi_io"
+path = "fuzz_targets/ffi_io.rs"
+test = false
+doc = false
+bench = false

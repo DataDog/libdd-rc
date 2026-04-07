@@ -17,22 +17,12 @@
 #![allow(unused)]
 
 mod abort_on_drop;
-pub(crate) mod codec;
-pub(crate) mod connection;
-pub(crate) mod entrypoint;
-mod shutdown_signal;
-mod test_harness;
-pub(crate) use abort_on_drop::*;
-pub(crate) use shutdown_signal::*;
-
+pub mod codec;
+pub mod connection;
+pub mod entrypoint;
 pub mod host_runtime;
-pub(crate) mod payload;
+pub mod payload;
+mod shutdown_signal;
 
-#[cfg(feature = "_test_harness")]
-pub mod non_public_do_not_use {
-    //! An external / pub interface to internal testing harness code.
-    //!
-    //! This module exists only when the `_test_harness` feature is enabled, and
-    //! should not be used outside of tests / benchmarks / etc.
-    pub use crate::test_harness::*;
-}
+pub use abort_on_drop::*;
+pub use shutdown_signal::*;

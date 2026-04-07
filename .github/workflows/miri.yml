@@ -47,4 +47,4 @@ jobs:
         run: rustup +nightly component add miri
 
       - name: miri
-        run: cargo +nightly miri test -p rc-x509-client ffi
+        run: cargo +nightly miri test -p rc-x509-ffi

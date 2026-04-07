@@ -3,36 +3,28 @@
 This module defines a C compatible API for use as an FFI interface to the X509
 client library.
 
-## Design
-
-This library aims to encapsulate all the state, logic, communication protocol
-and message encoding details necessary to communicate with the RC delivery
-backend.
-
-All I/O is delegated to the host runtime which is responsible for creating a
-connection to the RC backend, informing the client library of connection
-lifecycle events (e.g. disconnects) while brokering data received from and sent
-to the RC backend.
+All I/O performed by the client library is delegated to the host runtime which
+is responsible for creating a connection to the RC backend, informing the client
+library of connection lifecycle events (e.g. disconnects) while brokering data
+received from and sent to the RC backend through this FFI interface.
 
 ### FFI Isolation
 
-The FFI system is isolated from the rest of the library; it is designed to be a
-thin layer that "bridges" the unsafe FFI interface into the rest of the system
-in order to simplify the integration code and FFI ownership semantics, and
-therefore minimise bug risk.
+This FFI crate is isolated from the rest of the client library; it is designed
+to be a thin layer that "bridges" the unsafe FFI interface into the rest of the
+system in order to simplify the integration code and FFI ownership semantics,
+and therefore minimise bug risk.
 
 All interaction with the non-FFI parts of the library are bridged through
 channels:
 
   * Connection lifecycle events ([`ConnectionEvent`]) pass through a per-[`Ctx`]
-    channel, which the library [`entrypoint`] consumes to react to FFI-driven
-    connection state changes.
+    channel, which the client library [`entrypoint`] consumes to react to
+    FFI-driven connection state changes.
 
   * Each connection initialised and marked as ready to perform I/O by the FFI
     interface ([`FFIConnection`]) has it's own [`IOHandle`], through which
     payloads are exchanged with the FFI layer, and in turn, FFI host.
-
-
 
 ## Example Usage
 
@@ -40,7 +32,7 @@ An example using the FFI interface from rust:
 
 ```rust
 use std::{ptr, ffi::c_void};
-use rc_x509_client::host_runtime::ffi::*;
+use rc_x509_ffi::*;
 
 // Initialise the library Ctx and obtain a handle to this library instance
 let ctx = unsafe { rc_init() };
