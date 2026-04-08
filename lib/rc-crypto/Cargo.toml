@@ -26,6 +26,7 @@ aws-lc-rs = { version = "1.16.2", default-features = false, features = ["alloc"]
 bytes = "1"
 thiserror = "2"
 valuable = { version = "0.1.1", features = ["derive"] }
+jiff = "0.2.23"
 
 # NOTE: both of these dependencies currently enable non-FIPS crypto backends.
 rcgen = { version = "0.14.7", default-features = false, features = ["pem", "x509-parser"] }
@@ -36,6 +37,7 @@ pem = "3"
 criterion = "0.8"
 hex = "0.4"
 proptest = "1.7"
+time = "0.3"
 
 [features]
 default = ["fips", "x509-parser/verify-aws", "rcgen/aws_lc_rs"]

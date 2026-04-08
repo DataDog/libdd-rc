@@ -19,7 +19,9 @@ mod certificate;
 pub mod csr;
 mod fingerprint;
 mod serial_number;
+mod validity;
 
 pub use certificate::*;
 pub use fingerprint::*;
 pub use serial_number::*;
+pub use validity::*;

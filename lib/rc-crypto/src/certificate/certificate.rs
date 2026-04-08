@@ -24,7 +24,7 @@ use x509_parser::{
 };
 
 use crate::{
-    certificate::{Fingerprint, SerialNumber},
+    certificate::{Fingerprint, SerialNumber, Validity},
     keys::PublicKey,
 };
 
@@ -84,6 +84,9 @@ pub struct Certificate {
 
     /// The parsed [`Fingerprint`] for this certificate.
     fingerprint: Fingerprint,
+
+    /// The parsed [`Validity`] for this certificate.
+    validity: Validity,
 }
 
 impl Certificate {
@@ -116,6 +119,7 @@ impl Certificate {
 
         let fingerprint = Fingerprint::from(&cert);
         let serial_number = SerialNumber::from(&cert);
+        let validity = Validity::from(&cert);
 
         // Extract the raw public key DER bytes.
         let public_key_der = Bytes::from(cert.public_key().subject_public_key.data.to_vec());
@@ -125,6 +129,7 @@ impl Certificate {
             serial_number,
             fingerprint,
             public_key_der,
+            validity,
         })
     }
 
@@ -151,6 +156,12 @@ impl Certificate {
     pub fn fingerprint(&self) -> &Fingerprint {
         &self.fingerprint
     }
+
+    /// Return the [`Validity`] period of this certificate.
+    pub fn validity(&self) -> &Validity {
+        &self.validity
+    }
+
     /// Return the [`PublicKey`] embedded in this [`Certificate`].
     pub fn public_key<'a>(&'a self) -> PublicKey<'a> {
         PublicKey::new(self.public_key_der.as_ref())
@@ -284,6 +295,20 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         - fingerprint:
             49:ef:bb:e5:7f:3d:ff:9c:6d:b5:6a:15:b7:24:ba:8b:78:76:9c:16:a6:58:75:f9:b7:76:ae:ee:21:53:e5:e5
 ",
+        );
+    }
+
+    #[test]
+    fn test_validity_fixture() {
+        let cert = cert_fixture();
+
+        assert_eq!(
+            cert.validity().not_before_as_timestamp().to_string(),
+            "2025-08-13T14:58:40Z"
+        );
+        assert_eq!(
+            cert.validity().not_after_as_timestamp().to_string(),
+            "2035-08-11T14:59:40Z"
         );
     }
 
