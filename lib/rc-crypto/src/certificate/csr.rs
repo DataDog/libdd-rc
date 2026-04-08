@@ -59,6 +59,10 @@ use thiserror::Error;
 
 use crate::keys::PrivateKey;
 
+// CSR DN field values.
+const CSR_ON: &str = "Datadog, Inc.";
+const CSR_OU: &str = "RC Attestation Certificate";
+
 /// Failures when generating a new [`CertificateSigningRequest`].
 #[derive(Debug, Error)]
 pub enum CsrError {
@@ -133,8 +137,8 @@ impl CertificateSigningRequest {
         // Build the DN, which specifies the identity of the owner.
         let mut distinguished_name = DistinguishedName::new();
         distinguished_name.push(DnType::CommonName, cn);
-        distinguished_name.push(DnType::OrganizationName, "Datadog, Inc.");
-        distinguished_name.push(DnType::OrganizationalUnitName, "Remote Config");
+        distinguished_name.push(DnType::OrganizationName, CSR_ON);
+        distinguished_name.push(DnType::OrganizationalUnitName, CSR_OU);
         profile.distinguished_name = distinguished_name;
 
         // Specify the SAN DNS name.
@@ -235,8 +239,8 @@ impl CertificateSigningRequest {
         // Build the DN, which specifies the identity of the owner.
         let mut distinguished_name = DistinguishedName::new();
         distinguished_name.push(DnType::CommonName, cn);
-        distinguished_name.push(DnType::OrganizationName, "Datadog, Inc.");
-        distinguished_name.push(DnType::OrganizationalUnitName, "Remote Config");
+        distinguished_name.push(DnType::OrganizationName, CSR_ON);
+        distinguished_name.push(DnType::OrganizationalUnitName, CSR_OU);
         profile.distinguished_name = distinguished_name;
 
         // The issuer MUST constrain this intermediate using Name Constraints
@@ -381,7 +385,7 @@ mod tests {
             let mut want_dn = DistinguishedName::new();
             want_dn.push(DnType::CommonName, cn);
             want_dn.push(DnType::OrganizationName, "Datadog, Inc.");
-            want_dn.push(DnType::OrganizationalUnitName, "Remote Config");
+            want_dn.push(DnType::OrganizationalUnitName, "RC Attestation Certificate");
             assert_eq!(csr.profile.distinguished_name, want_dn);
 
             // Invariant: a leaf should never request to be a CA cert.
@@ -451,7 +455,7 @@ mod tests {
             let mut want_dn = DistinguishedName::new();
             want_dn.push(DnType::CommonName, cn);
             want_dn.push(DnType::OrganizationName, "Datadog, Inc.");
-            want_dn.push(DnType::OrganizationalUnitName, "Remote Config");
+            want_dn.push(DnType::OrganizationalUnitName, "RC Attestation Certificate");
             assert_eq!(csr.profile.distinguished_name, want_dn);
 
             // Invariant: not set in CSR - provided by issuer.
