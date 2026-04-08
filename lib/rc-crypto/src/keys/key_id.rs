@@ -15,8 +15,14 @@
 use std::{fmt::Display, sync::OnceLock};
 
 use aws_lc_rs::digest::{SHA256, SHA256_OUTPUT_LEN};
+use thiserror::Error;
 
 use crate::{hex::colon_string, keys::PublicKey};
+
+/// Constructing a [`KeyId`] from a byte slice failed due to incorrect length.
+#[derive(Debug, Error)]
+#[error("invalid key ID length {0}, expected {SHA256_OUTPUT_LEN}")]
+pub struct KeyIdParseError(usize);
 
 /// A [`KeyId`] uniquely identifies a [`PublicKey`].
 ///
@@ -56,6 +62,11 @@ impl KeyId {
     pub fn as_hex_str(&self) -> &str {
         self.rendered.get_or_init(|| colon_string(self.as_ref()))
     }
+
+    /// Return this [`KeyId`] as a raw byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.digest
+    }
 }
 
 impl std::ops::Deref for KeyId {
@@ -79,6 +90,17 @@ impl From<&PublicKey<'_>> for KeyId {
                 .expect("sha256 digest is 32 bytes"),
             rendered: Default::default(),
         }
+    }
+}
+
+impl TryFrom<&[u8]> for KeyId {
+    type Error = KeyIdParseError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Self {
+            digest: value.try_into().map_err(|_| KeyIdParseError(value.len()))?,
+            rendered: Default::default(),
+        })
     }
 }
 
