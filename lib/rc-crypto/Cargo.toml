@@ -22,20 +22,27 @@ license = "Apache-2.0"
 workspace = true
 
 [dependencies]
-aws-lc-rs = { version = "1.16.2", default-features = false, features = ["alloc", "fips"] }
+aws-lc-rs = { version = "1.16.2", default-features = false, features = ["alloc"] }
 bytes = "1"
 thiserror = "2"
 valuable = { version = "0.1.1", features = ["derive"] }
 
 # NOTE: both of these dependencies currently enable non-FIPS crypto backends.
-rcgen = { version = "0.14.7", default-features = false, features = ["fips", "pem", "aws_lc_rs", "x509-parser"] }
+rcgen = { version = "0.14.7", default-features = false, features = ["pem", "aws_lc_rs", "x509-parser"] }
 x509-parser = { version = "0.18", features = ["verify-aws"] }
-pem = "3.0.6"
+pem = "3"
 
 [dev-dependencies]
 criterion = "0.8"
 hex = "0.4"
 proptest = "1.7"
+
+[features]
+default = ["fips"]
+fips = ["rcgen/fips", "aws-lc-rs/fips"]
+
+# Flags specifically required for dd-source compatibility, with default=false.
+dd-source = ["x509-parser/verify"]
 
 [lib]
 # Disable the stdlib benchmark harness and use Criterion exclusively.
