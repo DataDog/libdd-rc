@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use bytes::Bytes;
-use pem as pem_crate;
+use pem::{self as pem_crate, LineEnding};
 use thiserror::Error;
 use valuable::Valuable;
 use x509_parser::{
@@ -136,7 +136,10 @@ impl Certificate {
     /// Return this [`Certificate`] as a PEM string.
     pub fn generate_pem(&self) -> String {
         let pem = pem_crate::Pem::new("CERTIFICATE", self.der.as_ref());
-        pem_crate::encode(&pem)
+        pem_crate::encode_config(
+            &pem,
+            pem_crate::EncodeConfig::new().set_line_ending(LineEnding::LF),
+        )
     }
 
     /// Return the serial number of this certificate.
@@ -221,7 +224,7 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
     #[test]
     fn test_fixture() {
         let pem =
-            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
+            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----\n");
 
         let cert = Certificate::from_pem(pem.as_bytes()).expect("valid PEM");
 
@@ -245,6 +248,9 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
                 215, 45, 202, 124, 72, 64, 131, 33, 152, 138, 94, 248, 14, 204
             ]
         );
+
+        // Assert the generated result (inc. line endings).
+        assert_eq!(cert.generate_pem(), pem);
     }
 
     /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
