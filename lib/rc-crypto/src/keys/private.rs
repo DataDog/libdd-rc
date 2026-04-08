@@ -44,6 +44,7 @@ impl Default for PrivateKey {
 impl PrivateKey {
     /// Generate a new, ephemeral key.
     pub fn new() -> Self {
+        #[cfg(not(feature = "dd-source"))] // Fake non-FIPS in dd-source
         assert!(
             aws_lc_rs::try_fips_mode().is_ok(),
             "crypto module must be in FIPS mode"
