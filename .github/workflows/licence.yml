@@ -29,6 +29,8 @@ on:
 
 jobs:
   # All source code must have the Apache 2.0 header at the top.
+  #
+  # Configured by .licenserc.yaml at the repo root.
   check-headers:
     runs-on: ubuntu-latest
     steps:
