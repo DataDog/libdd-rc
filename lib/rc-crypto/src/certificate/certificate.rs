@@ -298,6 +298,8 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             00:e2:7b:94:b7:3c:3d:08:ba:df:45:8d:56:7a:a5:e1:64
         - fingerprint:
             49:ef:bb:e5:7f:3d:ff:9c:6d:b5:6a:15:b7:24:ba:8b:78:76:9c:16:a6:58:75:f9:b7:76:ae:ee:21:53:e5:e5
+        - validity:
+            2025-08-13T14:58:40Z..2035-08-11T14:59:40Z
 ",
         );
     }
