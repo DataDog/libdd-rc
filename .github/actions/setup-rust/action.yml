@@ -55,6 +55,7 @@ runs:
       with:
         path: |
           **/target
+          /usr/local/cargo/bin
           /usr/local/cargo/registry/index
           /usr/local/cargo/registry/cache
           /usr/local/cargo/git/db
