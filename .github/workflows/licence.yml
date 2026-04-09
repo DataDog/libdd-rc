@@ -29,6 +29,8 @@ on:
 
 jobs:
   # All source code must have the Apache 2.0 header at the top.
+  #
+  # Configured by .licenserc.yaml at the repo root.
   check-headers:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +40,7 @@ jobs:
 
       # https://github.com/apache/skywalking-eyes
       - name: Check Apache license headers
-        uses: apache/skywalking-eyes/header@61275cc80d0798a405cb070f7d3a8aaf7cf2c2c1
+        uses: apache/skywalking-eyes/header@98a5d1362e26852204382ca749ed66631f15a95d
         with:
           mode: check
 
