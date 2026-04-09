@@ -60,6 +60,10 @@ pub enum InvalidDer {
     /// (parser error).
     #[error("excess der bytes")]
     ExcessDER,
+
+    /// [`Validity`] in a [`Certificate`] is invalid.
+    #[error("invalid timestamp in certificate validity: {0}")]
+    InvalidTimestamp(#[from] jiff::Error),
 }
 
 /// An X509 [`Certificate`].
@@ -119,7 +123,7 @@ impl Certificate {
 
         let fingerprint = Fingerprint::from(&cert);
         let serial_number = SerialNumber::from(&cert);
-        let validity = Validity::from(&cert);
+        let validity = Validity::try_from(&cert)?;
 
         // Extract the raw public key DER bytes.
         let public_key_der = Bytes::from(cert.public_key().subject_public_key.data.to_vec());

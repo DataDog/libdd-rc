@@ -47,21 +47,19 @@ impl Validity {
     /// underlying Unix timestamp in seconds. Each value is converted to a
     /// [`jiff::Timestamp`] for ergonomic use.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if either timestamp in `value` contains a seconds value outside
-    /// the range supported by [`Timestamp`].
-    fn new(value: &x509_parser::certificate::Validity) -> Self {
-        let not_before = asn1_to_timestamp(value.not_before)
-            .expect("x509 timestamp is within jiff's supported range");
-        let not_after = asn1_to_timestamp(value.not_after)
-            .expect("x509 timestamp is within jiff's supported range");
+    /// Returns an error if either timestamp in `value` is outside of the valid
+    /// [`jiff::Timestamp`] range.
+    fn new(value: &x509_parser::certificate::Validity) -> Result<Self, jiff::Error> {
+        let not_before = asn1_to_timestamp(value.not_before)?;
+        let not_after = asn1_to_timestamp(value.not_after)?;
 
-        Self {
+        Ok(Self {
             not_before,
             not_after,
             rendered: Default::default(),
-        }
+        })
     }
 
     /// Return the [`Timestamp`] at which the certificate becomes valid.
@@ -97,8 +95,10 @@ fn asn1_to_timestamp(timestamp: ASN1Time) -> Result<Timestamp, jiff::Error> {
     Timestamp::from_second(secs)
 }
 
-impl<'a> From<&'a X509Certificate<'a>> for Validity {
-    fn from(cert: &'a X509Certificate<'a>) -> Self {
+impl<'a> TryFrom<&'a X509Certificate<'a>> for Validity {
+    type Error = jiff::Error;
+
+    fn try_from(cert: &'a X509Certificate<'a>) -> Result<Self, Self::Error> {
         Self::new(cert.validity())
     }
 }
