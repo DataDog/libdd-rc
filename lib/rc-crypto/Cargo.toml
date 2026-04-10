@@ -37,7 +37,6 @@ pem = "3"
 criterion = "0.8"
 hex = "0.4"
 proptest = "1.11"
-time = "0.3"
 
 [features]
 default = ["fips", "x509-parser/verify-aws", "rcgen/aws_lc_rs"]

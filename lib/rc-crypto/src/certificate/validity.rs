@@ -13,10 +13,7 @@
 // limitations under the License.
 
 use jiff::Timestamp;
-use std::{
-    sync::OnceLock,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{ops::RangeInclusive, sync::OnceLock};
 use x509_parser::{prelude::X509Certificate, time::ASN1Time};
 
 /// The [`Validity`] is the time interval during which a [`Certificate`] is
@@ -85,18 +82,13 @@ impl Validity {
             .get_or_init(|| format!("{}..{}", self.not_before, self.not_after))
     }
 
-    /// Return whether `timestamp` is within the given validity range.
+    /// Return the validity as a RangeInclusive.
     ///
     /// From [RFC 5280 § 4.1.2.5]: https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.5
     /// the validity period for a certificate is the period of time from
     /// notBefore through notAfter, inclusive
-    pub fn contains(&self, timestamp: SystemTime) -> bool {
-        let unix_secs = match timestamp.duration_since(UNIX_EPOCH) {
-            Ok(d) => d.as_secs() as i64,
-            Err(_) => return false,
-        };
-
-        unix_secs >= self.not_before.as_second() && unix_secs <= self.not_after.as_second()
+    pub fn range(&self) -> RangeInclusive<Timestamp> {
+        RangeInclusive::new(self.not_before, self.not_after)
     }
 }
 
@@ -135,7 +127,6 @@ impl valuable::Valuable for Validity {
 mod tests {
     use jiff::Timestamp;
     use proptest::prelude::*;
-    use std::time::{Duration, UNIX_EPOCH};
 
     use super::*;
 
@@ -148,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_timestamps() {
+    fn test_fixture() {
         let not_before_secs = 1_000_000_000i64; // 2001-09-09T01:46:40Z
         let not_after_secs = 2_000_000_000i64; // 2033-05-18T03:33:20Z
 
@@ -170,86 +161,39 @@ mod tests {
         );
     }
 
+    // Verify that trying to convert a timestamp outside of [`jiff::Timestamp`]'s
+    // MIN & MAX bounds returns an error
     #[test]
     fn test_timestamp_out_of_range() {
-        use time::{PrimitiveDateTime, macros::offset};
-        use x509_parser::time::ASN1Time;
+        // Set timestamp to +1 of the jiff::Timestamp::MAX
+        let jiff_beyond_max = Timestamp::MAX.as_second() + 1;
+        assert!(Timestamp::from_second(jiff_beyond_max).is_err());
+        let asn1_beyond_max = ASN1Time::from_timestamp(jiff_beyond_max).unwrap();
+        assert!(asn1_to_timestamp(asn1_beyond_max).is_err());
 
-        // PrimitiveDateTime::MAX (9999-12-31T23:59:59) with the most negative
-        // UTC offset shifts the UTC-equivalent timestamp beyond jiff's maximum
-        // of 9999-12-31T23:59:59Z, so asn1_to_timestamp must return a jiff::Error.
-        let beyond_max = PrimitiveDateTime::MAX.assume_offset(offset!(-23:59:59));
-        let err = asn1_to_timestamp(ASN1Time::new(beyond_max));
-        assert!(err.is_err());
-
-        // Similarly, PrimitiveDateTime::MIN (-9999-01-01T00:00:00) with the
-        // most positive UTC offset shifts the UTC-equivalent below jiff's
-        // minimum of -9999-01-01T00:00:00Z.
-        let before_min = PrimitiveDateTime::MIN.assume_offset(offset!(+23:59:59));
-        let err = asn1_to_timestamp(ASN1Time::new(before_min));
-        assert!(err.is_err());
-    }
-
-    fn valid_range() -> impl Strategy<Value = (i64, i64)> {
-        (0i64..=3_000_000_000i64).prop_flat_map(|nb| (Just(nb), nb..=3_000_000_000i64))
-    }
-
-    /// Generates a set `(not_before, ts_secs, not_after)` where the timestamp is within validity range
-    /// (where `not_before <= ts_secs <= not_after`)
-    fn in_range_set() -> impl Strategy<Value = (i64, i64, i64)> {
-        (0i64..=3_000_000_000i64)
-            .prop_flat_map(|nb| (Just(nb), nb..=3_000_000_000i64))
-            .prop_flat_map(|(nb, ts)| (Just(nb), Just(ts), ts..=3_000_000_000i64))
-    }
-
-    /// Generates a set `(ts_secs, not_before, not_after)` where the timestamp is outside the lower validity range
-    /// (where `ts_secs < not_before <= not_after`)
-    fn before_range_set() -> impl Strategy<Value = (i64, i64, i64)> {
-        (0i64..=2_999_999_999i64)
-            .prop_flat_map(|ts| (Just(ts), (ts + 1)..=3_000_000_000i64))
-            .prop_flat_map(|(ts, nb)| (Just(ts), Just(nb), nb..=3_000_000_000i64))
-    }
-
-    /// Generates a set `(not_before, not_after, ts_secs)` where the timestamp is outside the upper validity range
-    /// (where `not_before <= not_after < ts_secs`)
-    fn after_range_set() -> impl Strategy<Value = (i64, i64, i64)> {
-        (0i64..=2_999_999_999i64)
-            .prop_flat_map(|na| (0i64..=na, Just(na)))
-            .prop_flat_map(|(nb, na)| (Just(nb), Just(na), (na + 1)..=4_000_000_000i64))
+        // Set timestamp to -1 of the jiff::Timestamp::MIN
+        let jiff_before_min = Timestamp::MIN.as_second() - 1;
+        assert!(Timestamp::from_second(jiff_before_min).is_err());
+        let asn1_before_min = ASN1Time::from_timestamp(jiff_before_min).unwrap();
+        assert!(asn1_to_timestamp(asn1_before_min).is_err());
     }
 
     proptest! {
-        /// The timestamp is within [notBefore, notAfter] validity range
-        /// (inclusive)
+        /// This tests both timestamps that are in AND out of the Validity range.
+        /// For a given timestamp and validity range (not_before, not_after), checks
+        /// whether timestamp is 'contained' within the range.
         #[test]
-        fn prop_timestamp_within_range(
-            (not_before, ts_secs, not_after) in in_range_set(),
+        fn prop_timestamp_in_validity_range(
+            not_before in 0i64..=3_000_000_000i64,
+            not_after in 0i64..=3_000_000_000i64,
+            ts_secs in 0i64..=4_000_000_000i64,
         ) {
             let v = make_validity(not_before, not_after);
-            let ts = UNIX_EPOCH + Duration::from_secs(ts_secs as u64);
-            prop_assert!(v.contains(ts));
-        }
+            let ts = Timestamp::from_second(ts_secs).unwrap();
 
-        /// The timestamp is outside [notBefore, notAfter] validity range,
-        /// before notBefore
-        #[test]
-        fn prop_timestamp_before_range_not_contained(
-            (ts_secs, not_before, not_after) in before_range_set(),
-        ) {
-            let v = make_validity(not_before, not_after);
-            let ts = UNIX_EPOCH + Duration::from_secs(ts_secs as u64);
-            prop_assert!(!v.contains(ts));
-        }
-
-        /// The timestamp is outside [notBefore, notAfter] validity range,
-        /// after notAfter
-        #[test]
-        fn prop_timestamp_after_range_not_contained(
-            (not_before, not_after, ts_secs) in after_range_set(),
-        ) {
-            let v = make_validity(not_before, not_after);
-            let ts = UNIX_EPOCH + Duration::from_secs(ts_secs as u64);
-            prop_assert!(!v.contains(ts));
+            // Verify that the RangeInclusive of not_before and not_after
+            // correctly catorizes whether the timestamp is within the validity range.
+            prop_assert_eq!(v.range().contains(&ts), not_before <= ts_secs && ts_secs <= not_after);
         }
     }
 }
