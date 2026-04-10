@@ -15,4 +15,5 @@
 /// An identifier that uniquely identifies messages and their expected a
 /// response.
 #[derive(Debug)]
+#[allow(unused)]
 pub struct CorrelationId(u64);

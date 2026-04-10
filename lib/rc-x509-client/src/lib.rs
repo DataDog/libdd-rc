@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #![doc = "../README.md"]
-// Nothing is used yet.
-#![allow(unused)]
 
 mod abort_on_drop;
 pub mod codec;

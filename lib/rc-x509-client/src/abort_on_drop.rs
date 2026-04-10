@@ -50,7 +50,7 @@ mod tests {
     use std::time::Duration;
 
     use assert_matches::assert_matches;
-    use tokio::sync::{mpsc, oneshot};
+    use tokio::sync::mpsc;
 
     use super::*;
 
