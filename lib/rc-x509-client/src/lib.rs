@@ -23,6 +23,7 @@ pub mod entrypoint;
 pub mod host_runtime;
 pub mod payload;
 mod shutdown_signal;
+pub mod trust;
 
 pub use abort_on_drop::*;
 pub use shutdown_signal::*;
