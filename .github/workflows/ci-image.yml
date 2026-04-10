@@ -65,7 +65,7 @@ jobs:
           context: .
           file: ${{ env.DOCKERFILE }}
           build-args: |
-            RUST_VERSION=${{ steps.rust-version.outputs.version }}
+            RUST_VERSION=${{ steps.rust-version.outputs.version }}-slim
             BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
             BUILD_REF=${{ github.sha }}
             BUILD_FILE=${{ env.DOCKERFILE }}
