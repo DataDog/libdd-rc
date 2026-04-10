@@ -39,8 +39,10 @@ proptest = "1.11"
 
 [features]
 default = ["fips"]
-non-fips = ["aws-lc-rs/non-fips", "rcgen/ring", "x509-parser/verify"]
 fips = ["aws-lc-rs/fips", "rcgen/aws_lc_rs", "rcgen/fips", "x509-parser/verify-aws"]
+
+# Flags specifically required for dd-source compatibility, with default=false.
+dd-source = ["x509-parser/verify"]
 
 [lib]
 # Disable the stdlib benchmark harness and use Criterion exclusively.

@@ -33,17 +33,13 @@ jobs:
   build:
     strategy:
       matrix:
-        builds:
+        include:
           - name: dev
-            cmd: cargo build --workspace
+            cmd: cargo build --workspace --all-features
           - name: release
-            cmd: cargo build --workspace --release
+            cmd: cargo build --workspace --all-features --release
           - name: benchmarks
-            cmd: cargo test --workspace --benches --no-run
-        feature_flags:
-          - fips
-          - non-fips
-
+            cmd: cargo test --workspace --all-features --benches --no-run
     runs-on: ubuntu-latest
     container:
       image: rust:1.93.0
@@ -54,10 +50,10 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: ${{ matrix.builds.name }}
+          cache-key-prefix: ${{ matrix.name }}
 
-      - name: ${{ matrix.builds.name }}
-        run: ${{ matrix.builds.cmd }} --no-default-features --features="${{ matrix.feature_flags }}"
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.cmd }}
 
   clippy:
     runs-on: ubuntu-latest
@@ -76,7 +72,7 @@ jobs:
         run: rustup component add clippy
 
       - name: Run Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --all-features -- -D warnings
 
   test:
     runs-on: ubuntu-latest
@@ -92,7 +88,7 @@ jobs:
           cache-key-prefix: test
 
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --workspace --all-features
 
   # Check for banned crates, invalid sources, security advisories, and licenses
   cargo-deny:
