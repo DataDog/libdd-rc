@@ -29,6 +29,7 @@ on:
     paths:
       - ".github/images/rust-ci.Dockerfile"
       - ".github/workflows/ci-image.yml"
+      - "rust-toolchain.toml"
   schedule:
     # Weekly on Monday at 05:42 UTC — rebuilds with latest nightly toolchain.
     - cron: "42 5 * * 1"
@@ -37,6 +38,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE: ghcr.io/datadog/libdd-rc/rust-ci
+  DOCKERFILE: .github/images/rust-ci.Dockerfile
 
 jobs:
   build:
@@ -52,9 +54,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract Rust version
+        id: rust-version
+        run: |
+          version=$(grep '^channel = ' rust-toolchain.toml | sed 's/channel = "\(.*\)"/\1/')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
         with:
           context: .
-          file: .github/images/rust-ci.Dockerfile
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            RUST_VERSION=${{ steps.rust-version.outputs.version }}-slim
+            BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
+            BUILD_REF=${{ github.sha }}
+            BUILD_FILE=${{ env.DOCKERFILE }}
           push: true
-          tags: ${{ env.IMAGE }}:latest
+          tags: ${{ env.IMAGE }}:${{ steps.rust-version.outputs.version }}
