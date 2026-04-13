@@ -63,12 +63,9 @@ impl Drop for ShutdownCtl {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        sync::{Arc, atomic::AtomicUsize},
-        time::Duration,
-    };
+    use std::time::Duration;
 
-    use tokio::{join, sync::mpsc, task::yield_now};
+    use tokio::{join, sync::mpsc};
 
     use super::*;
 
