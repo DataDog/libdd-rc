@@ -20,6 +20,12 @@ package rc.x509.protocol.v1;
 message ServerToClient {
   oneof message {
     Ping ping = 1;
+
+    // The server is pushing a new X509 certificate to the client to consider
+    // when chain building.
+    //
+    // This certificate MUST be treated as an untrusted input.
+    Certificate certificate_push = 2;
   }
 }
 
@@ -49,3 +55,8 @@ message Ping {}
 message Pong {}
 
 message ClientHello {}
+
+// An X509 certificate as raw DER-encoded bytes.
+message Certificate {
+  bytes der = 1;
+}

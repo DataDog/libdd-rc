@@ -1216,9 +1216,11 @@ name = "rc-x509-client"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "bytes",
  "futures",
  "proptest",
  "proptest-derive",
+ "rc-crypto",
  "rc-x509-proto",
  "thiserror",
  "tokio",
