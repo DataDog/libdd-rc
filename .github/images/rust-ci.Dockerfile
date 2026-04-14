@@ -55,6 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     \
     # rc_crypto -> aws-lc-rs deps
     clang \
+    make \
     cmake \
     golang-go \
     # rc-x509-proto -> prost deps
