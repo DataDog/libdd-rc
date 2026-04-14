@@ -24,38 +24,16 @@ inputs:
   cache-key-prefix:
     description: Prefix for the cargo cache key (e.g. "dev", "release", "fuzz")
     required: true
-  install-aws-lc-deps:
-    description: Install build dependencies for aws-lc-rs (golang, cmake, clang)
-    default: "true"
-  install-protobuf:
-    description: Install the protobuf compiler
-    default: "true"
 
 runs:
   using: composite
   steps:
-    - name: Ensure node is installed for act
-      if: ${{ env.ACT }}
-      shell: bash
-      run: command -v node || (apt update && apt install -y nodejs zstd)
-
-    - name: Install dependencies for aws-lc-rs
-      if: ${{ inputs.install-aws-lc-deps == 'true' }}
-      shell: bash
-      run: apt-get update && apt-get install -y golang-go cmake clang
-
-    - name: Install protobuf compiler
-      if: ${{ inputs.install-protobuf == 'true' }}
-      shell: bash
-      run: apt-get install -y protobuf-compiler
-
     - name: Cache Rust dependencies
       id: rust-cache
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
           **/target
-          /usr/local/cargo/bin
           /usr/local/cargo/registry/index
           /usr/local/cargo/registry/cache
           /usr/local/cargo/git/db

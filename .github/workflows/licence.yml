@@ -48,31 +48,11 @@ jobs:
   check-3rdparty-bom:
     runs-on: ubuntu-latest
     container:
-      image: rust:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
     steps:
-      - name: ensure node is installed for act
-        if: ${{ env.ACT }}
-        run: command -v node || (apt update && apt install -y nodejs zstd)
-
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-
-      - name: Cache cargo-deny
-        id: cache-cargo-deny
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: /usr/local/cargo/bin/cargo-deny
-          key: ${{ runner.os }}-cargo-deny-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-deny
-
-      # Manual install / not github action so scripts can be run to check after.
-      - name: Install cargo-deny
-        run: command -v cargo-deny || cargo install --git https://github.com/EmbarkStudios/cargo-deny --rev 8e63a579d8ac61faa6e00d3d4ecde495bf138540 cargo-deny # 0.19.0
-
-      - name: Install jq
-        run: apt-get update && apt-get install -y jq
 
       - name: Check LICENSE-3rdparty.csv is up to date
         run: ./scripts/generate-3rdparty-licenses.sh check
@@ -81,18 +61,11 @@ jobs:
   check-1stparty-licenses:
     runs-on: ubuntu-latest
     container:
-      image: rust:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
     steps:
-      - name: ensure node is installed for act
-        if: ${{ env.ACT }}
-        run: command -v node || (apt update && apt install -y nodejs zstd)
-
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-
-      - name: Install jq
-        run: apt-get update && apt-get install -y jq
 
       - name: Check crate license fields
         run: ./scripts/check-1stparty-crate-licenses.sh

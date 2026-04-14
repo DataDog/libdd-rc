@@ -33,7 +33,7 @@ jobs:
   test-miri:
     runs-on: ubuntu-latest
     container:
-      image: rustlang/rust:nightly # Miri is nightly only!
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -42,9 +42,6 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: miri
-
-      - name: install miri
-        run: rustup +nightly component add miri
 
       - name: miri
         run: cargo +nightly miri test -p rc-x509-ffi

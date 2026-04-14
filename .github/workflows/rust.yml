@@ -30,7 +30,7 @@ env:
   AWS_LC_FIPS_SYS_CC: clang
 
 jobs:
-  build:
+  check:
     strategy:
       matrix:
         include:
@@ -40,9 +40,13 @@ jobs:
             cmd: cargo build --workspace --all-features --release
           - name: benchmarks
             cmd: cargo test --workspace --all-features --benches --no-run
+          - name: clippy
+            cmd: cargo clippy --workspace --all-features -- -D warnings
+          - name: test
+            cmd: cargo test --workspace --all-features
     runs-on: ubuntu-latest
     container:
-      image: rust:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -54,41 +58,6 @@ jobs:
 
       - name: ${{ matrix.name }}
         run: ${{ matrix.cmd }}
-
-  clippy:
-    runs-on: ubuntu-latest
-    container:
-      image: rust:1.93.0
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/setup-rust
-        with:
-          cache-key-prefix: clippy
-
-      - name: Install Clippy
-        run: rustup component add clippy
-
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-features -- -D warnings
-
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: rust:1.93.0
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/setup-rust
-        with:
-          cache-key-prefix: test
-
-      - name: Run tests
-        run: cargo test --workspace --all-features
 
   # Check for banned crates, invalid sources, security advisories, and licenses
   cargo-deny:
