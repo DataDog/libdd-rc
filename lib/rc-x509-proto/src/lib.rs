@@ -26,7 +26,8 @@ pub(crate) mod rc {
     }
 }
 
-use prost::bytes::Buf;
+use proptest::prelude::Strategy;
+use prost::bytes::{Buf, Bytes};
 
 // Re-exports for callers to import, instead of having to depend on `prost`
 // directly.
@@ -48,6 +49,12 @@ where
     T: Serialisable + Default,
 {
     T::decode(buf)
+}
+
+/// A value generator for [`Bytes`] fields on protobuf types (to satisfy the
+/// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
+    proptest::prelude::any::<Vec<u8>>().prop_map(Bytes::from)
 }
 
 #[cfg(test)]
@@ -115,7 +122,8 @@ mod tests {
         boolean: bool,
 
         #[prost(bytes, tag = "15")]
-        bytes: Vec<u8>,
+        #[proptest(strategy = "crate::arbitrary_bytes()")]
+        bytes: Bytes,
 
         #[prost(enumeration = "Enum", tag = "16")]
         other: i32,

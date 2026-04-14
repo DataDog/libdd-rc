@@ -17,7 +17,18 @@
 fn main() -> std::io::Result<()> {
     println!("cargo::rerun-if-changed=protos/protocol.proto");
 
-    prost_build::Config::new()
+    let mut config = prost_build::Config::new();
+
+    // A list of paths to fields that use `Bytes`, which need a manual impl of
+    // Arbitrary defined to avoid compilation errors caused by derive(Arbitrary)
+    // not being implemented for Bytes.
+    let bytes_fields = ["rc.x509.protocol.v1.Certificate.der"];
+    for v in bytes_fields {
+        config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
+    }
+
+    config
+        .bytes(["."])
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
         .compile_protos(&["protos/protocol.proto"], &["protos/"])?;
 
