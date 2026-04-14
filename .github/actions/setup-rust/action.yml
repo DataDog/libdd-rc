@@ -28,16 +28,30 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Cache Rust dependencies
-      id: rust-cache
+    # The cargo cache holds the crates.io index state, and is reused across all
+    # builds (ignores the cache-key-prefix).
+    - name: Cargo cache
+      id: cargo-cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          /usr/local/cargo/registry/index
+          /usr/local/cargo/registry/cache
+          /usr/local/cargo/git/db
+        key: ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-cargo-cache-
+
+    # The build cache holds the incremental compilation artefacts and is
+    # per-build-type, specified by the cache-key-prefix input.
+    - name: Build cache
+      id: build-cache
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
           **/target
-          /usr/local/cargo/registry/index
-          /usr/local/cargo/registry/cache
-          /usr/local/cargo/git/db
-        key: ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        key: ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
-          ${{ runner.os }}-cargo-${{ inputs.cache-key-prefix }}-
+          ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-
