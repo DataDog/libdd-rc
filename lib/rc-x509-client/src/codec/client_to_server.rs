@@ -16,10 +16,7 @@
 
 use rc_x509_proto::{
     encode,
-    protocol::v1::{
-        self,
-        client_to_server::{self, Message},
-    },
+    protocol::v1::{self, client_to_server::Message},
 };
 
 /// All possible messages originating from this client library, sent to the RC

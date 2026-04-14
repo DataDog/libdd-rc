@@ -22,7 +22,7 @@ license = "Apache-2.0"
 workspace = true
 
 [dependencies]
-aws-lc-rs = { version = "1.16.2", default-features = false, features = ["alloc"] }
+aws-lc-rs = { version = "1", default-features = false, features = ["alloc"] }
 bytes = "1"
 thiserror = "2"
 valuable = { version = "0.1.1", features = ["derive"] }
@@ -34,13 +34,14 @@ x509-parser = { version = "0.18" }
 pem = "3"
 
 [dev-dependencies]
+assert_matches = "1.5.0"
 criterion = "0.8"
 hex = "0.4"
 proptest = "1.11"
 
 [features]
-default = ["fips", "x509-parser/verify-aws", "rcgen/aws_lc_rs"]
-fips = ["rcgen/fips", "aws-lc-rs/fips"]
+default = ["fips"]
+fips = ["aws-lc-rs/fips", "rcgen/aws_lc_rs", "rcgen/fips", "x509-parser/verify-aws"]
 
 # Flags specifically required for dd-source compatibility, with default=false.
 dd-source = ["x509-parser/verify"]
