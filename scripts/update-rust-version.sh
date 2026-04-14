@@ -14,7 +14,7 @@
 # limitations under the License.
 
 #
-# Updates all GitHub workflow files to use the Rust version specified in
+# Updates the CI Dockerfile to use the Rust version specified in
 # rust-toolchain.toml.
 #
 # Usage:
@@ -43,36 +43,15 @@ fi
 
 echo "Rust version from toolchain file: ${RUST_VERSION}"
 
-# Find all workflow files
-WORKFLOW_DIR="${REPO_ROOT}/.github/workflows"
-if [[ ! -d "${WORKFLOW_DIR}" ]]; then
-    echo "Error: ${WORKFLOW_DIR} not found" >&2
-    exit 1
-fi
-
-# Update all workflow files that reference rust container images
-UPDATED_COUNT=0
-for workflow in "${WORKFLOW_DIR}"/*.yml; do
-    if [[ ! -f "${workflow}" ]]; then
-        continue
-    fi
-
-    # Check if this workflow uses rust container images
-    if grep -q 'image: rust:' "${workflow}"; then
-        echo "Updating ${workflow}..."
-
-        # Replace rust:VERSION with the current version
-        # Use a temporary file for atomic replacement
-        tmp_file=$(mktemp)
-        sed "s|image: rust:[0-9.]*|image: rust:${RUST_VERSION}|g" "${workflow}" > "${tmp_file}"
-        mv "${tmp_file}" "${workflow}"
-
-        UPDATED_COUNT=$((UPDATED_COUNT + 1))
+# Update the container image tag in all workflow files
+WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
+echo "Updating workflow files in ${WORKFLOWS_DIR}..."
+for wf in "${WORKFLOWS_DIR}"/*.yml; do
+    if grep -q 'ghcr.io/datadog/libdd-rc/rust-ci:' "${wf}"; then
+        sed -i'' "s|ghcr.io/datadog/libdd-rc/rust-ci:[0-9.]*|ghcr.io/datadog/libdd-rc/rust-ci:${RUST_VERSION}|g" \
+            "${wf}"
+        echo "  Updated $(basename "${wf}")"
     fi
 done
 
-if [[ ${UPDATED_COUNT} -eq 0 ]]; then
-    echo "No workflow files needed updating."
-else
-    echo "Updated ${UPDATED_COUNT} workflow file(s) to use rust:${RUST_VERSION}"
-fi
+echo "Done — rebuild the CI image to pick up the change."

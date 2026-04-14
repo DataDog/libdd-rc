@@ -1,7 +1,7 @@
 [toolchain]
 profile = "default"
 
-# Run scripts/update-rust-version.sh after changing this value.
+# Follow the steps in ci-image.yml for updating rust.
 #
 # Always pin to a specific version, not "stable" or other moving targets.
 channel = "1.93.0"
