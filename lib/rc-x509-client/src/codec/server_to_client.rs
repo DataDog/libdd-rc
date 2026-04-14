@@ -53,7 +53,7 @@ pub enum ServerToClient {
     /// The server has pushed a new (untrusted) X509 certificate to the client.
     ///
     /// This certificate MUST be treated as untrusted input.
-    CertificatePush(UntrustedCert),
+    CertificatePush(Box<UntrustedCert>),
 }
 
 /// Try to parse a protobuf encoded payload into a [`ServerToClient`].
@@ -67,7 +67,7 @@ impl TryFrom<&[u8]> for ServerToClient {
         Ok(match got.message.ok_or(DecodingError::NoMessage)? {
             Message::Ping(_) => Self::Ping,
             Message::CertificatePush(cert) => {
-                Self::CertificatePush(UntrustedCert::from_der(cert.der)?)
+                Self::CertificatePush(Box::new(UntrustedCert::from_der(cert.der)?))
             }
         })
     }
