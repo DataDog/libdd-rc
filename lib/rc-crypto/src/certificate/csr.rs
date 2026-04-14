@@ -109,6 +109,12 @@ impl CertificateSigningRequest {
     /// Create a new certificate signing request for a leaf certificate profile.
     ///
     /// Certificates SHOULD use unique CN strings.
+    ///
+    /// Issuers MUST apply the following best practices when issuing the CA
+    /// certificate:
+    ///
+    ///   * Set CA: FALSE as a basic constraint, and mark it as critical.
+    ///
     pub fn new_leaf(private_key: &PrivateKey, cn: &str, san: &str) -> Result<Self, CsrError> {
         if cn.trim().is_empty() || san.trim().is_empty() {
             return Err(CsrError::EmptyIdent);
