@@ -76,8 +76,8 @@ impl TryFrom<&[u8]> for ServerToClient {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
+    use bytes::Bytes;
     use proptest::prelude::*;
-    use rc_crypto::certificate::Certificate;
 
     use super::*;
 
@@ -179,7 +179,7 @@ mod tests {
             .prop_map(|mut v| {
                 if let Message::CertificatePush(certificate) = &mut v {
                     // Always return a valid certificate.
-                    certificate.der = SAMPLE_CERT_DER.to_owned();
+                    certificate.der = Bytes::from(SAMPLE_CERT_DER);
                 };
 
                 v
