@@ -14,8 +14,12 @@
 
 # Build and publish the pre-built CI image to GHCR.
 #
-# The image is rebuilt when the Dockerfile or this workflow changes, and on a
-# weekly schedule to pick up the latest nightly toolchain.
+# View the images here:
+#
+#    https://github.com/datadog/libdd-rc/pkgs/container/libdd-rc%2Frust-ci
+#
+# The image is rebuilt when the Rust version, Dockerfile or this workflow
+# changes, and on a weekly schedule to pick up the latest nightly toolchain.
 
 name: ci-image
 
