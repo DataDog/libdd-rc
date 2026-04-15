@@ -45,7 +45,7 @@ jobs:
 
       - name: Generate C header via build.rs
         run: |
-          cargo build --package rc-x509-ffi
+          cargo build --package rc-x509-ffi --all-features
           echo "Header generated at include/libdd_rc.h"
 
       - name: Check for differences
@@ -59,7 +59,7 @@ jobs:
             echo "The include/libdd_rc.h file is out of sync with the Rust FFI definitions."
             echo ""
             echo "To fix this, run the following commands locally:"
-            echo "  cargo build --package rc-x509-ffi"
+            echo "  cargo build --package rc-x509-ffi --all-features"
             echo "  git add include/libdd_rc.h"
             echo "  git commit -m 'chore: update generated C header'"
             echo ""
