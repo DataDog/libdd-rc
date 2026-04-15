@@ -63,6 +63,9 @@ indexmap,https://github.com/indexmap-rs/indexmap,Apache-2.0 OR MIT,N/A
 is_terminal_polyfill,https://github.com/polyfill-rs/is_terminal_polyfill,MIT OR Apache-2.0,N/A
 itertools,https://github.com/rust-itertools/itertools,MIT OR Apache-2.0,bluss
 itoa,https://github.com/dtolnay/itoa,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
+jiff,https://github.com/BurntSushi/jiff,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
+jiff-tzdb,https://github.com/BurntSushi/jiff,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
+jiff-tzdb-platform,https://github.com/BurntSushi/jiff,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
 jobserver,https://github.com/rust-lang/jobserver-rs,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 lazy_static,https://github.com/rust-lang-nursery/lazy-static.rs,MIT OR Apache-2.0,Marvin Löbel <loebel.marvin@gmail.com>
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,The Rust Project Developers
@@ -87,6 +90,8 @@ parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanie
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 petgraph,https://github.com/petgraph/petgraph,MIT OR Apache-2.0,bluss, mitchmindtree
 pin-project-lite,https://github.com/taiki-e/pin-project-lite,Apache-2.0 OR MIT,N/A
+portable-atomic,https://github.com/taiki-e/portable-atomic,Apache-2.0 OR MIT,N/A
+portable-atomic-util,https://github.com/taiki-e/portable-atomic-util,Apache-2.0 OR MIT,N/A
 powerfmt,https://github.com/jhpratt/powerfmt,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
 ppv-lite86,https://github.com/cryptocorrosion/cryptocorrosion,MIT OR Apache-2.0,The CryptoCorrosion Contributors
 prettyplease,https://github.com/dtolnay/prettyplease,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
