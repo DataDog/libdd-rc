@@ -55,11 +55,3 @@ runs:
         restore-keys: |
           ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
           ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-
-
-    # aws-lc-fips-sys uses CMake which caches absolute paths to source files
-    # extracted during the build. The target cache preserves CMake's config
-    # but not the extracted sources, causing stale path errors on restore.
-    # Cleaning the package forces CMake to re-configure from scratch.
-    - name: Clean stale aws-lc build state
-      shell: bash
-      run: cargo clean -p aws-lc-fips-sys -p aws-lc-sys 2>/dev/null || true
