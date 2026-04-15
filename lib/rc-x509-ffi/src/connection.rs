@@ -762,6 +762,39 @@ mod tests {
         unsafe { rc_free(ctx) };
     }
 
+    /// Ensure connections obtained from the FFI layer have monotonic,
+    /// sequential connection IDs starting from 0 per [`Ctx`].
+    #[test]
+    fn test_monotonic_connection_id() {
+        let ctx = unsafe { rc_init() };
+        assert!(!ctx.is_null());
+
+        // Drive a number of connection creations and assert their IDs start at
+        // 0, and increase sequentially.
+        for want_id in [0, 1, 2] {
+            let conn = unsafe { rc_conn_new(ctx) };
+            assert!(!conn.is_null());
+            assert_eq!(unsafe { &*conn }.id.as_raw(), want_id);
+
+            unsafe extern "C" fn do_send(
+                _data: *const u8,
+                _length: u32,
+                _user_data: *const c_void,
+            ) -> SendRet {
+                SendRet::Unknown
+            }
+
+            unsafe {
+                rc_conn_send_callback(conn, do_send, ptr::null());
+                assert_matches!((&*conn).state, State::Configured { .. });
+            }
+
+            unsafe { rc_conn_free(conn) };
+        }
+
+        unsafe { rc_free(ctx) };
+    }
+
     /// This test drives the lifecycle of a connection, covering:
     ///
     ///   * Expected FFI usage is successful / no panics.
@@ -805,7 +838,11 @@ mod tests {
         // FFI call: rc_conn_new()
         let conn = unsafe { rc_conn_new(&raw mut *ctx) };
         assert!(!conn.is_null());
-        assert_matches!(unsafe { &*conn }.state, State::Init);
+        unsafe {
+            let conn = &*conn;
+            assert_matches!(conn.state, State::Init);
+            assert_eq!(conn.id.as_raw(), 0); // First connection starts at 0.
+        }
 
         // Assert the correct lifecycle event was received.
         let got = conn_events.recv().await.unwrap();

@@ -13,14 +13,23 @@
 // limitations under the License.
 
 /// A [`ConnectionId`] uniquely identifies a single connection managed by the
-/// FFI host.
+/// FFI host (e.g. a call to `rc_conn_new()`).
+///
+/// Invariant: guaranteed to be sequential, starting from 0 for the first
+/// connection created, per client instance.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub struct ConnectionId(usize);
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct ConnectionId(u64);
 
 impl ConnectionId {
     /// Construct a new [`ConnectionId`] over the ID counter value.
-    pub fn new(v: usize) -> Self {
+    pub fn new(v: u64) -> Self {
         Self(v)
+    }
+
+    /// Return the raw counter value.
+    pub fn as_raw(&self) -> u64 {
+        self.0
     }
 }
 
