@@ -12,16 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = include_str!("../README.md")]
-// This module has additional testing (miri) in CI to help with writing correct
-// unsafe code.
-#![allow(unsafe_code)]
+package libddrc
 
-mod connection;
-mod ctx;
-mod io_handle;
+/*
+#cgo LDFLAGS: -L../../target/release -lrc_x509_test_harness_go -Wl,-rpath,${SRCDIR}/../../target/release
+#include <stdlib.h>
+#include "libdd_rc_test_harness.h"
 
-pub mod test_harness;
+extern struct Ctx *rc_init_test(void);
+*/
+import "C"
 
-pub use connection::*;
-pub use ctx::*;
+// NewTestClient create client with echo test harness.
+// Echo respond with Pong to all messages. Good for test FFI layer.
+//
+// This use rc_init_test() function from FFI library.
+func NewTestClient() *Client {
+	c := &Client{ctx: C.rc_init_test()}
+	return c
+}

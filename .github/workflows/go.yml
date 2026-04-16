@@ -60,7 +60,7 @@ jobs:
       - name: Build Rust library
         env:
           AWS_LC_FIPS_SYS_CC: clang
-        run: cargo build --package rc-x509-ffi --release
+        run: cargo build --package rc-x509-test-harness-go --release
 
       - name: Run Go tests
         working-directory: wrapper/go

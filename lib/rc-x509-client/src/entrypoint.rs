@@ -21,9 +21,7 @@ use tracing::{debug, info};
 
 use tokio::pin;
 
-use crate::codec::{ClientToServer, ServerToClient};
-use crate::connection::ConnectionEvent;
-use crate::{ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
+use crate::{AbortOnDrop, ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
@@ -68,10 +66,8 @@ where
             "starting rc-x509-client instance"
         );
 
-        tokio::select! {
-            _ = handle_connection_events(conn_events) => {}
-            _ = shutdown.wait_for_shutdown() => {}
-        }
+        let _conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
+        shutdown.wait_for_shutdown().await;
 
         info!("stopping rc-x509-client instance");
     }
@@ -80,65 +76,13 @@ where
 async fn handle_connection_events<IO>(
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
 ) where
-    IO: Connection + std::fmt::Debug,
+    IO: std::fmt::Debug,
 {
     debug!("starting connection event handler");
     pin!(incoming);
 
-    let mut current_io: Option<IO> = None;
-    let mut incoming_messages: Option<std::pin::Pin<Box<IO::Incoming>>> = None;
-
-    loop {
-        tokio::select! {
-            Some(event) = incoming.next() => {
-                debug!(?event, "received connection lifecycle event");
-
-                let connection_id = event.id();
-                match event.into_event() {
-                    ConnectionEvent::Connected(mut io) => {
-                        debug!(connection_id = ?connection_id, "connection established");
-
-                        if let Some(stream) = io.take_recv_stream() {
-                            incoming_messages = Some(Box::pin(stream));
-                            current_io = Some(io);
-                        }
-                    }
-                    ConnectionEvent::Disconnected => {
-                        debug!("connection disconnected");
-                        incoming_messages = None;
-                        current_io = None;
-                    }
-                    _ => {}
-                }
-            }
-
-            Some(message_result) = async {
-                match &mut incoming_messages {
-                    Some(stream) => stream.next().await,
-                    None => None,
-                }
-            } => {
-                match message_result {
-                    Ok(ServerToClient::Ping) => {
-                        debug!("received Ping, sending Pong");
-                        if let Some(io) = &mut current_io
-                            && let Err(e) = io.send(ClientToServer::Pong).await{
-                            debug!(?e, "failed to send Pong response");
-                            incoming_messages = None;
-                            current_io = None;
-                        }
-                    }
-                    Ok(ServerToClient::CertificatePush(_)) => {
-                        debug!("received CertificatePush");
-                    }
-                    Err(e) => {
-                        debug!(?e, "failed to decode incoming message");
-                    }
-                }
-            }
-
-            else => break
-        }
+    while let Some(event) = incoming.next().await {
+        debug!(?event, "received connection lifecycle event");
     }
 
     debug!("stopping connection event handler");

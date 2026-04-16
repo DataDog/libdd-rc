@@ -1325,6 +1325,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-x509-test-harness-go"
+version = "0.1.0"
+dependencies = [
+ "cbindgen",
+ "rc-x509-ffi",
+]
+
+[[package]]
 name = "rcgen"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

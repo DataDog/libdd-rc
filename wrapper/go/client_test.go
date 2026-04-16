@@ -366,7 +366,7 @@ func TestMultipleConnections(t *testing.T) {
 }
 
 func TestSenderFunc(t *testing.T) {
-	client := NewClient()
+	client := NewTestClient()
 	defer client.Close()
 
 	var called bool
@@ -464,4 +464,52 @@ func TestConnectionContextCancellation(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	conn.Disconnect()
+}
+
+func TestEchoHarness(t *testing.T) {
+	client := NewTestClient()
+	if client == nil {
+		t.Fatal("NewTestClient() returned nil")
+	}
+	defer client.Close()
+
+	if client.ctx == nil {
+		t.Fatal("client.ctx is nil")
+	}
+
+	sender := &mockSender{}
+	conn, err := client.NewConnection(sender)
+	if err != nil {
+		t.Fatalf("NewConnection() failed: %v", err)
+	}
+	defer func() {
+		conn.Disconnect()
+		conn.Close()
+	}()
+
+	ctx := context.Background()
+	if err := conn.Connect(ctx); err != nil {
+		t.Fatalf("Connect() failed: %v", err)
+	}
+
+	testData := []byte{0x01, 0x02, 0x03, 0x04}
+	if err := conn.Receive(testData); err != nil {
+		t.Fatalf("Receive() failed: %v", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	sentData := sender.GetSentData()
+	if len(sentData) == 0 {
+		t.Fatal("Echo harness did not send response")
+	}
+
+	var response testproto.ClientToServer
+	if err := proto.Unmarshal(sentData[0], &response); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
+	}
+
+	if _, ok := response.Message.(*testproto.ClientToServer_Pong); !ok {
+		t.Fatalf("Expected Pong response, got: %T", response.Message)
+	}
 }

@@ -44,6 +44,21 @@ pub unsafe extern "C" fn rc_init() -> *mut Ctx {
     Box::into_raw(Ctx::new(Main::default()))
 }
 
+/// Initialise test [`Ctx`] with echo entrypoint for testing.
+///
+/// Echo entrypoint respond with Pong to all messages. Good for test FFI layer.
+///
+///   * Called by: `test code`.
+///   * Ownership: returns ownership of [`Ctx`] to caller.
+///
+/// # Safety
+///
+/// This call is always safe.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rc_init_test() -> *mut Ctx {
+    Box::into_raw(crate::test_harness::new_echo_ctx())
+}
+
 /// Stop the client running in [`Ctx`], and release all resources held by
 /// [`Ctx`].
 ///
