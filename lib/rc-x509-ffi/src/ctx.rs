@@ -15,7 +15,7 @@
 //! Client library executor handle for FFI callers.
 
 use std::{
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, Ordering},
     time::Duration,
 };
 
@@ -101,7 +101,7 @@ pub struct Ctx {
 
     /// The [`ConnectionId`] value that is assigned to the next call to
     /// [`Ctx::new_connection()`].
-    next_connection_id: AtomicUsize,
+    next_connection_id: AtomicU64,
 
     /// A sink through which [`ConnectionUpdate`] events are published.
     ///
@@ -158,7 +158,7 @@ impl Ctx {
             runtime_thread,
             runtime_handle,
             shutdown,
-            next_connection_id: AtomicUsize::new(0),
+            next_connection_id: AtomicU64::new(0),
             connection_events,
         })
     }
