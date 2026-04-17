@@ -1,5 +1,5 @@
 [package]
-name = "rc-x509-test-harness-go"
+name = "rc-x509-test-harness"
 version = "0.1.0"
 edition.workspace = true
 license = "Apache-2.0"
@@ -9,6 +9,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rc-x509-ffi = { version = "0.1.0", path = "../rc-x509-ffi" }
+futures = "0.3.32"
+rc-x509-client = { version = "0.1.0", path = "../rc-x509-client" }
+tokio = { version = "1.51.0", features = ["macros", "rt"] }
 
 [lints]
 workspace = true

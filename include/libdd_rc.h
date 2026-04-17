@@ -331,18 +331,4 @@ void rc_free(struct Ctx *ctx);
  */
 struct Ctx *rc_init(void);
 
-/*
- Initialise test [`Ctx`] with echo entrypoint for testing.
-
- Echo entrypoint respond with Pong to all messages. Good for test FFI layer.
-
-   * Called by: `test code`.
-   * Ownership: returns ownership of [`Ctx`] to caller.
-
- # Safety
-
- This call is always safe.
- */
-struct Ctx *rc_init_test(void);
-
 #endif  /* LIBDD_RC_H */

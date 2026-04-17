@@ -1325,11 +1325,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "rc-x509-test-harness-go"
+name = "rc-x509-test-harness"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
+ "futures",
+ "rc-x509-client",
  "rc-x509-ffi",
+ "tokio",
 ]
 
 [[package]]

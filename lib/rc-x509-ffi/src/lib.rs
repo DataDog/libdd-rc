@@ -21,7 +21,5 @@ mod connection;
 mod ctx;
 mod io_handle;
 
-pub mod test_harness;
-
 pub use connection::*;
 pub use ctx::*;

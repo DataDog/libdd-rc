@@ -1,23 +1,11 @@
-// Copyright 2026-Present Datadog, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-//! Test harness for FFI layer testing.
+//! Test harness for Go FFI tests.
 //!
-//! Provides simple echo entrypoint for Go wrapper tests.
+//! This crate re-export all FFI functions from rc-x509-ffi
+//! and provide test-specific functionality.
+
+#![allow(unsafe_code)]
 
 use futures::{Stream, StreamExt, pin_mut};
-
 use rc_x509_client::{
     ShutdownSignal,
     codec::ClientToServer,
@@ -26,7 +14,8 @@ use rc_x509_client::{
     host_runtime::Connection,
 };
 
-use crate::Ctx;
+// Re-export everything from rc-x509-ffi
+pub use rc_x509_ffi::*;
 
 /// Echo entrypoint that respond to all messages with Pong.
 ///
@@ -68,6 +57,21 @@ where
 }
 
 /// Make Ctx with echo entrypoint for tests.
-pub fn new_echo_ctx() -> Box<Ctx> {
-    Ctx::new(EchoEntrypoint)
+pub fn new_echo_ctx() -> Box<rc_x509_ffi::Ctx> {
+    rc_x509_ffi::Ctx::new(EchoEntrypoint)
+}
+
+/// Initialise test [`Ctx`] with echo entrypoint for testing.
+///
+/// Echo entrypoint respond with Pong to all messages. Good for test FFI layer.
+///
+///   * Called by: `test code`.
+///   * Ownership: returns ownership of [`Ctx`] to caller.
+///
+/// # Safety
+///
+/// This call is always safe.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rc_init_test() -> *mut rc_x509_ffi::Ctx {
+    Box::into_raw(new_echo_ctx())
 }
