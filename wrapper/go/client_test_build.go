@@ -15,7 +15,7 @@
 package libddrc
 
 /*
-#cgo LDFLAGS: -L../../target/release -lrc_x509_test_harness -Wl,-rpath,${SRCDIR}/../../target/release
+#cgo LDFLAGS: -L../../target/debug -lrc_x509_test_harness -Wl,-rpath,${SRCDIR}/../../target/debug
 #include <stdlib.h>
 #include "libdd_rc_test_harness.h"
 
