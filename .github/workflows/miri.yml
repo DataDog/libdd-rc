@@ -43,8 +43,5 @@ jobs:
         with:
           cache-key-prefix: miri
 
-      - name: install miri
-        run: rustup +nightly component add miri
-
       - name: miri
         run: cargo +nightly miri test -p rc-x509-ffi
