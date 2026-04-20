@@ -26,6 +26,8 @@ on:
       - main
 
 env:
+  # Pre-installed dependencies in the build image are here.
+  GOPATH: "/root/go"
   # https://github.com/aws/aws-lc-rs/issues/569
   AWS_LC_FIPS_SYS_CC: clang
 

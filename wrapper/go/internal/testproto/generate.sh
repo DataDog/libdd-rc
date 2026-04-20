@@ -23,7 +23,7 @@ PROTO_DIR="${REPO_ROOT}/lib/rc-x509-proto/protos"
 PROTO_FILE="${PROTO_DIR}/protocol.proto"
 OUT_DIR="${SCRIPT_DIR}"
 
-export PATH="$(go env GOPATH)/bin:$PATH"
+export PATH="$PATH:$(go env GOPATH)/bin"
 export PROTOC_GEN_GO="$(go env GOPATH)/bin/protoc-gen-go"
 
 # Check required tools
