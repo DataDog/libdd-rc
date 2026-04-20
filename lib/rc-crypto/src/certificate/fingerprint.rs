@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Display, sync::OnceLock};
+use std::fmt::Display;
 
 use aws_lc_rs::digest::{SHA256, digest};
 use x509_parser::prelude::X509Certificate;
 
-use crate::hex::colon_string;
+use crate::{cached_string_repr::CachedStringRepr, hex::colon_string};
 
 /// The byte length of a fingerprint is always 32 for SHA256 digests.
 const FINGERPRINT_LEN: usize = aws_lc_rs::digest::SHA256_OUTPUT_LEN;
@@ -35,14 +35,14 @@ const FINGERPRINT_LEN: usize = aws_lc_rs::digest::SHA256_OUTPUT_LEN;
 ///
 /// [`Certificate`]: super::Certificate
 /// [RFC 4387 § 2.2]: https://datatracker.ietf.org/doc/html/rfc4387#section-2.2
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Fingerprint {
     digest: [u8; FINGERPRINT_LEN],
 
     /// A lazily-rendered string representation of `digest`.
     ///
     /// See [`Self::as_hex_str()`] for initialisation.
-    rendered: OnceLock<String>,
+    rendered: CachedStringRepr,
 }
 
 impl Fingerprint {
@@ -65,12 +65,6 @@ impl Fingerprint {
 impl Display for Fingerprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_hex_str())
-    }
-}
-
-impl PartialEq for Fingerprint {
-    fn eq(&self, other: &Self) -> bool {
-        self.digest == other.digest
     }
 }
 

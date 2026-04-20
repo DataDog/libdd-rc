@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Display, ops::RangeInclusive, sync::OnceLock};
+use std::{fmt::Display, ops::RangeInclusive};
 
 use bytes::Bytes;
 use x509_parser::prelude::X509Certificate;
 
-use crate::hex::colon_string;
+use crate::{cached_string_repr::CachedStringRepr, hex::colon_string};
 
 /// The allowable [`SerialNumber`] byte lengths.
 const VALID_LENGTHS: RangeInclusive<usize> = 1..=20;
@@ -62,7 +62,7 @@ pub struct SerialNumber {
     /// A lazily-rendered string representation of `bytes`.
     ///
     /// See [`Self::as_hex_str()`] for initialisation.
-    rendered: OnceLock<String>,
+    rendered: CachedStringRepr,
 }
 
 impl SerialNumber {
@@ -207,11 +207,6 @@ mod tests {
 
             // Invariant: the byte accessor returns the raw serial bytes.
             assert_eq!(serial.as_bytes(), &value);
-
-            // Optimisation: the pre-allocated string buffer is always the
-            // correct size.
-            let buf = serial.rendered.get().unwrap();
-            assert_eq!(buf.capacity(), buf.len());
         }
     }
 }

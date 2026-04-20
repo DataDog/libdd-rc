@@ -36,6 +36,7 @@ use criterion as _;
 #[cfg(test)]
 mod valuable_assert;
 
+mod cached_string_repr;
 pub mod certificate;
 mod hex;
 pub mod issuer;
