@@ -28,10 +28,11 @@ fn main() {
     let output_file = workspace_dir.join("include/libdd_rc_test_harness.h");
     let config_path = workspace_dir.join("cbindgen.toml");
 
-    let mut config = cbindgen::Config::from_file(&config_path)
-        .expect("Failed to load cbindgen.toml");
+    let mut config =
+        cbindgen::Config::from_file(&config_path).expect("Failed to load cbindgen.toml");
 
-    config.header = Some(r#"/* Copyright 2026-Present Datadog, Inc.
+    config.header = Some(
+        r#"/* Copyright 2026-Present Datadog, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +54,9 @@ fn main() {
  */
 
 #include "libdd_rc.h"
-"#.to_string());
+"#
+        .to_string(),
+    );
     config.include_guard = Some("LIBDD_RC_TEST_HARNESS_H".to_string());
 
     cbindgen::Builder::new()

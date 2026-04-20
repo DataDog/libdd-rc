@@ -13,9 +13,6 @@
 // limitations under the License.
 
 //! Test harness for Go FFI tests.
-//!
-//! This crate re-export all FFI functions from rc-x509-ffi
-//! and provide test-specific functionality.
 
 #![allow(unsafe_code)]
 

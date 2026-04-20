@@ -47,8 +47,8 @@ jobs:
         with:
           cache-key-prefix: go
 
-      - name: Build Rust test harness for ffi crate
-        run: cargo build -p rc-x509-test-harness
+      - name: Build test harness for ffi crate
+        run: cargo build -p rc-x509-ffi -p rc-x509-test-harness
 
       - name: Generate Go protobuf via go generate
         working-directory: wrapper/go
