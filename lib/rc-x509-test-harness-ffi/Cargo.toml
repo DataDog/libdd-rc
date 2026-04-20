@@ -13,28 +13,22 @@
 # limitations under the License.
 
 [package]
-name = "rc-x509-client"
+name = "rc-x509-test-harness-ffi"
 version = "0.1.0"
 edition.workspace = true
 license = "Apache-2.0"
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rc-x509-ffi = { version = "0.1.0", path = "../rc-x509-ffi" }
+futures = "0.3.32"
+rc-x509-client = { version = "0.1.0", path = "../rc-x509-client" }
+tokio = { version = "1.51.0", features = ["macros", "rt"] }
 
 [lints]
 workspace = true
 
-[dependencies]
-futures = "0.3.32"
-rc-x509-proto = { version = "0.1.0", path = "../rc-x509-proto" }
-rc-crypto = { version = "0.1.0", path = "../rc-crypto" }
-thiserror = "2.0.18"
-tokio = { version = "1.51.0", features = ["macros", "parking_lot", "rt", "sync", "time"] }
-tokio-util = "0.7.18"
-tracing = "0.1.44"
-bytes = "1.11.1"
-
-[dev-dependencies]
-assert_matches = "1.5.0"
-proptest = "1.11.0"
-proptest-derive = "0.8.0"
+[build-dependencies]
+cbindgen = "0.29.0"

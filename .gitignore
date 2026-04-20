@@ -1,1 +1,3 @@
 /target
+/include/*_test_harness*.h
+**/.pb.go
