@@ -48,7 +48,7 @@ jobs:
           cache-key-prefix: go
 
       - name: Build test harness for ffi crate
-        run: cargo build -p rc-x509-ffi -p rc-x509-test-harness
+        run: cargo build -p rc-x509-ffi -p rc-x509-test-harness-ffi
 
       - name: Generate Go protobuf via go generate
         working-directory: wrapper/go

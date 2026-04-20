@@ -1325,7 +1325,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rc-x509-test-harness"
+name = "rc-x509-test-harness-ffi"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
