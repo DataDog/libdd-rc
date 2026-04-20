@@ -45,6 +45,13 @@ impl IssuerCertId {
         self.0.as_bytes()
     }
 
+    /// Return a reference to the inner [`CertId`], allowing this issuer
+    /// identifier to be used as a lookup key in collections indexed by
+    /// [`CertId`].
+    pub fn as_cert_id(&self) -> &CertId {
+        &self.0
+    }
+
     /// Obtain a wrapper type that has a [`PartialEq`] implementation, allowing
     /// this value to be compared to other values with the correctness caveats
     /// documented for this type.
@@ -115,6 +122,7 @@ mod tests {
         let aki = fixture_aki();
 
         assert_eq!(aki.as_hex_str(), FIXTURE_AKI_STR,);
+        assert_eq!(aki.as_cert_id().as_hex_str(), FIXTURE_AKI_STR);
     }
 
     #[test]
