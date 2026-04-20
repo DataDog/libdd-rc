@@ -23,6 +23,9 @@ PROTO_DIR="${REPO_ROOT}/lib/rc-x509-proto/protos"
 PROTO_FILE="${PROTO_DIR}/protocol.proto"
 OUT_DIR="${SCRIPT_DIR}"
 
+export PATH="$(go env GOPATH)/bin:$PATH"
+export PROTOC_GEN_GO="$(go env GOPATH)/bin/protoc-gen-go"
+
 # Check required tools
 if ! command -v protoc &>/dev/null; then
   echo "Error: protoc not installed" >&2

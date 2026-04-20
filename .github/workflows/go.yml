@@ -25,6 +25,10 @@ on:
     branches:
       - main
 
+env:
+  # https://github.com/aws/aws-lc-rs/issues/569
+  AWS_LC_FIPS_SYS_CC: clang
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -42,8 +46,6 @@ jobs:
           cache-key-prefix: go
 
       - name: Build Rust test harness for ffi crate
-        env:
-          AWS_LC_FIPS_SYS_CC: clang
         run: cargo build -p rc-x509-test-harness
 
       - name: Generate Go protobuf via go generate
