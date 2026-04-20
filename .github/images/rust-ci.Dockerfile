@@ -65,6 +65,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # cleanup
     && rm -rf /var/lib/apt/lists/*
 
+# Go wrapper dependency.
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+ENV PROTOC_GEN_GO="$(go env GOPATH)/bin/protoc-gen-go"
+ENV PATH="$(go env GOPATH)/bin:$PATH"
+
 RUN rustup component add clippy \
     && rustup toolchain install nightly \
     && rustup +nightly component add miri
