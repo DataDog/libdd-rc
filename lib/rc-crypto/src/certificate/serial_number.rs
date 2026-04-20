@@ -141,6 +141,12 @@ mod tests {
     use super::*;
 
     use proptest::prelude::*;
+    use static_assertions::assert_not_impl_any;
+
+    // Why: a SerialNumber can be set to anything by the issuer, making it
+    // unreliable as a unique identifier, and should not be used to compare two
+    // certificates for equality.
+    assert_not_impl_any!(SerialNumber: PartialEq, Eq);
 
     #[test]
     fn test_fixture() {
