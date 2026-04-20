@@ -1264,6 +1264,7 @@ dependencies = [
  "pem",
  "proptest",
  "rcgen",
+ "smallvec",
  "static_assertions",
  "thiserror",
  "valuable",

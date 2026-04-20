@@ -179,7 +179,7 @@ impl From<rcgen::Certificate> for Certificate {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use std::fmt::Display;
 
     use crate::valuable_assert::assert_valuable_repr;
@@ -236,6 +236,14 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         assert_eq!(a.fingerprint, b.fingerprint);
     }
 
+    /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
+    pub(crate) fn cert_fixture() -> Certificate {
+        let pem =
+            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
+
+        Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
+    }
+
     #[test]
     fn test_fixture() {
         let pem =
@@ -266,14 +274,6 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
 
         // Assert the generated result (inc. line endings).
         assert_eq!(cert.generate_pem(), pem);
-    }
-
-    /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
-    fn cert_fixture() -> Certificate {
-        let pem =
-            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
-
-        Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
     }
 
     #[test]

@@ -32,6 +32,7 @@ jiff = "0.2.23"
 rcgen = { version = "0.14.7", default-features = false, features = ["pem", "x509-parser"] }
 x509-parser = { version = "0.18" }
 pem = "3"
+smallvec = "1.15.1"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
