@@ -54,7 +54,26 @@ message Ping {}
 // The response to a `Ping` message from the server.
 message Pong {}
 
-message ClientHello {}
+message ClientHello {
+  // The unique, sequential connection ID assigned to this logical client
+  // connection (starting value: 0);
+  //
+  // This value persists for the lifetime of a logical client connection, each
+  // of which may experience multiple reconnection events. This value increases
+  // only when multiple connections are created by the host runtime (calls to
+  // `rc_conn_new()`).
+  uint64 connection_id = 1;
+
+  // The number of times this logical connection has been gracefully
+  // disconnected from the RC backend by the RC server (per-`connection_id`,
+  // starting value: 0).
+  uint64 graceful_disconnection_count = 2;
+
+  // The number of times this logical connection has been forcibly /
+  // ungracefully disconnected from the RC backend (per-`connection_id`,
+  // starting value: 0).
+  uint64 ungraceful_disconnection_count = 3;
+}
 
 // An X509 certificate as raw DER-encoded bytes.
 message Certificate {
