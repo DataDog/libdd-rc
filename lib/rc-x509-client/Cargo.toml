@@ -19,7 +19,6 @@ edition.workspace = true
 license = "Apache-2.0"
 
 [lib]
-name = "rc_x509_client"
 crate-type = ["rlib"]
 
 [lints]
