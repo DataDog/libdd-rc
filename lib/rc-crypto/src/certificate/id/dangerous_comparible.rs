@@ -1,66 +1,115 @@
+use std::{borrow::Cow, fmt::Debug};
+
 use crate::certificate::id::{CertId, IssuerCertId};
 
 /// A wrapper over `T` that allows making equality comparisons against values
 /// that have high risk of correctness issues (e.g. easily forged).
-#[derive(Debug, Hash, Clone)]
-pub struct DangerousComparableId<T>(T);
+#[derive(Hash, Clone)]
+pub struct DangerousComparableId<'a, T>(Cow<'a, T>)
+where
+    T: ToOwned + ?Sized + 'a;
 
-impl<T> AsRef<T> for DangerousComparableId<T> {
-    fn as_ref(&self) -> &T {
-        &self.0
+impl<'a, T> Debug for DangerousComparableId<'a, T>
+where
+    T: Debug + ToOwned,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("DangerousComparableId")
+            .field(self.0.as_ref())
+            .finish()
     }
 }
 
-/////
+impl<'a, T> DangerousComparableId<'a, T>
+where
+    T: ToOwned + ?Sized + 'static,
+{
+    /// Consume this value, cloning the inner data if borrowed, and return an
+    /// owned `DangerousComparableId<'static, T>`.
+    pub fn into_owned(self) -> DangerousComparableId<'static, T> {
+        DangerousComparableId(Cow::Owned(self.0.into_owned()))
+    }
+}
 
-impl From<CertId> for DangerousComparableId<CertId> {
+impl<'a, T> Eq for DangerousComparableId<'a, T>
+where
+    DangerousComparableId<'a, T>: PartialEq,
+    T: ToOwned,
+{
+}
+
+///// CertId impls
+
+impl<'a> From<CertId> for DangerousComparableId<'a, CertId> {
     fn from(value: CertId) -> Self {
-        Self(value)
+        Self(Cow::Owned(value))
     }
 }
 
-impl PartialEq for DangerousComparableId<CertId> {
+impl<'a> From<&'a CertId> for DangerousComparableId<'a, CertId> {
+    fn from(value: &'a CertId) -> Self {
+        Self(Cow::Borrowed(value))
+    }
+}
+
+impl<'a> PartialEq for DangerousComparableId<'a, CertId> {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_bytes() == other.0.as_bytes()
     }
 }
 
-impl PartialEq<DangerousComparableId<CertId>> for DangerousComparableId<IssuerCertId> {
-    fn eq(&self, other: &DangerousComparableId<CertId>) -> bool {
+impl<'a> PartialEq<DangerousComparableId<'a, CertId>> for DangerousComparableId<'a, IssuerCertId> {
+    fn eq(&self, other: &DangerousComparableId<'a, CertId>) -> bool {
         self.0.as_bytes() == other.0.as_bytes()
     }
 }
 
-impl PartialEq<CertId> for DangerousComparableId<CertId> {
+impl<'a> PartialEq<CertId> for DangerousComparableId<'a, CertId> {
     fn eq(&self, other: &CertId) -> bool {
         self.0.as_bytes() == other.as_bytes()
     }
 }
 
-/////
-
-impl From<IssuerCertId> for DangerousComparableId<IssuerCertId> {
-    fn from(value: IssuerCertId) -> Self {
-        Self(value)
-    }
-}
-
-impl PartialEq for DangerousComparableId<IssuerCertId> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_bytes() == other.0.as_bytes()
-    }
-}
-
-impl PartialEq<DangerousComparableId<IssuerCertId>> for DangerousComparableId<CertId> {
-    fn eq(&self, other: &DangerousComparableId<IssuerCertId>) -> bool {
-        self.0.as_bytes() == other.0.as_bytes()
-    }
-}
-
-impl PartialEq<IssuerCertId> for DangerousComparableId<IssuerCertId> {
+impl<'a> PartialEq<IssuerCertId> for DangerousComparableId<'a, CertId> {
     fn eq(&self, other: &IssuerCertId) -> bool {
         self.0.as_bytes() == other.as_bytes()
     }
 }
 
-impl<T> Eq for DangerousComparableId<T> where DangerousComparableId<T>: PartialEq {}
+///// IssuerCertId impls
+
+impl<'a> From<IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
+    fn from(value: IssuerCertId) -> Self {
+        Self(Cow::Owned(value))
+    }
+}
+
+impl<'a> From<&'a IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
+    fn from(value: &'a IssuerCertId) -> Self {
+        Self(Cow::Borrowed(value))
+    }
+}
+
+impl<'a> PartialEq for DangerousComparableId<'a, IssuerCertId> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_bytes() == other.0.as_bytes()
+    }
+}
+
+impl<'a> PartialEq<DangerousComparableId<'a, IssuerCertId>> for DangerousComparableId<'a, CertId> {
+    fn eq(&self, other: &DangerousComparableId<'a, IssuerCertId>) -> bool {
+        self.0.as_bytes() == other.0.as_bytes()
+    }
+}
+
+impl<'a> PartialEq<CertId> for DangerousComparableId<'a, IssuerCertId> {
+    fn eq(&self, other: &CertId) -> bool {
+        self.0.as_bytes() == other.as_bytes()
+    }
+}
+
+impl<'a> PartialEq<IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
+    fn eq(&self, other: &IssuerCertId) -> bool {
+        self.0.as_bytes() == other.as_bytes()
+    }
+}

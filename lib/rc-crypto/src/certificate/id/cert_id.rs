@@ -52,10 +52,10 @@ impl CertId {
         &self.bytes
     }
 
-    /// Obtain a wrapper type that has a [`PartialEq`] implementation, allowing
-    /// this value to be compared to other values with the correctness caveats
-    /// documented for this type.
-    pub fn into_dangerous_comparable(self) -> DangerousComparableId<Self> {
+    /// Obtain a borrowed wrapper type that has a [`PartialEq`] implementation,
+    /// allowing this value to be compared to other values with the correctness
+    /// caveats documented for this type.
+    pub fn as_dangerous_comparable(&self) -> DangerousComparableId<'_, Self> {
         DangerousComparableId::from(self)
     }
 }
@@ -129,5 +129,12 @@ mod tests {
         let aki = fixture_ski();
 
         assert_valuable_repr(&aki, FIXTURE_SKI_STR);
+    }
+
+    #[test]
+    fn test_danger_eq() {
+        let ski = fixture_ski();
+
+        assert_eq!(ski.as_dangerous_comparable(), ski);
     }
 }
