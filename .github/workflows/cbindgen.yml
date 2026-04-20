@@ -40,11 +40,6 @@ jobs:
         with:
           cache-key-prefix: dev
 
-      - name: Install protoc-gen-go
-        run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          echo "PROTOC_GEN_GO=$(go env GOPATH)/bin/protoc-gen-go" >> $GITHUB_ENV
-
       - name: Save committed generated files
         run: |
           cp include/libdd_rc.h include/libdd_rc.h.committed

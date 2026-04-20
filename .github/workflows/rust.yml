@@ -56,11 +56,6 @@ jobs:
         with:
           cache-key-prefix: ${{ matrix.name }}
 
-      - name: Install protoc-gen-go
-        run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          echo "PROTOC_GEN_GO=$(go env GOPATH)/bin/protoc-gen-go" >> $GITHUB_ENV
-
       - name: ${{ matrix.name }}
         run: ${{ matrix.cmd }}
 

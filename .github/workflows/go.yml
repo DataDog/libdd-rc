@@ -39,11 +39,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install protoc-gen-go
-        run: |
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          echo "PROTOC_GEN_GO=$(go env GOPATH)/bin/protoc-gen-go" >> $GITHUB_ENV
-
       - name: Cache Rust dependencies
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
