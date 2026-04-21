@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use smallvec::SmallVec;
 use thiserror::Error;
 use valuable::Valuable;
@@ -57,6 +59,12 @@ impl CertId {
     /// caveats documented for this type.
     pub fn as_dangerous_comparable(&self) -> DangerousComparableId<'_, Self> {
         DangerousComparableId::from(self)
+    }
+}
+
+impl Display for CertId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_hex_str())
     }
 }
 
