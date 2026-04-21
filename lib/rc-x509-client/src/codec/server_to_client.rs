@@ -19,9 +19,8 @@ use rc_x509_proto::{
     decode,
     protocol::v1::{self, server_to_client::Message},
 };
+use rc_x509_trust::cert::UntrustedCert;
 use thiserror::Error;
-
-use crate::trust::UntrustedCert;
 
 /// Errors parsing incoming messages from the RC delivery backend.
 #[derive(Debug, Error)]
@@ -76,8 +75,8 @@ impl TryFrom<&[u8]> for ServerToClient {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use bytes::Bytes;
     use proptest::prelude::*;
+    use tokio_util::bytes::Bytes;
 
     use super::*;
 

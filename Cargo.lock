@@ -1274,12 +1274,12 @@ name = "rc-x509-client"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
- "bytes",
  "futures",
  "proptest",
  "proptest-derive",
  "rc-crypto",
  "rc-x509-proto",
+ "rc-x509-trust",
  "thiserror",
  "tokio",
  "tokio-util",
@@ -1322,6 +1322,14 @@ dependencies = [
  "proptest-derive",
  "prost",
  "prost-build",
+]
+
+[[package]]
+name = "rc-x509-trust"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "rc-crypto",
 ]
 
 [[package]]

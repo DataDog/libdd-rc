@@ -23,6 +23,7 @@ members = [
 	"lib/rc-x509-ffi",
 	"lib/rc-x509-ffi/fuzz",
 	"lib/rc-x509-proto",
+	"lib/rc-x509-trust",
 ]
 
 [workspace.lints.clippy]

@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Code to establish trust between [`Certificate`].
-//!
-//! [`Certificate`]: rc_crypto::certificate::Certificate
+#![doc = include_str!("../README.md")]
 
-#![allow(dead_code)]
-
-mod untrusted_cert;
-
-pub use untrusted_cert::*;
+pub mod cert;
