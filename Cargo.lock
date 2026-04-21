@@ -1259,6 +1259,7 @@ dependencies = [
  "aws-lc-rs",
  "bytes",
  "criterion",
+ "equivalent",
  "hex",
  "jiff",
  "pem",

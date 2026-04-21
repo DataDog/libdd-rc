@@ -1,5 +1,7 @@
 use std::{borrow::Cow, fmt::Debug};
 
+use equivalent::Equivalent;
+
 use crate::certificate::id::{CertId, IssuerCertId};
 
 /// A wrapper over `T` that allows making equality comparisons against values
@@ -76,6 +78,12 @@ impl<'a> PartialEq<IssuerCertId> for DangerousComparableId<'a, CertId> {
     }
 }
 
+impl Equivalent<DangerousComparableId<'static, CertId>> for CertId {
+    fn equivalent(&self, key: &DangerousComparableId<'static, CertId>) -> bool {
+        key == self
+    }
+}
+
 ///// IssuerCertId impls
 
 impl<'a> From<IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
@@ -111,5 +119,11 @@ impl<'a> PartialEq<CertId> for DangerousComparableId<'a, IssuerCertId> {
 impl<'a> PartialEq<IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
     fn eq(&self, other: &IssuerCertId) -> bool {
         self.0.as_bytes() == other.as_bytes()
+    }
+}
+
+impl Equivalent<DangerousComparableId<'static, IssuerCertId>> for IssuerCertId {
+    fn equivalent(&self, key: &DangerousComparableId<'static, IssuerCertId>) -> bool {
+        key == self
     }
 }
