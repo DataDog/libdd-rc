@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{fmt::Display, sync::OnceLock};
+use std::fmt::Display;
 
 use aws_lc_rs::digest::{SHA256, SHA256_OUTPUT_LEN};
 use thiserror::Error;
 
-use crate::{hex::colon_string, keys::PublicKey};
+use crate::{cached_string_repr::CachedStringRepr, hex::colon_string, keys::PublicKey};
 
 /// Constructing a [`KeyId`] from a byte slice failed due to incorrect length.
 #[derive(Debug, Error)]
@@ -34,22 +34,14 @@ pub struct KeyIdParseError(usize);
 /// [RFC 5280 § 4.1]: https://tools.ietf.org/html/rfc5280#section-4.1
 /// [RFC 5280 § 4.2.1.2]:
 ///     https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct KeyId {
     digest: [u8; SHA256_OUTPUT_LEN],
 
     /// A lazily-rendered string representation of `digest`.
     ///
     /// See [`Self::as_hex_str()`] for initialisation.
-    rendered: OnceLock<String>,
-    //
-    // NOTE: the manual Hash impl when adding fields.
-}
-
-impl std::hash::Hash for KeyId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.digest.hash(state);
-    }
+    rendered: CachedStringRepr,
 }
 
 impl KeyId {
@@ -112,6 +104,8 @@ impl Display for KeyId {
 
 #[cfg(test)]
 mod tests {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
     use crate::keys::{PrivateKey, tests::fixture_key};
 
     use super::*;
@@ -142,5 +136,37 @@ mod tests {
 
         let ski = KeyId::from(&public);
         assert_eq!(ski, KeyId::from(&public));
+    }
+
+    #[test]
+    fn test_eq() {
+        let key = fixture_key();
+        let a = KeyId::from(&key.public_key());
+        let b = KeyId::from(&key.public_key());
+
+        assert_eq!(a, b);
+
+        // Drive the population of the cached rendered repr.
+        let _ = b.to_string();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_hash() {
+        let key = fixture_key();
+        let a = KeyId::from(&key.public_key());
+        let b = KeyId::from(&key.public_key());
+
+        fn do_hash<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+
+        assert_eq!(do_hash(&a), do_hash(&b));
+
+        // Drive the population of the cached rendered repr.
+        let _ = b.to_string();
+        assert_eq!(do_hash(&a), do_hash(&b));
     }
 }
