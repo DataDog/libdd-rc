@@ -30,4 +30,4 @@ A certificate is considered valid iff:
 Additionally, a leaf / payload signer certificate has the following additional
 requirements:
 
-1. The certificate has an EKU for `codeSigning`.
+1. The certificate has an EKU (Extended Key Usage) for `codeSigning`.
