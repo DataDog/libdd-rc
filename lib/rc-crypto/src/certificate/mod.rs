@@ -18,6 +18,7 @@
 mod certificate;
 pub mod csr;
 mod fingerprint;
+pub mod id;
 mod serial_number;
 mod validity;
 

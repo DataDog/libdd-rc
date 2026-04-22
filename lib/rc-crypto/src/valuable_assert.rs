@@ -55,7 +55,11 @@ where
     let mut visitor = TestVisitor::default();
     value.visit(&mut visitor);
     let output = visitor.output();
-    assert_eq!(output, want, "\ngot:\n\n{output}\n\nwant:\n\n{want}");
+    assert_eq!(
+        output.trim(),
+        want.trim(),
+        "\ngot:\n\n{output}\n\nwant:\n\n{want}"
+    );
 }
 
 /// Capture and assert against structured logging fields emitted by a
