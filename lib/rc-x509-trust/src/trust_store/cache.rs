@@ -37,11 +37,33 @@ impl CertCache for MemoryCertCache {
     }
 
     fn get<'a>(&self, cert_id: &CertId) -> Option<Arc<Certificate>> {
-        self.certs.get(cert_id).map(Arc::clone)
+        let got = self.certs.get(cert_id).map(Arc::clone);
+
+        if let Some(cert) = &got {
+            // Invariant: any returned certificate MUST have the same cert ID as
+            // the query value.
+            assert_eq!(
+                cert.cert_id().as_dangerous_comparable(),
+                cert_id.as_dangerous_comparable()
+            );
+        }
+
+        got
     }
 
     fn remove<'a>(&mut self, cert_id: &CertId) -> bool {
-        self.certs.remove(cert_id).is_some()
+        let removed = self.certs.remove(cert_id);
+
+        if let Some(cert) = &removed {
+            // Invariant: any removed certificate MUST have the same cert ID as
+            // the query value.
+            assert_eq!(
+                cert.cert_id().as_dangerous_comparable(),
+                cert_id.as_dangerous_comparable()
+            );
+        }
+
+        removed.is_some()
     }
 }
 
