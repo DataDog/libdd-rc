@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Certificate validation helpers.
+mod builder;
+pub(crate) mod template;
 
-mod root;
-mod untrusted;
-
-pub use root::*;
-pub use untrusted::*;
+pub(crate) use builder::*;

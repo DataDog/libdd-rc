@@ -12,10 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Certificate validation helpers.
+use rc_crypto::certificate::Certificate;
 
-mod root;
-mod untrusted;
+/// A root "trust anchor" certificate from which all trust is descended.
+#[derive(Debug)]
+pub struct RootCertificate(Certificate);
 
-pub use root::*;
-pub use untrusted::*;
+impl RootCertificate {
+    /// Mark the provided [`Certificate`] as a root of trust.
+    pub fn from_trusted_cert(c: Certificate) -> Self {
+        Self(c)
+    }
+}
+
+impl std::ops::Deref for RootCertificate {
+    type Target = Certificate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

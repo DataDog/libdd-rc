@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Certificate validation helpers.
-
-mod root;
-mod untrusted;
-
-pub use root::*;
-pub use untrusted::*;
+pub(super) mod intermediate;
+pub(super) mod leaf;
+pub(super) mod root;

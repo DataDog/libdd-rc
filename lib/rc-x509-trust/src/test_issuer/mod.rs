@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Certificate validation helpers.
+#![allow(dead_code)]
 
-mod root;
-mod untrusted;
+mod ca;
+mod cert_builder;
+mod identity;
 
-pub use root::*;
-pub use untrusted::*;
+#[allow(unused_imports)]
+pub(crate) use ca::*;
+pub(crate) use cert_builder::*;
+pub(crate) use identity::*;
