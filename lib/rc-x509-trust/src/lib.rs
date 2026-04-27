@@ -15,6 +15,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod cert;
+pub mod trust_store;
 
 #[cfg(test)]
 pub(crate) mod test_issuer;
