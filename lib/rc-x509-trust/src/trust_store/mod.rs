@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = include_str!("../README.md")]
+//! Payload verification using a trust store of verified [`Certificate`].
+//!
+//! [`Certificate`]: rc_crypto::certificate::Certificate
 
-pub mod cert;
-pub mod trust_store;
+mod cache;
+mod traits;
 
-#[cfg(test)]
-pub(crate) mod test_issuer;
+pub use cache::*;
+pub use traits::*;
