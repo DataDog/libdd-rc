@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #![doc = include_str!("../README.md")]
+#![allow(dead_code)]
 
 pub mod cert;
+pub mod chain;
 pub mod trust_store;
 
 #[cfg(test)]
