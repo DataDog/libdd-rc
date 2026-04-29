@@ -41,4 +41,15 @@ impl UntrustedCert {
     pub fn fingerprint(&self) -> &Fingerprint {
         self.0.fingerprint()
     }
+
+    /// Access the inner [`Certificate`].
+    pub(crate) fn as_trusted(&self) -> &Certificate {
+        &self.0
+    }
+}
+
+impl From<Certificate> for UntrustedCert {
+    fn from(value: Certificate) -> Self {
+        Self(value)
+    }
 }

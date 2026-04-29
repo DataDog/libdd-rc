@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use crate::{
     cert::RootCertificate,
@@ -38,7 +38,7 @@ use crate::{
 ///
 #[derive(Debug)]
 pub(crate) struct TestCA {
-    root: LazyLock<Identity>,
+    root: LazyLock<Arc<Identity>>,
 }
 
 impl Default for TestCA {
@@ -51,12 +51,12 @@ impl TestCA {
     /// Initialise a CA with a new random root.
     pub(crate) const fn new() -> Self {
         Self {
-            root: LazyLock::new(|| CertBuilder::new_root("Banana Test CA").build()),
+            root: LazyLock::new(|| Arc::new(CertBuilder::new_root("Banana Test CA").build())),
         }
     }
 
     /// Return the root of trust signer [`Identity`].
-    pub(crate) fn root(&self) -> &Identity {
+    pub(crate) fn root(&self) -> &Arc<Identity> {
         &self.root
     }
 
