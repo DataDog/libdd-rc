@@ -91,6 +91,12 @@ impl From<&[u8]> for CertId {
     }
 }
 
+impl From<CertId> for Vec<u8> {
+    fn from(id: CertId) -> Vec<u8> {
+        id.bytes.into_vec()
+    }
+}
+
 impl<'a> TryFrom<&X509Certificate<'a>> for CertId {
     type Error = ErrorNoSKI;
 
