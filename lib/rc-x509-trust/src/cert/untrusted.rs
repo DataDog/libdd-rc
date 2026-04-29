@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use bytes::Bytes;
-use rc_crypto::certificate::{Certificate, Fingerprint, InvalidDer};
+use rc_crypto::certificate::{Certificate, Fingerprint, InvalidDer, id::IssuerCertId};
+use valuable::Valuable;
 
 /// An [`UntrustedCert`] is a [`Certificate`] that has been received from the RC
 /// delivery server, but not yet verified by the client to chain to the root.
@@ -42,14 +43,24 @@ impl UntrustedCert {
         self.0.fingerprint()
     }
 
-    /// Access the inner [`Certificate`].
-    pub(crate) fn as_trusted(&self) -> &Certificate {
-        &self.0
+    /// Return the [`IssuerCertId`] that claims to have signed this certificate.
+    pub fn issuer_cert_id(&self) -> &IssuerCertId {
+        self.0.issuer_cert_id()
     }
 }
 
 impl From<Certificate> for UntrustedCert {
     fn from(value: Certificate) -> Self {
         Self(value)
+    }
+}
+
+impl Valuable for UntrustedCert {
+    fn as_value(&self) -> valuable::Value<'_> {
+        self.0.as_value()
+    }
+
+    fn visit(&self, visit: &mut dyn valuable::Visit) {
+        self.0.visit(visit);
     }
 }

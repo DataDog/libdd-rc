@@ -82,7 +82,7 @@ pub(crate) fn build_unverified_chain_for<T>(
 where
     T: CertCache,
 {
-    let mut next_cert_id = cert.as_trusted().issuer_cert_id().to_owned();
+    let mut next_cert_id = cert.issuer_cert_id().to_owned();
     let mut chain = vec![];
     loop {
         // If the next cert ID to resolve is the same as the cert ID in the
@@ -96,7 +96,7 @@ where
         // "chain" and aborting if it his a threshold.
         if chain.len() > MAX_CHAIN_LEN {
             error!(
-                cert = cert.as_trusted().as_value(),
+                cert = cert.as_value(),
                 chain_len = %chain.len(),
                 "rejecting excessively long chain for untrusted cert"
             );
