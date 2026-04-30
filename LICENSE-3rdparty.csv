@@ -44,6 +44,7 @@ find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fixedbitset,https://github.com/petgraph/fixedbitset,MIT OR Apache-2.0,bluss
 fnv,https://github.com/servo/rust-fnv,Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
 foldhash,https://github.com/orlp/foldhash,Zlib,Orson Peters <orsonpeters@gmail.com>
+foldhash,https://github.com/orlp/foldhash,Zlib,Orson Peters <orsonpeters@gmail.com>
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
 futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
 futures-channel,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A
