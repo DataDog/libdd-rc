@@ -35,6 +35,9 @@ on:
 env:
   # https://github.com/aws/aws-lc-rs/issues/569
   AWS_LC_FIPS_SYS_CC: clang
+  # Required for tracing's valuable feature, not inherited from
+  # .cargo/config.toml.
+  RUSTFLAGS: "--cfg tracing_unstable"
 
 jobs:
   fuzz:

@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = include_str!("../README.md")]
-#![allow(dead_code)]
+//! Internal trust chain building, and chain validation logic.
 
-pub mod cert;
-pub mod chain;
-pub mod trust_store;
+mod build_unverified;
+mod unverified;
 
-#[cfg(test)]
-pub(crate) mod test_issuer;
+pub use build_unverified::*;
+pub(crate) use unverified::*;
