@@ -13,34 +13,81 @@
 // limitations under the License.
 
 use rc_crypto::{certificate::Certificate, keys::PrivateKey};
-use rcgen::{CertificateSigningRequestParams, CertifiedIssuer};
+use rcgen::{CertificateParams, CertifiedIssuer};
 
 use crate::test_issuer::Identity;
 
 /// A CSR [`Template`] containing role-specific fields necessary to create a CSR
 /// for the implementing type.
-pub(crate) trait TestCertTemplate: std::fmt::Debug {
-    fn build(self, cn: String, key: PrivateKey) -> Identity;
+pub(crate) trait TestCertTemplate: std::fmt::Debug + Sized {
+    fn build(self, params: Params) -> Identity;
+}
+
+#[derive(Debug)]
+pub(crate) struct Params {
+    pub(super) key: PrivateKey,
+
+    /// Fields common to all templates.
+    pub(super) cn: String,
+
+    /// Override for the SKI field value.
+    pub(super) cert_id: Option<Vec<u8>>,
+}
+
+impl Params {
+    pub(super) fn sign(self, mut tbs: CertificateParams, parent: &Identity) -> Identity {
+        //
+        // NOTE: config duplicated for root template.
+        //
+
+        tbs.serial_number = Some(serial_number());
+        tbs.use_authority_key_identifier_extension = true;
+        tbs.key_identifier_method = rcgen::KeyIdMethod::PreSpecified(
+            self.cert_id.unwrap_or_else(|| generate_ski(&self.key)),
+        );
+
+        let issuer =
+            CertifiedIssuer::signed_by(tbs, self.key, parent.issuer()).expect("signed cert");
+
+        let cert = Certificate::from_der(issuer.der().to_vec()).expect("valid DER");
+
+        Identity::new(cert, issuer)
+    }
 }
 
 /// A helper to construct certificates for tests.
 #[derive(Debug)]
 pub(crate) struct CertBuilder<T> {
-    /// Fields common to all templates.
-    pub(super) cn: String,
+    params: Params,
 
     /// The template type, holding template-specific fields.
-    pub(super) role: T,
+    pub(super) template: T,
 }
 
 impl<T> CertBuilder<T>
 where
     T: TestCertTemplate,
 {
+    pub(super) fn new(cn: impl Into<String>, template: T) -> Self {
+        Self {
+            params: Params {
+                cn: cn.into(),
+                key: PrivateKey::new(),
+                cert_id: None,
+            },
+            template,
+        }
+    }
+
     /// Obtain the [`Identity`] for the configured certificate template.
     pub(crate) fn build(self) -> Identity {
-        let key = PrivateKey::new();
-        self.role.build(self.cn, key)
+        self.template.build(self.params)
+    }
+
+    /// Override the cert ID / SKI value specified in the final certificate.
+    pub(crate) fn set_cert_id(mut self, id: impl Into<Vec<u8>>) -> Self {
+        self.params.cert_id = Some(id.into());
+        self
     }
 }
 
@@ -48,24 +95,6 @@ where
 /// distinguish certificates by their serial numbers.
 pub(super) fn serial_number() -> rcgen::SerialNumber {
     rcgen::SerialNumber::from_slice(&[42])
-}
-
-/// Sign the "To Be Signed" certificate content, certifying it as trusted by
-/// `parent` and returning the issued [`Identity`].
-pub(super) fn sign_tbs(
-    parent: &Identity,
-    key: PrivateKey,
-    mut tbs: CertificateSigningRequestParams,
-) -> Identity {
-    tbs.params.serial_number = Some(serial_number());
-    tbs.params.use_authority_key_identifier_extension = true;
-    tbs.params.key_identifier_method = rcgen::KeyIdMethod::PreSpecified(generate_ski(&key));
-
-    let issuer = CertifiedIssuer::signed_by(tbs.params, key, parent.issuer()).expect("signed cert");
-
-    let cert = Certificate::from_der(issuer.der().to_vec()).expect("valid DER");
-
-    Identity::new(cert, issuer)
 }
 
 // This crate treats AKI and SKI as opaque values, not as trusted derivates of
