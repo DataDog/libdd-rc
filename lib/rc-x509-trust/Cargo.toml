@@ -20,7 +20,7 @@ license = "Apache-2.0"
 
 [dependencies]
 bytes = "1.11.1"
-hashbrown = "0.16"
+hashbrown = "0.17"
 rc-crypto = { version = "0.1.0", path = "../rc-crypto" }
 thiserror = "2.0.18"
 tracing = { version = "0.1.44", features = ["valuable"] }
