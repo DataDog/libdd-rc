@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use jiff::Timestamp;
-use std::ops::RangeInclusive;
+use std::{fmt::Display, ops::RangeInclusive};
 use x509_parser::{prelude::X509Certificate, time::ASN1Time};
 
 use crate::cached_string_repr::CachedStringRepr;
@@ -91,6 +91,12 @@ impl Validity {
     /// notBefore through notAfter, inclusive
     pub fn range(&self) -> RangeInclusive<Timestamp> {
         RangeInclusive::new(self.not_before, self.not_after)
+    }
+}
+
+impl Display for Validity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_display_str().fmt(f)
     }
 }
 
