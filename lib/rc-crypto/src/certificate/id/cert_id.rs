@@ -28,6 +28,25 @@ use crate::{
 #[error("no Subject Key Identifier found")]
 pub struct ErrorNoSKI;
 
+/// Certificate ID was an invalid length.
+#[derive(Debug, Error)]
+#[error("certificate ID is an invalid length")]
+pub struct InvalidLength {
+    actual_len: usize,
+}
+
+/// Error extracting a [`CertId`] from an [`X509Certificate`].
+#[derive(Debug, Error)]
+pub enum InvalidCertId {
+    /// No Subject Key Identifier extension was found in the certificate.
+    #[error(transparent)]
+    NoSKI(#[from] ErrorNoSKI),
+
+    /// Certificate ID was an invalid length.
+    #[error(transparent)]
+    InvalidLength(#[from] InvalidLength),
+}
+
 /// An opaque identifier for the [`Certificate`] this value was extracted from.
 ///
 /// This is an untrusted value, and can be set to anything the cert issuer
@@ -57,6 +76,9 @@ pub struct CertId {
 }
 
 impl CertId {
+    /// Minimum bytes CertId MUST be.
+    const MIN_LENGTH: usize = 16;
+
     /// Render this value following the conventions of OpenSSL's colon-delimited
     /// string representation.
     pub fn as_hex_str(&self) -> &str {
@@ -82,32 +104,56 @@ impl Display for CertId {
     }
 }
 
-impl From<&[u8]> for CertId {
-    fn from(v: &[u8]) -> Self {
-        Self {
-            bytes: v.into(),
-            rendered: Default::default(),
-        }
-    }
-}
-
 impl From<CertId> for Vec<u8> {
     fn from(id: CertId) -> Vec<u8> {
         id.bytes.into_vec()
     }
 }
 
+impl TryFrom<&[u8]> for CertId {
+    type Error = InvalidLength;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if value.len() < Self::MIN_LENGTH {
+            return Err(InvalidLength {
+                actual_len: value.len(),
+            });
+        }
+        Ok(Self {
+            bytes: SmallVec::from_slice(value),
+            rendered: Default::default(),
+        })
+    }
+}
+
+impl TryFrom<Vec<u8>> for CertId {
+    type Error = InvalidLength;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        if value.len() < Self::MIN_LENGTH {
+            return Err(InvalidLength {
+                actual_len: value.len(),
+            });
+        }
+        Ok(Self {
+            bytes: SmallVec::from_vec(value),
+            rendered: Default::default(),
+        })
+    }
+}
+
 impl<'a> TryFrom<&X509Certificate<'a>> for CertId {
-    type Error = ErrorNoSKI;
+    type Error = InvalidCertId;
 
     fn try_from(cert: &X509Certificate<'a>) -> Result<Self, Self::Error> {
-        cert.iter_extensions()
+        let bytes = cert
+            .iter_extensions()
             .find_map(|v| match v.parsed_extension() {
                 ParsedExtension::SubjectKeyIdentifier(ski) => Some(ski.0),
                 _ => None,
             })
-            .ok_or(ErrorNoSKI)
-            .map(CertId::from)
+            .ok_or(ErrorNoSKI)?;
+        Ok(CertId::try_from(bytes)?)
     }
 }
 

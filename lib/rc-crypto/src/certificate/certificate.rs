@@ -26,7 +26,7 @@ use x509_parser::{
 use crate::{
     certificate::{
         Fingerprint, SerialNumber, Validity,
-        id::{CertId, ErrorNoAKI, ErrorNoSKI, IssuerCertId},
+        id::{CertId, InvalidCertId, InvalidIssuerCertId, IssuerCertId},
     },
     keys::PublicKey,
 };
@@ -68,21 +68,21 @@ pub enum InvalidDer {
     #[error("invalid timestamp in certificate validity: {0}")]
     InvalidTimestamp(#[from] jiff::Error),
 
-    /// The [`CertId`] (Subject Key Identifier) field is missing in the X509
-    /// certificate.
+    /// The [`CertId`] (Subject Key Identifier) field is missing or has an invalid
+    /// length in the X509 certificate.
     ///
     /// This is allowed by the X509 spec, but it is required as an invariant of
     /// our system.
-    #[error("missing cert ID in certificate: {0}")]
-    CertId(#[from] ErrorNoSKI),
+    #[error("cert ID missing or invalid length in certificate: {0}")]
+    CertId(#[from] InvalidCertId),
 
-    /// The [`IssuerCertId`] (Authority Key Identifier) field is missing in the
-    /// X509 certificate.
+    /// The [`IssuerCertId`] (Authority Key Identifier) field is missing or has an invalid
+    /// length in the X509 certificate.
     ///
     /// This is allowed by the X509 spec, but it is required as an invariant of
     /// our system.
-    #[error("missing issuer cert ID in certificate: {0}")]
-    IssuerCertId(#[from] ErrorNoAKI),
+    #[error("issuer cert ID missing or invalid length in certificate: {0}")]
+    IssuerCertId(#[from] InvalidIssuerCertId),
 }
 
 /// An X509 [`Certificate`].
