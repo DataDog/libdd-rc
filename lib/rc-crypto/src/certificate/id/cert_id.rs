@@ -123,12 +123,13 @@ impl Valuable for CertId {
 
 #[cfg(test)]
 mod tests {
+    use rc_x509_test_helpers::assert_valuable_repr;
     use static_assertions::assert_not_impl_any;
     use x509_parser::prelude::FromDer;
 
     use super::*;
 
-    use crate::{certificate::tests::cert_fixture, valuable_assert::assert_valuable_repr};
+    use crate::certificate::tests::cert_fixture;
 
     const FIXTURE_SKI_STR: &str = "dc:8d:b6:27:52:78:58:4c:fd:a2:43:db:cb:2b:e0:57:68:6e:2b:8e";
 

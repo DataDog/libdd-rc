@@ -32,10 +32,6 @@
 #[cfg(test)]
 use criterion as _;
 
-// Test only code.
-#[cfg(test)]
-mod valuable_assert;
-
 mod cached_string_repr;
 pub mod certificate;
 mod hex;

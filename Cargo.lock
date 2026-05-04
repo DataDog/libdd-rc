@@ -1287,6 +1287,7 @@ dependencies = [
  "jiff",
  "pem",
  "proptest",
+ "rc-x509-test-helpers",
  "rcgen",
  "smallvec",
  "static_assertions",
@@ -1348,6 +1349,13 @@ dependencies = [
  "proptest-derive",
  "prost",
  "prost-build",
+]
+
+[[package]]
+name = "rc-x509-test-helpers"
+version = "0.1.0"
+dependencies = [
+ "valuable",
 ]
 
 [[package]]
