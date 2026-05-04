@@ -24,7 +24,7 @@ use crate::test_issuer::{
 #[derive(Debug)]
 pub(crate) struct IntermediateTemplate<'a> {
     parent: &'a Identity,
-    allowed_domain: Option<String>,
+    allowed_domains: Vec<String>, // Empty == unconstrained
     path_len: Option<u8>,
 }
 
@@ -41,9 +41,13 @@ impl<'a> TestCertTemplate for IntermediateTemplate<'a> {
             None => IsCa::Ca(BasicConstraints::Unconstrained),
         };
 
-        if let Some(allowed) = self.allowed_domain {
+        if !self.allowed_domains.is_empty() {
             tbs.params.name_constraints = Some(NameConstraints {
-                permitted_subtrees: vec![GeneralSubtree::DnsName(allowed)],
+                permitted_subtrees: self
+                    .allowed_domains
+                    .into_iter()
+                    .map(GeneralSubtree::DnsName)
+                    .collect(),
                 excluded_subtrees: vec![],
             });
         }
@@ -59,16 +63,22 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
             cn,
             IntermediateTemplate {
                 parent,
-                allowed_domain: None,
+                allowed_domains: vec![],
                 path_len: None,
             },
         )
     }
 
-    /// Set the permitted NameConstraint domains (required).
+    /// Set the permitted NameConstraint domain.
     pub(crate) fn allowed_domain(mut self, domain: impl Into<String>) -> Self {
-        self.template.allowed_domain = Some(domain.into());
+        self.template.allowed_domains = vec![domain.into()];
         self
+    }
+
+    /// Override the permitted NameConstraint domains via mutable reference,
+    /// for use in [`ChainMutator`] implementations.
+    pub(crate) fn set_allowed_domains(&mut self, domains: Vec<String>) {
+        self.template.allowed_domains = domains;
     }
 
     /// Set the pathLen constraint for the basic constraint CA field (default:

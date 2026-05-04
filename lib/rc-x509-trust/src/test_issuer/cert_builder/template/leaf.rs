@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use rc_crypto::certificate::csr::CertificateSigningRequest;
-use rcgen::IsCa;
+use rcgen::{IsCa, SanType, string::Ia5String};
 
 use crate::test_issuer::{
     CertBuilder, Identity,
@@ -24,22 +24,27 @@ use crate::test_issuer::{
 #[derive(Debug)]
 pub(crate) struct LeafTemplate<'a> {
     parent: &'a Identity,
-    san: Option<String>,
+    sans: Vec<String>,
 }
 
 impl<'a> TestCertTemplate for LeafTemplate<'a> {
     fn build(self, params: Params) -> Identity {
-        let csr = CertificateSigningRequest::new_leaf(
-            &params.key,
-            &params.cn,
-            self.san.as_ref().expect("no san provided for leaf cert"),
-        )
-        .expect("invalid CSR");
+        assert!(!self.sans.is_empty(), "no san provided for leaf cert");
+
+        let csr = CertificateSigningRequest::new_leaf(&params.key, &params.cn, &self.sans[0])
+            .expect("invalid CSR");
 
         let mut tbs = rcgen::CertificateSigningRequestParams::from_pem(&csr.as_pem_string())
             .expect("invalid TBS");
 
         tbs.params.is_ca = IsCa::ExplicitNoCa;
+
+        // Override SANs with the full list (the CSR only accepts one).
+        tbs.params.subject_alt_names = self
+            .sans
+            .into_iter()
+            .map(|s| SanType::DnsName(Ia5String::try_from(s).expect("invalid SAN")))
+            .collect();
 
         params.sign(tbs.params, self.parent)
     }
@@ -48,12 +53,28 @@ impl<'a> TestCertTemplate for LeafTemplate<'a> {
 impl<'a> CertBuilder<LeafTemplate<'a>> {
     /// Initialise a new leaf signer certificate template.
     pub(crate) fn new_leaf(cn: impl Into<String>, parent: &'a Identity) -> Self {
-        CertBuilder::new(cn, LeafTemplate { parent, san: None })
+        CertBuilder::new(
+            cn,
+            LeafTemplate {
+                parent,
+                sans: vec![],
+            },
+        )
+    }
+
+    /// Set the dNSName SAN values for this leaf certificate (at least one is
+    /// required).
+    pub(crate) fn with_sans(
+        &mut self,
+        sans: impl IntoIterator<Item = impl Into<String>>,
+    ) -> &mut Self {
+        self.template.sans = sans.into_iter().map(Into::into).collect();
+        self
     }
 
     /// Set the SAN domain for this signer cert (required).
-    pub(crate) fn san(mut self, san: impl Into<String>) -> Self {
-        self.template.san = Some(san.into());
+    pub(crate) fn san(mut self, sans: impl Into<String>) -> Self {
+        self.with_sans([sans]);
         self
     }
 }
