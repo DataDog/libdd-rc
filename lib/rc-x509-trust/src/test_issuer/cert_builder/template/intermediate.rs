@@ -25,7 +25,7 @@ use crate::test_issuer::{
 pub(crate) struct IntermediateTemplate<'a> {
     parent: &'a Identity,
     allowed_domain: Option<String>,
-    path_len: u8,
+    path_len: Option<u8>,
 }
 
 impl<'a> TestCertTemplate for IntermediateTemplate<'a> {
@@ -35,15 +35,17 @@ impl<'a> TestCertTemplate for IntermediateTemplate<'a> {
         let mut tbs = rcgen::CertificateSigningRequestParams::from_pem(&csr.as_pem_string())
             .expect("invalid TBS");
 
-        tbs.params.is_ca = IsCa::Ca(BasicConstraints::Constrained(self.path_len));
+        tbs.params.is_ca = match self.path_len {
+            Some(v) => IsCa::Ca(BasicConstraints::Constrained(v)),
+            None => IsCa::Ca(BasicConstraints::Unconstrained),
+        };
 
-        tbs.params.name_constraints = Some(NameConstraints {
-            permitted_subtrees: vec![GeneralSubtree::DnsName(
-                self.allowed_domain
-                    .expect("must specify name constraint allow domain"),
-            )],
-            excluded_subtrees: vec![],
-        });
+        if let Some(allowed) = self.allowed_domain {
+            tbs.params.name_constraints = Some(NameConstraints {
+                permitted_subtrees: vec![GeneralSubtree::DnsName(allowed)],
+                excluded_subtrees: vec![],
+            });
+        }
 
         sign_tbs(self.parent, key, tbs)
     }
@@ -57,7 +59,7 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
             role: IntermediateTemplate {
                 parent,
                 allowed_domain: None,
-                path_len: 0,
+                path_len: None,
             },
         }
     }
@@ -71,7 +73,7 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
     /// Set the pathLen constraint for the basic constraint CA field (default:
     /// 0).
     pub(crate) fn path_len(mut self, n: u8) -> Self {
-        self.role.path_len = n;
+        self.role.path_len = Some(n);
         self
     }
 }
