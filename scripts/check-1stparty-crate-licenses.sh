@@ -42,7 +42,7 @@ FAILED_MANIFESTS=()
 
 # Get all workspace packages (not dependencies)
 METADATA=$(cargo metadata --no-deps --format-version 1)
-WORKSPACE_PACKAGES=$(echo "$METADATA" | jq -r '.packages[] | select(.source == null) | .name + "|" + .manifest_path')
+WORKSPACE_PACKAGES=$(echo "$METADATA" | jq -r '.packages[] | select(.source == null) | .name + "|" + (.license // "") + "|" + .manifest_path')
 
 if [ -z "$WORKSPACE_PACKAGES" ]; then
     echo "Error: No workspace packages found"
@@ -50,11 +50,8 @@ if [ -z "$WORKSPACE_PACKAGES" ]; then
 fi
 
 # Check each workspace package
-while IFS='|' read -r package_name manifest_path; do
-    # Check if the license field exists and has the correct value
-    LICENSE=$(grep -E '^license\s*=' "$manifest_path" | sed -E 's/^license\s*=\s*"([^"]+)".*/\1/' || echo )
-
-    case "$LICENSE" in
+while IFS='|' read -r package_name license manifest_path; do
+    case "$license" in
         "Apache-2.0")
             echo "✓  $package_name: license = \"Apache-2.0\""
             ;;
@@ -63,7 +60,7 @@ while IFS='|' read -r package_name manifest_path; do
             FAILED_MANIFESTS+=("$manifest_path")
             ;;
         *)
-            echo "✗  $package_name: Incorrect license '$LICENSE' (expected 'Apache-2.0')"
+            echo "✗  $package_name: Incorrect license '$license' (expected 'Apache-2.0')"
             FAILED_MANIFESTS+=("$manifest_path")
             ;;
     esac
