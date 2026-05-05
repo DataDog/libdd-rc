@@ -1352,7 +1352,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "rc-x509-test-harness-ffi"
 version = "0.1.0"
 dependencies = [
@@ -1361,8 +1360,9 @@ dependencies = [
  "rc-x509-client",
  "rc-x509-ffi",
  "tokio",
-||||||| fe719c4
-=======
+]
+
+[[package]]
 name = "rc-x509-test-helpers"
 version = "0.1.0"
 dependencies = [
@@ -1382,7 +1382,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "valuable",
->>>>>>> origin/main
 ]
 
 [[package]]
