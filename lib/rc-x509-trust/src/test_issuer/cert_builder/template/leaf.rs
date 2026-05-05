@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rc_crypto::{certificate::csr::CertificateSigningRequest, keys::PrivateKey};
+use rc_crypto::certificate::csr::CertificateSigningRequest;
 use rcgen::IsCa;
 
 use crate::test_issuer::{
     CertBuilder, Identity,
-    cert_builder::{TestCertTemplate, sign_tbs},
+    cert_builder::{Params, TestCertTemplate},
 };
 
 /// An initialisation template for a leaf signer certificate.
@@ -28,10 +28,10 @@ pub(crate) struct LeafTemplate<'a> {
 }
 
 impl<'a> TestCertTemplate for LeafTemplate<'a> {
-    fn build(self, cn: String, key: PrivateKey) -> Identity {
+    fn build(self, params: Params) -> Identity {
         let csr = CertificateSigningRequest::new_leaf(
-            &key,
-            &cn,
+            &params.key,
+            &params.cn,
             self.san.as_ref().expect("no san provided for leaf cert"),
         )
         .expect("invalid CSR");
@@ -41,22 +41,19 @@ impl<'a> TestCertTemplate for LeafTemplate<'a> {
 
         tbs.params.is_ca = IsCa::ExplicitNoCa;
 
-        sign_tbs(self.parent, key, tbs)
+        params.sign(tbs.params, self.parent)
     }
 }
 
 impl<'a> CertBuilder<LeafTemplate<'a>> {
     /// Initialise a new leaf signer certificate template.
     pub(crate) fn new_leaf(cn: impl Into<String>, parent: &'a Identity) -> Self {
-        CertBuilder {
-            cn: cn.into(),
-            role: LeafTemplate { parent, san: None },
-        }
+        CertBuilder::new(cn, LeafTemplate { parent, san: None })
     }
 
     /// Set the SAN domain for this signer cert (required).
     pub(crate) fn san(mut self, san: impl Into<String>) -> Self {
-        self.role.san = Some(san.into());
+        self.template.san = Some(san.into());
         self
     }
 }

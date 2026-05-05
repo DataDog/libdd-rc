@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rc_crypto::{certificate::Certificate, keys::PrivateKey};
+use rc_crypto::certificate::Certificate;
 use rcgen::IsCa;
 
 use crate::test_issuer::{
     CertBuilder, Identity,
-    cert_builder::{TestCertTemplate, generate_ski, serial_number},
+    cert_builder::{Params, TestCertTemplate, generate_ski, serial_number},
 };
 
 /// An initialisation template for a self-signed certificate (typically a root).
@@ -25,16 +25,21 @@ use crate::test_issuer::{
 pub(crate) struct SelfSignedTemplate;
 
 impl TestCertTemplate for SelfSignedTemplate {
-    fn build(self, cn: String, key: PrivateKey) -> Identity {
-        let mut params =
-            rcgen::CertificateParams::new(&[cn]).expect("invalid self-signed cert params");
+    fn build(self, params: Params) -> Identity {
+        let mut tbs =
+            rcgen::CertificateParams::new(&[params.cn]).expect("invalid self-signed cert params");
 
-        params.serial_number = Some(serial_number());
-        params.is_ca = IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
-        params.use_authority_key_identifier_extension = true;
-        params.key_identifier_method = rcgen::KeyIdMethod::PreSpecified(generate_ski(&key));
+        // This has to be duplicated because it differs from every other
+        // template in that there is no parent to sign with.
 
-        let issuer = rcgen::CertifiedIssuer::self_signed(params.clone(), key)
+        tbs.serial_number = Some(serial_number());
+        tbs.is_ca = IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+        tbs.use_authority_key_identifier_extension = true;
+        tbs.key_identifier_method = rcgen::KeyIdMethod::PreSpecified(
+            params.cert_id.unwrap_or_else(|| generate_ski(&params.key)),
+        );
+
+        let issuer = rcgen::CertifiedIssuer::self_signed(tbs.clone(), params.key)
             .expect("invalid self-signed issuer");
         let cert =
             Certificate::from_pem(issuer.pem().as_bytes()).expect("valid cert for test issuer");
@@ -46,9 +51,6 @@ impl TestCertTemplate for SelfSignedTemplate {
 impl CertBuilder<SelfSignedTemplate> {
     /// Obtain a self-signed certificate.
     pub(crate) fn new_root(cn: impl Into<String>) -> Self {
-        CertBuilder {
-            cn: cn.into(),
-            role: SelfSignedTemplate::default(),
-        }
+        CertBuilder::new(cn, SelfSignedTemplate::default())
     }
 }

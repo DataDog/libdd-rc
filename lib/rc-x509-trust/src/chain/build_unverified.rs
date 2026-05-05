@@ -211,6 +211,111 @@ mod tests {
         assert_matches!(err, ChainBuildError::ExcessivelyLongChain);
     }
 
+    /// Demonstrate the untrusted nature of the [`UntrustedChain`] produced by
+    /// [`build_unverified_chain_for()`].
+    ///
+    /// An attacker who constructs certificates with specific SKI values can
+    /// cause [`build_unverified_chain_for()`] to build and return a chain that
+    /// points to a leaf certificate controlled by an attacker.
+    ///
+    /// Given a legitimate chain such as this:
+    ///
+    /// ```text
+    ///                          ┌──────────────┐
+    ///                          │  Legit Root  │
+    ///                          └──────────────┘
+    ///                                  │
+    ///                                  ▼
+    ///                          ┌──────────────┐
+    ///                          │ Legit SubCA  │
+    ///                          └──────────────┘
+    ///                                  │
+    ///                                  ▼
+    ///                          ┌──────────────┐
+    ///                          │     Leaf     │
+    ///                          └──────────────┘
+    /// ```
+    ///
+    /// The [`build_unverified_chain_for()`] function can be deceived into
+    /// returning the following chain from the legitimate root instead:
+    ///
+    /// ```text
+    ///                 ┌──────────────┐
+    ///                 │  Legit Root  │
+    ///                 └──────────────┘
+    ///                         │
+    ///                         ▼
+    ///                 ┌──────────────┐    ┌ ─ ─ ─ ─ ─ ─ ─
+    ///                 │ Legit SubCA  │        Evil CA    │
+    ///                 └──────────────┘    └ ─ ─ ─ ─ ─ ─ ─
+    ///                         ┃                   │
+    ///                         ┃                   ▼
+    ///                         ┃           ┏━━━━━━━━━━━━━━┓
+    ///                         ┗━━━━━━━━━━▶┃  Evil Leaf   ┃
+    ///                                     ┗━━━━━━━━━━━━━━┛
+    /// ```
+    ///
+    /// To do so:
+    ///
+    ///   1. An attacker creates a CA certificate, intentionally setting the
+    ///      [`CertId`] (SKI) to the same value as a legitimate CA.
+    ///
+    ///   2. The attacker issues an evil leaf certificate using the evil CA,
+    ///      causing the leaf's [`IssuerCertId`] to be equal to both the
+    ///      attacker's CA and the legitimate CA.
+    ///
+    ///   3. The evil leaf certificate is presented to the client, which follows
+    ///      the certificate's [`IssuerCertId`] -> [`CertId`] chain, all the way
+    ///      to the legitimate root.
+    ///
+    /// Any [`UntrustedChain`] must have the signature chain cryptographically
+    /// verified, which would fail as the `Legit SubCA` did not sign `Evil
+    /// Leaf`, even though their [`IssuerCertId`] / [`CertId`] values imply it
+    /// did.
+    ///
+    /// [`CertId`]: rc_crypto::certificate::id::CertId
+    #[test]
+    fn test_forged_leaf_chains_to_legitimate_root() {
+        const INTERMEDIATE_SKI: &[u8] = b"legit-intermediate-ski";
+
+        // Construct the legitimate chain.
+        let legit_root = CertBuilder::new_root("Legitimate CA").build();
+        let legit_intermediate =
+            CertBuilder::new_intermediate("Legitimate Intermediate", &legit_root)
+                .set_cert_id(INTERMEDIATE_SKI)
+                .allowed_domain("itsallbroken.com")
+                .build();
+
+        // Cache contains only the legitimate intermediate.
+        let mut cache = MemoryCertCache::default();
+        cache.insert(legit_intermediate.cert().clone());
+
+        // Evil CA: its root's SKI matches the legitimate intermediate's SKI,
+        // so any leaf it issues will have AKI = INTERMEDIATE_SKI.
+        let evil_root = CertBuilder::new_root("Evil CA")
+            .set_cert_id(INTERMEDIATE_SKI)
+            .build();
+        let evil_leaf = CertBuilder::new_leaf("Evil Leaf", &evil_root)
+            .san("itsallbroken.com")
+            .build();
+
+        // Chain building succeeds in returning an UntrustedChain.
+        let chain = build_unverified_chain_for(
+            &RootCertificate::from_trusted_cert(legit_root.cert().clone()),
+            &UntrustedCert::from(evil_leaf.cert().clone()),
+            &cache,
+        )
+        .expect("evil leaf chains to legitimate root");
+
+        // The chain contains the legitimate intermediate, implying it is
+        // "trusted".
+        assert_eq!(chain.as_slice().len(), 1); // Only entry.
+        assert_eq!(
+            chain.as_slice()[0].fingerprint(),
+            legit_intermediate.cert().fingerprint(),
+        );
+    }
+
     #[derive(Debug)]
     struct TestChain {
         root: Arc<Identity>,
