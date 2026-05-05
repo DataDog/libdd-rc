@@ -190,7 +190,7 @@ func (cc *ClientConnection) sendCallback(data []byte) SendRet {
 	sender := cc.sender
 	ctx := cc.ctx
 	closed := cc.closed
-	cc.mu.RUnlock()
+	defer cc.mu.RUnlock()
 
 	if closed {
 		return SendRetClosed
@@ -228,7 +228,7 @@ func (cc *ClientConnection) Receive(data []byte) error {
 	cc.mu.RLock()
 	connected := cc.connected
 	closed := cc.closed
-	cc.mu.RUnlock()
+	defer cc.mu.RUnlock()
 
 	if closed {
 		return ErrConnectionClosed
