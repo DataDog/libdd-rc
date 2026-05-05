@@ -23,11 +23,11 @@ extern struct Ctx *rc_init_test(void);
 */
 import "C"
 
-// NewTestClient create client with echo test harness.
-// Echo respond with Pong to all messages. Good for test FFI layer.
+// newTestClient creates client with echo test harness.
+// Echo responds with Pong to all messages. Good for testing FFI layer.
 //
-// This use rc_init_test() function from FFI library.
-func NewTestClient() *Client {
+// This uses rc_init_test() function from FFI library.
+func newTestClient() *Client {
 	c := &Client{ctx: C.rc_init_test()}
 	return c
 }

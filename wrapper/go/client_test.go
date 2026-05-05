@@ -366,7 +366,7 @@ func TestMultipleConnections(t *testing.T) {
 }
 
 func TestSenderFunc(t *testing.T) {
-	client := NewTestClient()
+	client := newTestClient()
 	defer client.Close()
 
 	var called bool
@@ -467,9 +467,9 @@ func TestConnectionContextCancellation(t *testing.T) {
 }
 
 func TestEchoHarness(t *testing.T) {
-	client := NewTestClient()
+	client := newTestClient()
 	if client == nil {
-		t.Fatal("NewTestClient() returned nil")
+		t.Fatal("newTestClient() returned nil")
 	}
 	defer client.Close()
 
