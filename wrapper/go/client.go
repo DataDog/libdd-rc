@@ -109,7 +109,7 @@ func (f SenderFunc) Send(ctx context.Context, data []byte) error {
 // state (certificates, CRLs, etc) shared across all connections to the RC
 // delivery backend. Each Client spawns a worker thread.
 type Client struct {
-	ctx    *C.struct_Ctx
+	cCtx   *C.struct_Ctx
 	mu     sync.RWMutex
 	closed bool
 }
@@ -118,7 +118,7 @@ type Client struct {
 //
 // The client must be closed to free the underlying memory
 func NewClient() *Client {
-	c := &Client{ctx: C.rc_init()}
+	c := &Client{cCtx: C.rc_init()}
 	return c
 }
 
@@ -133,9 +133,9 @@ func (c *Client) Close() error {
 	}
 
 	c.closed = true
-	if c.ctx != nil {
-		C.rc_free(c.ctx)
-		c.ctx = nil
+	if c.cCtx != nil {
+		C.rc_free(c.cCtx)
+		c.cCtx = nil
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func (c *Client) NewConnection(sender Sender) (*ClientConnection, error) {
 	}
 
 	cc := &ClientConnection{
-		conn:   C.rc_conn_new(c.ctx),
+		conn:   C.rc_conn_new(c.cCtx),
 		sender: sender,
 		ctx:    context.Background(),
 	}

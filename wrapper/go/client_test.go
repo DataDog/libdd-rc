@@ -70,7 +70,7 @@ func TestNewClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	if client.ctx == nil {
+	if client.cCtx == nil {
 		t.Fatal("client.ctx is nil")
 	}
 }
@@ -473,7 +473,7 @@ func TestEchoHarness(t *testing.T) {
 	}
 	defer client.Close()
 
-	if client.ctx == nil {
+	if client.cCtx == nil {
 		t.Fatal("client.ctx is nil")
 	}
 

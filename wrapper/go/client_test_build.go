@@ -28,6 +28,6 @@ import "C"
 //
 // This uses rc_init_test() function from FFI library.
 func newTestClient() *Client {
-	c := &Client{ctx: C.rc_init_test()}
+	c := &Client{cCtx: C.rc_init_test()}
 	return c
 }
