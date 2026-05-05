@@ -127,7 +127,7 @@ mod tests {
 
     /// Generate completely random [`CertId`] values.
     fn arbitrary_cert_id() -> impl Strategy<Value = CertId> {
-        prop_oneof![any::<[u8; 32]>().prop_map(|v| CertId::from(v.as_slice()))]
+        any::<[u8; 32]>().prop_map(|v| CertId::try_from(v.as_slice()).unwrap())
     }
 
     #[derive(Debug, Clone)]

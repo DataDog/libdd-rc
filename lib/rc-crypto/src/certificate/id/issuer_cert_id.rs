@@ -19,12 +19,24 @@ use valuable::Valuable;
 use x509_parser::extensions::ParsedExtension;
 use x509_parser::prelude::X509Certificate;
 
-use crate::certificate::id::{CertId, DangerousComparableId};
+use crate::certificate::id::{CertId, DangerousComparableId, InvalidLength};
 
 /// No Authority Key Identifier extension was found in the certificate.
 #[derive(Debug, Error)]
 #[error("no Authority Key Identifier found")]
 pub struct ErrorNoAKI;
+
+/// Error extracting an [`IssuerCertId`] from an [`X509Certificate`].
+#[derive(Debug, Error)]
+pub enum InvalidIssuerCertId {
+    /// No Authority Key Identifier extension was found in the certificate.
+    #[error(transparent)]
+    NoAKI(#[from] ErrorNoAKI),
+
+    /// Certificate ID was an invalid length.
+    #[error(transparent)]
+    InvalidLength(#[from] InvalidLength),
+}
 
 /// An opaque identifier that describes the [`Certificate`] of the issuer (CA)
 /// that issued the [`Certificate`] this value was extracted from.
@@ -92,26 +104,36 @@ impl Valuable for IssuerCertId {
     }
 }
 
-impl From<&[u8]> for IssuerCertId {
-    fn from(v: &[u8]) -> Self {
-        Self(CertId::from(v))
+impl TryFrom<&[u8]> for IssuerCertId {
+    type Error = InvalidLength;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Ok(IssuerCertId(CertId::try_from(value)?))
+    }
+}
+
+impl TryFrom<Vec<u8>> for IssuerCertId {
+    type Error = InvalidLength;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        Ok(IssuerCertId(CertId::try_from(value)?))
     }
 }
 
 impl<'a> TryFrom<&X509Certificate<'a>> for IssuerCertId {
-    type Error = ErrorNoAKI;
+    type Error = InvalidIssuerCertId;
 
     fn try_from(cert: &X509Certificate<'a>) -> Result<Self, Self::Error> {
-        cert.iter_extensions()
+        let bytes = cert
+            .iter_extensions()
             .find_map(|v| match v.parsed_extension() {
                 ParsedExtension::AuthorityKeyIdentifier(aki) => {
                     aki.key_identifier.as_ref().map(|kid| kid.0)
                 }
                 _ => None,
             })
-            .ok_or(ErrorNoAKI)
-            .map(CertId::from)
-            .map(Self)
+            .ok_or(ErrorNoAKI)?;
+        Ok(IssuerCertId(CertId::try_from(bytes)?))
     }
 }
 
