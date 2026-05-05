@@ -64,13 +64,16 @@ type SendCallback func(data []byte) SendRet
 
 //export goSendCallback
 func goSendCallback(data *C.uint8_t, length C.uint32_t, userData unsafe.Pointer) C.send_ret_t {
-	cc, ok := cgo.Handle(uintptr(userData)).Value().(*ClientConnection)
+	handle := cgo.Handle(uintptr(userData))
+	cc, ok := handle.Value().(*ClientConnection)
 	if !ok {
 		return C.send_ret_t(SendRetUnknown)
 	}
 
 	goData := C.GoBytes(unsafe.Pointer(data), C.int(length))
-	ret := cc.sendCallback(goData)
+	toGo := make([]byte, len(goData))
+	copy(toGo, goData)
+	ret := cc.sendCallback(toGo)
 	return C.send_ret_t(ret)
 }
 
