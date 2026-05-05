@@ -158,7 +158,11 @@ func (c *Client) NewConnection(sender Sender) (*ClientConnection, error) {
 	cc := &ClientConnection{
 		conn:   C.rc_conn_new(c.cCtx),
 		sender: sender,
-		ctx:    context.Background(),
+
+		// setting it to a default to avoid nil pointer errors in Close	and
+		// sendCallback before Connect is called. It will be overwritten in
+		// Connect.
+		ctx: context.Background(),
 	}
 
 	cc.handle = cgo.NewHandle(cc)
@@ -207,6 +211,7 @@ func (cc *ClientConnection) sendCallback(data []byte) SendRet {
 }
 
 // Connect establishes the connection to the RC backend.
+// The `ctx` is used for the duration of the connection and passed to the Sender on each send.
 func (cc *ClientConnection) Connect(ctx context.Context) error {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
