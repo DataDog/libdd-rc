@@ -21,12 +21,12 @@ message RemoteConfigResponse {
 //  https://docs.datadoghq.com/agent/troubleshooting/send_a_flare/?tab=agent
 //
 message FlareRequest {
-	string uuid = 1;
-	string user_handle = 2;
-	uint64 case_id = 3;
+  string uuid = 1;
+  string user_handle = 2;
+  uint64 case_id = 3;
 }
 
 message FlareResponse {
-	// The zip archive containing the flare data.
-	bytes zip_archive = 1;
+  // The zip archive containing the flare data.
+  bytes zip_archive = 1;
 }
