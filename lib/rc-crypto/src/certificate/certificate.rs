@@ -223,7 +223,7 @@ impl From<rcgen::Certificate> for Certificate {
 pub(super) mod tests {
     use std::fmt::Display;
 
-    use crate::valuable_assert::assert_valuable_repr;
+    use rc_x509_test_helpers::assert_valuable_repr;
 
     use super::*;
 

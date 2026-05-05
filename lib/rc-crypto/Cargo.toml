@@ -25,7 +25,7 @@ workspace = true
 aws-lc-rs = { version = "1", default-features = false, features = ["alloc"] }
 bytes = "1"
 thiserror = "2"
-valuable = { version = "0.1.1", features = ["derive"] }
+valuable = { version = "0.1", features = ["derive"] }
 jiff = "0.2.24"
 
 # NOTE: both of these dependencies currently enable non-FIPS crypto backends.
@@ -41,6 +41,7 @@ criterion = "0.8"
 hex = "0.4"
 proptest = "1.11"
 static_assertions = "1.1.0"
+rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.0" }
 
 [features]
 default = ["fips"]

@@ -139,12 +139,13 @@ impl<'a> TryFrom<&X509Certificate<'a>> for IssuerCertId {
 
 #[cfg(test)]
 mod tests {
+    use rc_x509_test_helpers::assert_valuable_repr;
     use static_assertions::assert_not_impl_any;
     use x509_parser::prelude::FromDer as _;
 
     use super::*;
 
-    use crate::{certificate::tests::cert_fixture, valuable_assert::assert_valuable_repr};
+    use crate::certificate::tests::cert_fixture;
 
     const FIXTURE_AKI_STR: &str = "20:6c:8e:cf:e4:21:a7:ff:ed:23:c8:3d:37:0f:77:81:84:71:0e:15";
 
