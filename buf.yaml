@@ -14,7 +14,7 @@
 
 version: v2
 modules:
-  - path: .
+  - path: lib/rc-x509-proto/protos
 
 # https://buf.build/docs/lint/rules/#standard
 lint:
