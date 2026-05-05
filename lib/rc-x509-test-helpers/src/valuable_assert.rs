@@ -25,7 +25,7 @@ static INDENT: &str = "    ";
 /// simple nested text representation.
 ///
 /// ```rust
-/// use rc_testing::valuable::assert_valuable_repr;
+/// use rc_x509_test_helpers::assert_valuable_repr;
 /// use valuable::Valuable;
 ///
 /// /// A datatype which can be structurally logged.
@@ -48,14 +48,18 @@ static INDENT: &str = "    ";
 /// assert_valuable_repr(&banana, want);
 /// ```
 #[track_caller]
-pub(crate) fn assert_valuable_repr<T>(value: &T, want: &str)
+pub fn assert_valuable_repr<T>(value: &T, want: &str)
 where
     T: Valuable,
 {
     let mut visitor = TestVisitor::default();
     value.visit(&mut visitor);
     let output = visitor.output();
-    assert_eq!(output, want, "\ngot:\n\n{output}\n\nwant:\n\n{want}");
+    assert_eq!(
+        output.trim(),
+        want.trim(),
+        "\ngot:\n\n{output}\n\nwant:\n\n{want}"
+    );
 }
 
 /// Capture and assert against structured logging fields emitted by a

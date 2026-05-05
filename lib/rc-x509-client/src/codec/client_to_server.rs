@@ -19,6 +19,8 @@ use rc_x509_proto::{
     protocol::v1::{self, client_to_server::Message},
 };
 
+use crate::connection::{ConnectionId, GracefulDisconnectionCount, UngracefulDisconnectionCount};
+
 /// All possible messages originating from this client library, sent to the RC
 /// delivery backend.
 #[derive(Debug, PartialEq, Clone)]
@@ -30,7 +32,14 @@ pub enum ClientToServer {
     Pong,
 
     /// An opening handshake message sent at the start of a new connection.
-    ClientHello,
+    ClientHello {
+        /// The unique connection ID.
+        conn_id: ConnectionId,
+        /// Number of times the server has asked the client to reconnect.
+        graceful: GracefulDisconnectionCount,
+        /// Number of times the connection has been ungracefully broken.
+        ungraceful: UngracefulDisconnectionCount,
+    },
 }
 
 /// Serialise this [`ClientToServer`] as a protobuf payload.
@@ -38,7 +47,15 @@ impl From<&ClientToServer> for Vec<u8> {
     fn from(value: &ClientToServer) -> Self {
         // Construct the wire type for this `value`.
         let wire = match value {
-            ClientToServer::ClientHello => Message::ClientHello(v1::ClientHello::default()),
+            ClientToServer::ClientHello {
+                conn_id,
+                graceful,
+                ungraceful,
+            } => Message::ClientHello(v1::ClientHello {
+                connection_id: conn_id.as_raw(),
+                graceful_disconnection_count: graceful.as_raw(),
+                ungraceful_disconnection_count: ungraceful.as_raw(),
+            }),
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),
         };
 

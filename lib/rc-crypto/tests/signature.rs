@@ -54,6 +54,16 @@ static TEST_CERT: LazyLock<Certificate> = LazyLock::new(|| {
     rand::fill(&mut sn).expect("rand available");
     tbs.params.serial_number = Some(SerialNumber::from_slice(&sn));
 
+    // Ensure the signed certificate includes SKI and AKI extensions, which
+    // are required invariants of Certificate::from_der().
+    //
+    // rcgen only writes SKI for IsCa::Ca or IsCa::ExplicitNoCa — NoCa (the
+    // default after CSR round-trip) silently omits it.
+    tbs.params.is_ca = rcgen::IsCa::ExplicitNoCa;
+    tbs.params.key_identifier_method =
+        rcgen::KeyIdMethod::PreSpecified(TEST_KEY.public_key().key_id().to_vec());
+    tbs.params.use_authority_key_identifier_extension = true;
+
     Certificate::from(tbs.signed_by(&*TEST_ISSUER).expect("failed to sign cert"))
 });
 

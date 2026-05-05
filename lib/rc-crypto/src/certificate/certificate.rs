@@ -24,7 +24,10 @@ use x509_parser::{
 };
 
 use crate::{
-    certificate::{Fingerprint, SerialNumber, Validity},
+    certificate::{
+        Fingerprint, SerialNumber, Validity,
+        id::{CertId, InvalidCertId, InvalidIssuerCertId, IssuerCertId},
+    },
     keys::PublicKey,
 };
 
@@ -64,6 +67,22 @@ pub enum InvalidDer {
     /// [`Validity`] in a [`Certificate`] is invalid.
     #[error("invalid timestamp in certificate validity: {0}")]
     InvalidTimestamp(#[from] jiff::Error),
+
+    /// The [`CertId`] (Subject Key Identifier) field is missing or has an invalid
+    /// length in the X509 certificate.
+    ///
+    /// This is allowed by the X509 spec, but it is required as an invariant of
+    /// our system.
+    #[error("cert ID missing or invalid length in certificate: {0}")]
+    CertId(#[from] InvalidCertId),
+
+    /// The [`IssuerCertId`] (Authority Key Identifier) field is missing or has an invalid
+    /// length in the X509 certificate.
+    ///
+    /// This is allowed by the X509 spec, but it is required as an invariant of
+    /// our system.
+    #[error("issuer cert ID missing or invalid length in certificate: {0}")]
+    IssuerCertId(#[from] InvalidIssuerCertId),
 }
 
 /// An X509 [`Certificate`].
@@ -91,6 +110,14 @@ pub struct Certificate {
 
     /// The parsed [`Validity`] for this certificate.
     validity: Validity,
+
+    /// The Subject Key Identity value in the certificate.
+    #[valuable(skip)] // Untrusted, used only for chain building.
+    cert_id: CertId,
+
+    /// The Authority Key Identity value in the certificate.
+    #[valuable(skip)] // Untrusted, used only for chain building.
+    issuer_cert_id: IssuerCertId,
 }
 
 impl Certificate {
@@ -113,7 +140,7 @@ impl Certificate {
         let der = der.into();
 
         let (rem, cert) = X509CertificateParser::new()
-            .with_deep_parse_extensions(false) // Skip parsing unnecessary data.
+            .with_deep_parse_extensions(true)
             .parse(&der)
             .map_err(InvalidDer::Parse)?;
         if !rem.is_empty() {
@@ -124,6 +151,8 @@ impl Certificate {
         let fingerprint = Fingerprint::from(&cert);
         let serial_number = SerialNumber::from(&cert);
         let validity = Validity::try_from(&cert)?;
+        let cert_id = CertId::try_from(&cert)?;
+        let issuer_cert_id = IssuerCertId::try_from(&cert)?;
 
         // Extract the raw public key DER bytes.
         let public_key_der = Bytes::from(cert.public_key().subject_public_key.data.to_vec());
@@ -134,6 +163,8 @@ impl Certificate {
             fingerprint,
             public_key_der,
             validity,
+            cert_id,
+            issuer_cert_id,
         })
     }
 
@@ -170,6 +201,16 @@ impl Certificate {
     pub fn public_key<'a>(&'a self) -> PublicKey<'a> {
         PublicKey::new(self.public_key_der.as_ref())
     }
+
+    /// Return the [`CertId`] for this certificate.
+    pub fn cert_id(&self) -> &CertId {
+        &self.cert_id
+    }
+
+    /// Return the [`IssuerCertId`] for this certificate.
+    pub fn issuer_cert_id(&self) -> &IssuerCertId {
+        &self.issuer_cert_id
+    }
 }
 
 impl From<rcgen::Certificate> for Certificate {
@@ -179,10 +220,10 @@ impl From<rcgen::Certificate> for Certificate {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use std::fmt::Display;
 
-    use crate::valuable_assert::assert_valuable_repr;
+    use rc_x509_test_helpers::assert_valuable_repr;
 
     use super::*;
 
@@ -236,6 +277,14 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
         assert_eq!(a.fingerprint, b.fingerprint);
     }
 
+    /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
+    pub(crate) fn cert_fixture() -> Certificate {
+        let pem =
+            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
+
+        Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
+    }
+
     #[test]
     fn test_fixture() {
         let pem =
@@ -264,16 +313,18 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             ]
         );
 
-        // Assert the generated result (inc. line endings).
+        // Assert the generated PEM (inc. line endings).
         assert_eq!(cert.generate_pem(), pem);
-    }
 
-    /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
-    fn cert_fixture() -> Certificate {
-        let pem =
-            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
-
-        Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
+        // SKI & AKI value extraction.
+        assert_eq!(
+            cert.cert_id().as_hex_str(),
+            "dc:8d:b6:27:52:78:58:4c:fd:a2:43:db:cb:2b:e0:57:68:6e:2b:8e"
+        );
+        assert_eq!(
+            cert.issuer_cert_id().as_hex_str(),
+            "20:6c:8e:cf:e4:21:a7:ff:ed:23:c8:3d:37:0f:77:81:84:71:0e:15"
+        );
     }
 
     #[test]

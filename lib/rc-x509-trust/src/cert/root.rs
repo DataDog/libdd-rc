@@ -12,15 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+use rc_crypto::certificate::Certificate;
 
-mod abort_on_drop;
-pub mod codec;
-pub mod connection;
-pub mod entrypoint;
-pub mod host_runtime;
-pub mod payload;
-mod shutdown_signal;
+/// A root "trust anchor" certificate from which all trust is descended.
+#[derive(Debug)]
+pub struct RootCertificate(Certificate);
 
-pub use abort_on_drop::*;
-pub use shutdown_signal::*;
+impl RootCertificate {
+    /// Mark the provided [`Certificate`] as a root of trust.
+    pub fn from_trusted_cert(c: Certificate) -> Self {
+        Self(c)
+    }
+}
+
+impl std::ops::Deref for RootCertificate {
+    type Target = Certificate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

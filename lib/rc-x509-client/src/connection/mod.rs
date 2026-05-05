@@ -16,5 +16,7 @@
 //! client library can perform I/O to the RC backend.
 
 mod lifecycle_events;
+mod reconnection;
 
 pub use lifecycle_events::*;
+pub use reconnection::*;

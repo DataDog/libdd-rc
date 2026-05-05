@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Code to establish trust between [`Certificate`].
-//!
-//! [`Certificate`]: rc_crypto::certificate::Certificate
+//! Internal trust chain building, and chain validation logic.
 
-#![allow(dead_code)]
+mod build_unverified;
+mod unverified;
 
-mod untrusted_cert;
-
-pub use untrusted_cert::*;
+pub use build_unverified::*;
+pub(crate) use unverified::*;
