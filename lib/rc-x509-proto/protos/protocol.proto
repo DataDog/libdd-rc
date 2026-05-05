@@ -1,5 +1,11 @@
 syntax = "proto3";
+
+// This package provides the core protocol types used "on the wire" between the
+// Remote Config backend delivery servers, and a Datadog Agent (or other clients
+// of RC).
 package rc.x509.protocol.v1;
+
+import "magic_tunnel/protocol.proto";
 
 // Protocol message definitions.
 //
@@ -26,6 +32,9 @@ message ServerToClient {
     //
     // This certificate MUST be treated as an untrusted input.
     Certificate certificate_push = 2;
+
+    // Deliver a Magic Tunnel payload.
+    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 3;
   }
 }
 
@@ -33,7 +42,12 @@ message ServerToClient {
 message ClientToServer {
   oneof message {
     Pong pong = 1;
+
+    // The opening message sent when establishing a new connection.
     ClientHello client_hello = 2;
+
+    // Respond with the return value from a Magic Tunnel dispatcher call.
+    rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 3;
   }
 }
 

@@ -1,0 +1,32 @@
+syntax = "proto3";
+package rc.x509.magic_tunnel.remote_config.v1;
+
+// Magic Tunnel request payloads for the `REMOTE_CONFIG` namespace.
+message RemoteConfigRequest {
+  oneof subtopic {
+    FlareRequest flare_request = 1;
+  }
+}
+
+// Response payloads for `RemoteConfigRequest` calls.
+message RemoteConfigResponse {
+  oneof subtopic {
+    FlareResponse flare_response = 1;
+  }
+}
+
+// Request the agent return gather and return troubleshooting data to Datadog
+// servers - an "Agent Flare":
+//
+//  https://docs.datadoghq.com/agent/troubleshooting/send_a_flare/?tab=agent
+//
+message FlareRequest {
+	string uuid = 1;
+	string user_handle = 2;
+	uint64 case_id = 3;
+}
+
+message FlareResponse {
+	// The zip archive containing the flare data.
+	bytes zip_archive = 1;
+}
