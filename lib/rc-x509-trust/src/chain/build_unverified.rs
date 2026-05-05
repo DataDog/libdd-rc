@@ -146,13 +146,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use assert_matches::assert_matches;
     use proptest::prelude::*;
 
     use crate::{
-        test_issuer::{CertBuilder, Identity, TestCA},
+        test_issuer::{CertBuilder, TestCA, arbitrary_valid_chain},
         trust_store::MemoryCertCache,
     };
 
@@ -316,56 +314,13 @@ mod tests {
         );
     }
 
-    #[derive(Debug)]
-    struct TestChain {
-        root: Arc<Identity>,
-        intermediates: Vec<Identity>,
-        leaf: Identity,
-    }
-
-    /// Generate a valid chain from the `CA` root, with `n_intermediates`
-    /// between the root and leaf.
-    fn arbitrary_valid_chain(
-        n_intermediates: impl Strategy<Value = u8>,
-    ) -> impl Strategy<Value = TestChain> {
-        n_intermediates.prop_map(|n| {
-            let mut intermediates = Vec::with_capacity(n as _);
-
-            // Generate a chain of N-1 intermediates.
-            for i in 0..n {
-                let cert = CertBuilder::new_intermediate(
-                    format!("Intermediate {}", i + 1),
-                    intermediates.last().unwrap_or(CA.root()),
-                )
-                .allowed_domain("itsallbroken.com")
-                .build();
-
-                intermediates.push(cert);
-            }
-
-            // And append the leaf.
-            let leaf = CertBuilder::new_leaf(
-                "A Leaf Certificate",
-                intermediates.last().unwrap_or(CA.root()),
-            )
-            .san("leaf.itsallbroken.com")
-            .build();
-
-            TestChain {
-                root: Arc::clone(CA.root()),
-                intermediates,
-                leaf,
-            }
-        })
-    }
-
     proptest! {
         /// Generate a random certificate chain, stuff it into the cache and
         /// perform a chain build. Assert the build returns the same chain as
         /// the input.
         #[test]
         fn prop_valid_chain_building(
-            chain in arbitrary_valid_chain(0..5_u8),
+            chain in arbitrary_valid_chain(&CA, 0..5_u8),
         ) {
             let mut cache = MemoryCertCache::default();
 
@@ -407,7 +362,7 @@ mod tests {
         /// identifying the missing certificate is returned.
         #[test]
         fn prop_missing_intermediate(
-            chain in arbitrary_valid_chain(1..3_u8), // Always at least one intermediate
+            chain in arbitrary_valid_chain(&CA, 1..3_u8), // Always at least one intermediate
             i in 0..5, // Pick a random cert to drop.
         ) {
             let mut cache = MemoryCertCache::default();
