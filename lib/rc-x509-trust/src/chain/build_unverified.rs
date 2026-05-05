@@ -269,7 +269,7 @@ mod tests {
     ///      to the legitimate root.
     ///
     /// Any [`UntrustedChain`] must have the signature chain cryptographically
-    /// verified, which would fail as the `Legit SubCA` did not sigh `Evil
+    /// verified, which would fail as the `Legit SubCA` did not sign `Evil
     /// Leaf`, even though their [`IssuerCertId`] / [`CertId`] values imply it
     /// did.
     ///
