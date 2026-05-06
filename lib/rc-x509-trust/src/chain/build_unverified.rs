@@ -151,7 +151,8 @@ mod tests {
 
     use crate::{
         test_issuer::{
-            CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
+            CertBuilder, ForgedLeaf, MissingIntermediate, TestCA, TestChain, ValidChain,
+            arbitrary_chain,
         },
         trust_store::MemoryCertCache,
     };
@@ -399,6 +400,49 @@ mod tests {
                     want.as_dangerous_comparable(),
                 );
             });
+        }
+
+        /// Demonstrate the untrusted nature of the `UntrustedChain` produced by
+        /// `build_unverified_chain_for()`.
+        ///
+        /// An attacker who constructs certificates with specific SKI values can
+        /// cause `build_unverified_chain_for()` to build and return a chain
+        /// that points to a leaf certificate controlled by an attacker.
+        ///
+        /// The `ForgedLeaf` mutator replaces the legitimate leaf with an evil
+        /// leaf issued by an evil CA whose SKI matches the last legitimate
+        /// intermediate. Chain building follows the evil leaf's `IssuerCertId`
+        /// -> `CertId` link to the legitimate intermediate, and from there to
+        /// the legitimate root.
+        ///
+        /// Any `UntrustedChain` must have the signature chain cryptographically
+        /// verified, which would fail as the legitimate intermediate did not
+        /// sign the evil leaf.
+        #[test]
+        fn prop_forged_leaf_ski_aki_chains_to_legitimate_root(
+            chain in arbitrary_chain(&CA, 1..5_u8, ForgedLeaf::default()),
+        ) {
+            let mut cache = MemoryCertCache::default();
+
+            // Populate the cache with the legitimate intermediates.
+            for identity in &chain.intermediates {
+                cache.insert(identity.cert().clone());
+            }
+
+            // Chain building succeeds — the evil leaf chains to the legitimate
+            // root via the legitimate intermediates.
+            let got = build_unverified_chain_for(
+                &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+                &UntrustedCert::from(chain.leaf.cert().clone()),
+                &cache,
+            )
+            .expect("evil leaf chains to legitimate root");
+
+            // The chain contains the legitimate intermediates.
+            assert_eq!(got.as_slice().len(), chain.intermediates.len());
+            for (got, input) in got.as_slice().iter().zip(chain.intermediates.iter().rev()) {
+                assert_eq!(got.fingerprint(), input.cert().fingerprint());
+            }
         }
     }
 }
