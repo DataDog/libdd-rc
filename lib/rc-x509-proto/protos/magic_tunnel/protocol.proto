@@ -119,5 +119,13 @@ message MagicTunnelResponse {
 
     // The payload was not delivered.
     DispatchError dispatch_error = 3;
+
+	// The dispatch handler implementation returned an error.
+	//
+	// This is returned to the backend for debugging and logging purposes.
+	// Integrations SHOULD NOT parse this string (or any error string) to
+	// classify failures. Instead prefer returning a response payload that
+	// contains a structured error response.
+	string handler_error = 4;
   }
 }
