@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+// This package contains the wire types for the Magic Tunnel feature.
+package rc.x509.magic_tunnel.v1;
+
+// A `Namespace` specifies which dispatch handler receives the payload being
+// transmitted to the Agent (or other clients of RC).
+//
+// The primary purpose of a `Namespace` is to isolate across different teams /
+// products / features supported by Magic Tunnel, directing payloads to the
+// appropriate dispatch handler.
+//
+// A dispatch handler can register to receive messages from multiple namespaces,
+// but a namespace can have at most one handler (consider internal fanout within
+// the handler if necessary).
+//
+// ```text
+//                                Datadog Server
+//
+//                                       │
+//                                       ▼
+//                            ┌────────────────────┐
+//                            │     RC Client      │
+//                            └────────────────────┘
+//                                       │
+//                                       │
+//     ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//   D                                   │                                 D
+//   I          Namespace:               │                Namespace:       I
+//   S             Bananas  ┌────────────┴─────────────┐  Platanos         S
+//   P                      ▼                          ▼                   P
+//   A           ┌────────────────────┐     ┌────────────────────┐         A
+//   T           │    Team Bananas    │     │   Team Platanos    │         T
+//   C           └────────────────────┘     └────────────────────┘         C
+//   H                      │                          │                   H
+//     ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//                          │                          │
+//                   ┌──────┴───┐                      │
+//                   │          ▼                      ▼
+//         Subtopic: │   ┌────────────┐         ┌────────────┐
+//        Function A │   │ Function B │         │ Functions  ├┐
+//                   ▼   └────────────┘         └┬───────────┘│
+//            ┌────────────┐                     └────────────┘
+//            │ Function A │
+//            └────────────┘
+// ```
+//
+// Once a payload is routed to the correct dispatch handler, it is the
+// responsibility of the dispatch handler to discriminate across appropriate
+// subtopics.
+//
+// This enum SHOULD contain an entry for high level, product / team namespaces
+// only; it SHOULD NOT contain an entry for each payload type supported by a
+// team / product (define subtopics instead).
+enum Namespace {
+  NAMESPACE_UNSPECIFIED = 0;
+  NAMESPACE_REMOTE_CONFIG = 1;
+}
+
+// Push a payload down to a dispatch handler
+message MagicTunnelRequest {
+  // An identifier to correlate the response with this request.
+  uint64 correlation_id = 1;
+
+  // The namespace this payload will be delivered to.
+  Namespace namespace = 2;
+
+  // The protobuf-serialised payload bytes to pass to the dispatch handler for
+  // this namespace.
+  //
+  // Payloads MUST internally discriminate across subtopics. The recommended way
+  // to implement subtopics is to use a oneof:
+  //
+  // ```protobuf
+  // message TeamBananasRequest {
+  //   oneof subtopic {
+  //     Ping ping_request = 1;
+  //     Exec exec_request = 2;
+  //     // etc...
+  //   }
+  // }
+  // ```
+  //
+  // This provides a well-typed payload structure and allows future extension of
+  // the payload for this namespace in a backwards compatible way.
+  bytes payload = 3;
+}
+
+message MagicTunnelResponse {
+  // The `correlation_id` value sent in the `MagicTunnelRequest`.
+  uint64 correlation_id = 1;
+
+  // Error conditions for the transport & dispatch logic.
+  //
+  // These errors describe the possible failure modes of delivering the request
+  // and invoking the registered dispatch handler. Post-dispatch errors returned
+  // by the dispatch handler SHOULD be encoded into the response payload as a
+  // successful dispatch request.
+  enum DispatchError {
+    DISPATCH_ERROR_UNSPECIFIED = 0;
+
+    // There is no dispatch handler registered for the namespace.
+    DISPATCH_ERROR_NO_DISPATCH_HANDLER = 1;
+
+    // The dispatch handler delivery queue is full.
+    //
+    // This occurs when the dispatch handler is not consuming messages fast
+    // enough to keep up with the rate of new requests arriving. The message
+    // will not be delivered.
+    DISPATCH_ERROR_QUEUE_FULL = 2;
+  }
+
+  oneof result {
+    // The response payload returned by the dispatch handler.
+    //
+    // Like the request payload, this value MUST be internally discriminated by
+    // subtopic.
+    bytes response = 2;
+
+    // The payload was not delivered.
+    DispatchError dispatch_error = 3;
+
+    // The dispatch handler implementation returned an error.
+    //
+    // This is returned to the backend for debugging and logging purposes.
+    // Integrations SHOULD NOT parse this string (or any error string) to
+    // classify failures. Instead prefer returning a response payload that
+    // contains a structured error response.
+    string handler_error = 4;
+  }
+}

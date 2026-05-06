@@ -17,6 +17,7 @@
 use rc_crypto::certificate::InvalidDer;
 use rc_x509_proto::{
     decode,
+    magic_tunnel::v1::*,
     protocol::v1::{self, server_to_client::Message},
 };
 use rc_x509_trust::cert::UntrustedCert;
@@ -53,6 +54,9 @@ pub enum ServerToClient {
     ///
     /// This certificate MUST be treated as untrusted input.
     CertificatePush(Box<UntrustedCert>),
+
+    /// A Magic Tunnel RPC call.
+    MagicTunnelRequest(MagicTunnelRequest),
 }
 
 /// Try to parse a protobuf encoded payload into a [`ServerToClient`].
@@ -65,6 +69,7 @@ impl TryFrom<&[u8]> for ServerToClient {
         // Construct the application type from this wire type.
         Ok(match got.message.ok_or(DecodingError::NoMessage)? {
             Message::Ping(_) => Self::Ping,
+            Message::MagicTunnel(v) => Self::MagicTunnelRequest(v),
             Message::CertificatePush(cert) => {
                 Self::CertificatePush(Box::new(UntrustedCert::from_der(cert.der)?))
             }
