@@ -56,6 +56,13 @@ where
 
 ///// CertId impls
 
+impl<'a> DangerousComparableId<'a, CertId> {
+    /// Return the raw bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 impl<'a> From<CertId> for DangerousComparableId<'a, CertId> {
     fn from(value: CertId) -> Self {
         Self(Cow::Owned(value))
@@ -99,6 +106,13 @@ impl Equivalent<DangerousComparableId<'static, CertId>> for CertId {
 }
 
 ///// IssuerCertId impls
+
+impl<'a> DangerousComparableId<'a, IssuerCertId> {
+    /// Return the raw bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
 
 impl<'a> From<IssuerCertId> for DangerousComparableId<'a, IssuerCertId> {
     fn from(value: IssuerCertId) -> Self {
