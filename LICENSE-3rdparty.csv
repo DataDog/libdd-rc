@@ -117,6 +117,7 @@ rc-x509-client,N/A,Apache-2.0,N/A
 rc-x509-ffi,N/A,Apache-2.0,N/A
 rc-x509-ffi-fuzz,N/A,Apache-2.0,N/A
 rc-x509-proto,N/A,Apache-2.0,N/A
+rc-x509-test-harness-ffi,N/A,Apache-2.0,N/A
 rc-x509-test-helpers,N/A,Apache-2.0,N/A
 rc-x509-trust,N/A,Apache-2.0,N/A
 rcgen,https://github.com/rustls/rcgen,MIT OR Apache-2.0,N/A

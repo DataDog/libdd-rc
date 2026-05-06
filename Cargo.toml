@@ -18,13 +18,14 @@ package.edition = "2024"
 package.license = "Apache-2.0"
 
 members = [
-	"lib/rc-crypto",
-	"lib/rc-x509-client",
-	"lib/rc-x509-ffi",
-	"lib/rc-x509-ffi/fuzz",
-	"lib/rc-x509-proto",
-	"lib/rc-x509-test-helpers",
-	"lib/rc-x509-trust",
+  "lib/rc-crypto",
+  "lib/rc-x509-client",
+  "lib/rc-x509-ffi",
+  "lib/rc-x509-ffi/fuzz",
+  "lib/rc-x509-proto",
+  "lib/rc-x509-test-harness-ffi",
+  "lib/rc-x509-test-helpers",
+  "lib/rc-x509-trust",
 ]
 
 [workspace.lints.clippy]

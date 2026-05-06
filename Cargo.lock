@@ -1352,6 +1352,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-x509-test-harness-ffi"
+version = "0.1.0"
+dependencies = [
+ "cbindgen",
+ "futures",
+ "rc-x509-client",
+ "rc-x509-ffi",
+ "tokio",
+]
+
+[[package]]
 name = "rc-x509-test-helpers"
 version = "0.1.0"
 dependencies = [
