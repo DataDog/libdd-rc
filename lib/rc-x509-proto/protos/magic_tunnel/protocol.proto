@@ -68,8 +68,8 @@ message MagicTunnelRequest {
   // The protobuf-serialised payload bytes to pass to the dispatch handler for
   // this namespace.
   //
-  // Payloads SHOULD internally discriminate across subtopics. The recommended
-  // way to implement subtopics is to use a oneof:
+  // Payloads MUST internally discriminate across subtopics. The recommended way
+  // to implement subtopics is to use a oneof:
   //
   // ```protobuf
   // message TeamBananasRequest {
@@ -81,8 +81,8 @@ message MagicTunnelRequest {
   // }
   // ```
   //
-  // This provides a well-typed payload structure and allows future extension
-  // of the payload for this namespace in a backwards compatible way.
+  // This provides a well-typed payload structure and allows future extension of
+  // the payload for this namespace in a backwards compatible way.
   bytes payload = 3;
 }
 
@@ -92,10 +92,10 @@ message MagicTunnelResponse {
 
   // Error conditions for the transport & dispatch logic.
   //
-  // These errors describe the possible failure modes of delivering the
-  // request and invoking the registered dispatch handler. Post-dispatch
-  // errors returned by the dispatch handler should be encoded into the
-  // response payload as a successful dispatch request.
+  // These errors describe the possible failure modes of delivering the request
+  // and invoking the registered dispatch handler. Post-dispatch errors returned
+  // by the dispatch handler SHOULD be encoded into the response payload as a
+  // successful dispatch request.
   enum DispatchError {
     DISPATCH_ERROR_UNSPECIFIED = 0;
 
@@ -113,8 +113,8 @@ message MagicTunnelResponse {
   oneof result {
     // The response payload returned by the dispatch handler.
     //
-    // Like the request payload, this value SHOULD be internally
-    // discriminated by subtopic.
+    // Like the request payload, this value MUST be internally discriminated by
+    // subtopic.
     bytes response = 2;
 
     // The payload was not delivered.
