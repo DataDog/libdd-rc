@@ -150,7 +150,9 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::{
-        test_issuer::{CertBuilder, TestCA, arbitrary_valid_chain},
+        test_issuer::{
+            CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
+        },
         trust_store::MemoryCertCache,
     };
 
@@ -320,7 +322,7 @@ mod tests {
         /// the input.
         #[test]
         fn prop_valid_chain_building(
-            chain in arbitrary_valid_chain(&CA, 0..5_u8),
+            chain in arbitrary_chain(&CA, 0..5_u8, ValidChain::default()),
         ) {
             let mut cache = MemoryCertCache::default();
 
@@ -362,20 +364,18 @@ mod tests {
         /// identifying the missing certificate is returned.
         #[test]
         fn prop_missing_intermediate(
-            chain in arbitrary_valid_chain(&CA, 1..3_u8), // Always at least one intermediate
-            i in 0..5, // Pick a random cert to drop.
+            n_intermediates in 1..3_u8, // Always at least one intermediate
+            seed in any::<u8>(),
         ) {
+            let mutator = MissingIntermediate::new(seed);
+            let drop_idx = mutator.will_remove_idx(n_intermediates as usize);
+
+            let chain = TestChain::build(&CA, n_intermediates, mutator);
             let mut cache = MemoryCertCache::default();
 
-            // Select a random element to drop.
-            let drop_idx = i as usize % chain.intermediates.len();
-
-            // Populate the cache but skip the drop_idx intermediate.
-            for (i, identity) in chain.intermediates.iter().enumerate() {
-                if i == drop_idx {
-                    continue;
-                }
-
+            // Populate the cache with the remaining intermediates (one was
+            // already removed by the MissingIntermediate mutator).
+            for identity in chain.intermediates.iter() {
                 cache.insert(identity.cert().clone());
             }
 
@@ -386,13 +386,19 @@ mod tests {
             )
             .expect_err("invalid chain");
 
-            // Ensure the error references the missing certificate ID.
-            let issuer_id = assert_matches!(err, ChainBuildError::MissingIntermediate(id) => id);
-            let dropped = chain.intermediates.get(drop_idx).unwrap();
-            assert_eq!(
-                dropped.cert().cert_id().as_dangerous_comparable(),
-                issuer_id.as_dangerous_comparable()
-            );
+            let original_len = chain.intermediates.len() + 1;
+            let want = if drop_idx == original_len - 1 {
+                chain.leaf.cert().issuer_cert_id()
+            } else {
+                chain.intermediates[drop_idx].cert().issuer_cert_id()
+            };
+
+            assert_matches!(err, ChainBuildError::MissingIntermediate(ref got) => {
+                assert_eq!(
+                    got.as_dangerous_comparable(),
+                    want.as_dangerous_comparable(),
+                );
+            });
         }
     }
 }

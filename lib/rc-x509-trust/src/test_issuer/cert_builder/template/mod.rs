@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(super) mod intermediate;
-pub(super) mod leaf;
-pub(super) mod root;
+pub(crate) mod intermediate;
+pub(crate) mod leaf;
+pub(crate) mod root;
