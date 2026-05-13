@@ -17,6 +17,8 @@ name = "rc-x509-proto"
 version = "0.1.0"
 license = "Apache-2.0"
 edition.workspace = true
+description = "Protocol type definitions for the RC X509 platform"
+repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
 proptest = "1.11.0"
