@@ -58,7 +58,7 @@ jobs:
           cache-key-prefix: publish
 
       - name: Authenticate with crates.io
-        uses: rust-lang/crates-io-auth-action@v1
+        uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1
         id: auth
 
       # Tier 1 – no inter-workspace dependencies
