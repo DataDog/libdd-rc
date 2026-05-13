@@ -17,6 +17,8 @@ name = "rc-crypto"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+description = "Crypto library for the RC X509 platform"
+repository = "https://github.com/DataDog/libdd-rc"
 
 [lints]
 workspace = true
