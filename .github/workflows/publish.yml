@@ -1,0 +1,86 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Publish crates to crates.io using trusted publishing (OIDC).
+#
+# Trigger: create a GitHub release (e.g. v0.1.0).
+#
+# Prerequisites – for each crate, a trusted publisher must be configured on
+# crates.io with:
+#   • Owner:      DataDog
+#   • Repository: libdd-rc
+#   • Workflow:    publish.yml
+#   • Environment: crates-io
+#
+# Crates are published in dependency order so that downstream crates can
+# resolve their workspace siblings from the registry.
+
+name: publish
+
+on:
+  release:
+    types: [published]
+
+env:
+  AWS_LC_FIPS_SYS_CC: clang
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
+
+    environment:
+      name: crates-io
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Authenticate with crates.io
+        uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1
+        id: auth
+
+      # Tier 1 – no inter-workspace dependencies
+      - name: Publish rc-crypto
+        run: cargo publish -p rc-crypto
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Publish rc-x509-proto
+        run: cargo publish -p rc-x509-proto
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Publish rc-x509-test-helpers
+        run: cargo publish -p rc-x509-test-helpers
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      # Tier 2 – depends on rc-crypto
+      - name: Publish rc-x509-trust
+        run: cargo publish -p rc-x509-trust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      # Tier 3 – depends on rc-crypto, rc-x509-proto, rc-x509-trust
+      - name: Publish rc-x509-client
+        run: cargo publish -p rc-x509-client
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
