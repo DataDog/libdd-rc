@@ -15,6 +15,7 @@
 [package]
 name = "rc-x509-ffi"
 version = "0.1.0"
+publish = false
 edition.workspace = true
 license = "Apache-2.0"
 description = "FFI interface to rc-x509-client"
