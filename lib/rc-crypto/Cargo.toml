@@ -14,7 +14,7 @@
 
 [package]
 name = "rc-crypto"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "Apache-2.0"
 description = "Crypto library for the RC X509 platform"
@@ -43,7 +43,7 @@ criterion = "0.8"
 hex = "0.4"
 proptest = "1.11"
 static_assertions = "1.1.0"
-rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.0" }
+rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.1" }
 
 [features]
 default = ["fips"]
