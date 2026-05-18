@@ -44,8 +44,8 @@ jobs:
             cmd: cargo clippy --workspace --all-features -- -D warnings
           - name: test
             cmd: cargo test --workspace --all-features
-          - name: package
-            cmd: cargo package --workspace --all-features
+          - name: publish dry-run
+            cmd: cargo publish --workspace --all-features --dry-run
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
