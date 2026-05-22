@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "rc-crypto"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "assert_matches",
  "aws-lc-rs",
@@ -1298,7 +1298,7 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "assert_matches",
  "futures",
@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-proto"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "glob",
  "proptest",
@@ -1354,14 +1354,14 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-test-helpers"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "valuable",
 ]
 
 [[package]]
 name = "rc-x509-trust"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "assert_matches",
  "bytes",
