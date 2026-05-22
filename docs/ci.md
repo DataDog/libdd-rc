@@ -22,7 +22,7 @@ toolchain, used for miri / fuzzing CI workflows.
 
 [official Rust container image]: https://hub.docker.com/_/rust
 
-### Updating Rust Version
+### Updating Rust Version
 
 To update the Rust toolchain version used in this project AND in CI, follow the
 steps outlined in the doc comments of `.github/images/rust-ci.Dockerfile`.
