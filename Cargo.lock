@@ -1363,7 +1363,7 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-roots"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "rc-crypto",
 ]
