@@ -24,6 +24,7 @@ repository = "https://github.com/DataDog/libdd-rc"
 bytes = "1.11.1"
 hashbrown = "0.17"
 rc-crypto = { version = "0.1.1", path = "../rc-crypto" }
+rc-x509-roots = { version = "0.1.0", path = "../rc-x509-roots" }
 thiserror = "2.0.18"
 tracing = { version = "0.1.44", features = ["valuable"] }
 valuable = "0.1.1"

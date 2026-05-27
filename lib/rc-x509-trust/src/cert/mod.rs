@@ -14,8 +14,6 @@
 
 //! Certificate validation helpers.
 
-mod root;
 mod untrusted;
 
-pub use root::*;
 pub use untrusted::*;

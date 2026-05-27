@@ -1384,6 +1384,7 @@ dependencies = [
  "hashbrown 0.17.0",
  "proptest",
  "rc-crypto",
+ "rc-x509-roots",
  "rc-x509-test-helpers",
  "rcgen",
  "thiserror",

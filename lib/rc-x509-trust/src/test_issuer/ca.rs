@@ -14,10 +14,9 @@
 
 use std::sync::{Arc, LazyLock};
 
-use crate::{
-    cert::RootCertificate,
-    test_issuer::{CertBuilder, Identity},
-};
+use rc_x509_roots::RootCertificate;
+
+use crate::test_issuer::{CertBuilder, Identity};
 
 #[allow(clippy::test_attr_in_doctest)] // Not a test that needs running.
 /// A "Certificate Authority" for testing:
