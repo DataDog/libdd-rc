@@ -1362,6 +1362,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-x509-roots"
+version = "1.0.0"
+dependencies = [
+ "rc-crypto",
+]
+
+[[package]]
 name = "rc-x509-test-helpers"
 version = "0.1.1"
 dependencies = [
@@ -1377,6 +1384,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "proptest",
  "rc-crypto",
+ "rc-x509-roots",
  "rc-x509-test-helpers",
  "rcgen",
  "thiserror",

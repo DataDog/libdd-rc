@@ -13,27 +13,23 @@
 # limitations under the License.
 
 [package]
-name = "rc-x509-trust"
-version = "0.1.1"
+name = "rc-x509-roots"
+version = "1.0.0"
 edition.workspace = true
 license = "Apache-2.0"
-description = "Trust and attestation library for the RC X509 platform"
+description = "Root certificates the RC X509 platform"
 repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
-bytes = "1.11.1"
-hashbrown = "0.17"
-rc-crypto = { version = "0.1.1", path = "../rc-crypto" }
-rc-x509-roots = { version = "1.0.0", path = "../rc-x509-roots" }
-thiserror = "2.0.18"
-tracing = { version = "0.1.44", features = ["valuable"] }
-valuable = "0.1.1"
+rc-crypto = { version = "0.1.1", path = "../rc-crypto", default-features = false }
 
-[dev-dependencies]
-assert_matches = "1.5.0"
-proptest = "1.11.0"
-rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.1" }
-rcgen = { version = "0.14", default-features = false }
+[features]
+# Replicate the rc-crypto conditional compilation flags so that code that
+# depends on this crate can control rc-crypto features in order to satisfy
+# dd-source.
+default = ["fips"]
+fips = ["rc-crypto/fips"]
+dd-source = ["rc-crypto/dd-source"]
 
 [lints]
 workspace = true

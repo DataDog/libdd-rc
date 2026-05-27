@@ -13,15 +13,12 @@
 // limitations under the License.
 
 use rc_crypto::certificate::id::IssuerCertId;
+use rc_x509_roots::RootCertificate;
 use thiserror::Error;
 use tracing::{debug, error, warn};
 use valuable::Valuable;
 
-use crate::{
-    cert::{RootCertificate, UntrustedCert},
-    chain::UntrustedChain,
-    trust_store::CertCache,
-};
+use crate::{cert::UntrustedCert, chain::UntrustedChain, trust_store::CertCache};
 
 /// The absolute maximum allowed length of any chain from root to leaf,
 /// including root and excluding leaf.

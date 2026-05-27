@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Certificate validation helpers.
+#![doc = include_str!("../README.md")]
 
-mod untrusted;
+mod r1;
+mod r2;
+mod root;
 
-pub use untrusted::*;
+pub use r1::*;
+pub use r2::*;
+pub use root::*;
