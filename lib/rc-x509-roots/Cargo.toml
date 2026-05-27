@@ -1,0 +1,19 @@
+[package]
+name = "rc-x509-roots"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rc-crypto = { version = "0.1.1", path = "../rc-crypto", default-features = false }
+
+[features]
+# Replicate the rc-crypto conditional compilation flags so that code that
+# depends on this crate can control rc-crypto features in order to satisfy
+# dd-source.
+default = ["fips"]
+fips = ["rc-crypto/fips"]
+dd-source = ["rc-crypto/dd-source"]
+
+[lints]
+workspace = true

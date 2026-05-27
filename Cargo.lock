@@ -1362,6 +1362,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-x509-roots"
+version = "0.1.0"
+dependencies = [
+ "rc-crypto",
+]
+
+[[package]]
 name = "rc-x509-test-helpers"
 version = "0.1.1"
 dependencies = [
