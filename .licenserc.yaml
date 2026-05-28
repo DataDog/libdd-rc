@@ -30,4 +30,4 @@ header:
   paths-ignore:
     - "rust-toolchain.toml"
     - "deny.toml"
-    - "cbindgen.toml"
+    - "lib/rc-x509-ffi/cbindgen.toml"
