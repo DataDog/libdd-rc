@@ -14,7 +14,7 @@
 
 //! Abstract issuance of a [`Certificate`] from a [`CertificateSigningRequest`].
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::certificate::{Certificate, csr::CertificateSigningRequest};
 
@@ -40,6 +40,7 @@ pub trait CertIssuer: Send + Sync + std::fmt::Debug {
     fn issue_cert_for(
         &self,
         csr: &CertificateSigningRequest,
+        ttl: Duration,
     ) -> impl Future<Output = Result<Certificate, IssueError>> + Send;
 }
 
@@ -50,7 +51,8 @@ where
     fn issue_cert_for(
         &self,
         csr: &CertificateSigningRequest,
+        ttl: Duration,
     ) -> impl Future<Output = Result<Certificate, IssueError>> + Send {
-        T::issue_cert_for(self, csr)
+        T::issue_cert_for(self, csr, ttl)
     }
 }
