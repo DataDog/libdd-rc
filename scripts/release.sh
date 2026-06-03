@@ -1,5 +1,10 @@
 #!/usr/bin/env zsh
 
+# Running this script will publish the crates in this repo to crates.io via CI,
+# by creating a GitHub repo release which runs the automation.
+#
+# Requires "gh" to be installed and logged in, and tag push permissions.
+
 set -euo pipefail
 
 function echoe {
@@ -17,6 +22,13 @@ fi
 # it's likely the caller hasn't committed some change they want to publish.
 if ! git diff --quiet || ! git diff --cached --quiet; then
 	echoe "%F{red}repo has uncommitted changes - aborting%f"
+	exit 1
+fi
+
+# Ensure the gh CLI is authenticated before doing any work - this is needed to
+# publish the Github release from the tag.
+if ! gh auth status &>/dev/null; then
+	echoe "%F{red}not logged into gh - run 'gh auth login' first%f"
 	exit 1
 fi
 
@@ -80,7 +92,12 @@ read -r CONFIRM
 echoe "creating signed tag: $TAG"
 git tag -s "$TAG" -m "$TAG"
 
+# Push the tag to the repo.
 echoe "pushing $TAG to origin"
 git push origin "$TAG"
+
+# And use it to create a github release.
+echoe "creating GitHub release"
+gh release create "$TAG" --title "$TAG" --generate-notes
 
 echoe "DONE"
