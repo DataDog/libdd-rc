@@ -211,6 +211,22 @@ impl Certificate {
     pub fn issuer_cert_id(&self) -> &IssuerCertId {
         &self.issuer_cert_id
     }
+
+    /// Return the subject distinguished name as a [RFC 4514] string.
+    ///
+    /// # Expensive
+    ///
+    /// Generating the subject string is relatively expensive - cache the result
+    /// at this call appropriately.
+    ///
+    /// [RFC 4514]: https://datatracker.ietf.org/doc/html/rfc4514
+    pub fn subject(&self) -> String {
+        let (_, cert) = X509CertificateParser::new()
+            .with_deep_parse_extensions(false)
+            .parse(&self.der)
+            .expect("valid DER: already parsed at construction");
+        cert.subject().to_string()
+    }
 }
 
 impl From<rcgen::Certificate> for Certificate {
@@ -367,6 +383,12 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             cert.validity().not_after_as_timestamp().to_string(),
             "2035-08-11T14:59:40Z"
         );
+    }
+
+    #[test]
+    fn test_subject_fixture() {
+        let cert = cert_fixture();
+        assert_eq!(cert.subject(), "CN=itsallbroken.com");
     }
 
     #[test]
