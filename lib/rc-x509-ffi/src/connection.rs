@@ -659,7 +659,7 @@ fn io_task(
         // [`rc_conn_disconnected()`] returning. The FFI host is responsible for
         // and guarantees the callback is valid between these two FFI function
         // calls.
-        let buf = Vec::from(&payload);
+        let buf = Vec::from(payload);
         let ret = unsafe { send(buf.as_slice().as_ptr(), buf.len() as u32, user_data.0) };
 
         match ret {
@@ -871,7 +871,7 @@ mod tests {
         // the callback. This completes asynchronously, so wait on the channel
         // as a signal for it to occur:
         let got = cb_rx.recv().expect("must see callback payload");
-        assert_eq!(got, Vec::from(&ClientToServer::Pong));
+        assert_eq!(got, Vec::from(ClientToServer::Pong));
 
         // Simulate incoming data.
         let data = rc_x509_proto::encode(&v1::ServerToClient {
