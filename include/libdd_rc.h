@@ -34,19 +34,31 @@
  Result of pushing data received from the RC delivery backend into the
  internal client library recv queue (returned by the client library).
  */
-enum recv_ret_t {
+enum recv_ret_t
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
     /*
      The message was successfully passed.
      */
     RECV_RET_T_SUCCESS = 0,
 };
+#if __STDC_VERSION__ >= 202311L
+typedef enum recv_ret_t recv_ret_t;
+#else
 typedef int32_t recv_ret_t;
+#endif // __STDC_VERSION__ >= 202311L
 
 /*
  Result of sending data to the RC delivery backend, returned by the host
  runtime.
  */
-enum send_ret_t {
+enum send_ret_t
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
     /*
      The FFI host accepted this request.
      */
@@ -60,7 +72,11 @@ enum send_ret_t {
      */
     SEND_RET_T_UNKNOWN = INT32_MAX,
 };
+#if __STDC_VERSION__ >= 202311L
+typedef enum send_ret_t send_ret_t;
+#else
 typedef int32_t send_ret_t;
+#endif // __STDC_VERSION__ >= 202311L
 
 /*
  A [`Ctx`] is a RAII handle for an instance of a X509 verifier.
