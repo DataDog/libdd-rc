@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use futures::Stream;
+use rc_x509_proto::protocol::v1::dispatch_request::Payload;
 use thiserror::Error;
 
 use crate::{
     codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::CorrelationId,
-    payload::PayloadTopic,
 };
 
 /// The runtime host has rejected a [`RustToHost::dispatch()`] call.
@@ -86,9 +86,8 @@ pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
     /// sub-millisecond).
     fn dispatch(
         &self,
-        topic: PayloadTopic,
-        msg: Vec<u8>,
         correlation_id: CorrelationId,
+        payload: Payload,
     ) -> Result<(), DispatchError>;
 }
 

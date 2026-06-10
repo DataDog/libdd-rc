@@ -14,6 +14,21 @@
 
 /// An identifier that uniquely identifies messages and their expected a
 /// response.
-#[derive(Debug)]
-#[allow(unused)]
+///
+/// A [`CorrelationId`] provides no guarantees other than being unique per
+/// connection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct CorrelationId(u64);
+
+impl CorrelationId {
+    /// Wrap `v` as a [`CorrelationId`].
+    pub fn new(v: u64) -> Self {
+        Self(v)
+    }
+
+    /// Return the raw `u64` value.
+    pub fn get(self) -> u64 {
+        self.0
+    }
+}

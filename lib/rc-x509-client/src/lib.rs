@@ -19,7 +19,6 @@ pub mod codec;
 pub mod connection;
 pub mod entrypoint;
 pub mod host_runtime;
-pub mod payload;
 mod shutdown_signal;
 
 pub use abort_on_drop::*;

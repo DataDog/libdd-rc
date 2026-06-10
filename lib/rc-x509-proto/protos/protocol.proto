@@ -33,8 +33,8 @@ message ServerToClient {
     // This certificate MUST be treated as an untrusted input.
     Certificate certificate_push = 2;
 
-    // Deliver a Magic Tunnel payload.
-    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 3;
+    // Pass a message to the host application.
+    DispatchRequest dispatch = 3;
   }
 }
 
@@ -46,12 +46,12 @@ message ClientToServer {
     // The opening message sent when establishing a new connection.
     ClientHello client_hello = 2;
 
-    // Respond with the return value from a Magic Tunnel dispatcher call.
-    rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 3;
+    // Respond with the return value from a dispatch call.
+    DispatchResponse dispatch = 3;
   }
 }
 
-// An application-level ping message.
+// An application-level ping message. Each `Ping` generates exactly one `Pong`.
 //
 // While the WebSocket transport to the RC delivery backend has a transport
 // level "ping" control frame, it doesn't capture the full end-to-end delivery
@@ -92,4 +92,61 @@ message ClientHello {
 // An X509 certificate as raw DER-encoded bytes.
 message Certificate {
   bytes der = 1;
+}
+
+// Instruct the client library to deliver a payload to the host application.
+//
+// Dispatch requests are expected to map one-to-one with `DispatchResponse`,
+// which return the result of the dispatch call asynchronously.
+message DispatchRequest {
+  // An identifier to correlate any response with this request.
+  //
+  // The only guarantee provided by a `correlation_id` is that it is unique per
+  // connection.
+  uint64 correlation_id = 1;
+
+  oneof payload {
+    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
+  }
+}
+
+// A response to the `DispatchRequest` uniquely identified by the
+// `correlation_id`.
+message DispatchResponse {
+  // The `correlation_id` value sent in the `DispatchRequest`.
+  uint64 correlation_id = 1;
+
+  // Error conditions for the transport & dispatch logic.
+  //
+  // These errors describe the possible failure modes of delivering the request
+  // and invoking the registered handler for the payload type.
+  enum DispatchError {
+    DISPATCH_ERROR_UNSPECIFIED = 0;
+
+    // The client does not support the payload type being dispatched.
+    DISPATCH_ERROR_UNKNOWN_PAYLOAD = 1;
+
+    // The client supports the type of payload being sent, but there is no
+    // handler registered to process it.
+    DISPATCH_ERROR_NO_DISPATCH_HANDLER = 2;
+
+    // The dispatch handler delivery queue is full.
+    //
+    // This occurs when the dispatch handler is not consuming messages fast
+    // enough to keep up with the rate of new requests arriving. The message
+    // will not be delivered.
+    DISPATCH_ERROR_QUEUE_FULL = 3;
+  }
+
+  oneof result {
+    DispatchError error = 2;
+    DispatchResponsePayload payload = 3;
+  }
+}
+
+/// The response payload of a successful Dispatch call.
+message DispatchResponsePayload {
+  oneof payload {
+    rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 1;
+  }
 }
