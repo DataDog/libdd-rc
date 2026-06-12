@@ -79,7 +79,7 @@ pub enum ConnectionErr {
 /// representations, encapsulating any unsafe operations.
 pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
     /// Call into the host message dispatcher to pass a verified `msg` to the
-    /// registered client for `topic`. The call return value is later passed
+    /// registered client for `payload`. The call return value is later passed
     /// back providing the same unique `correlation_id`.
     ///
     /// MAY be called concurrently, MUST NOT block (expected return time is

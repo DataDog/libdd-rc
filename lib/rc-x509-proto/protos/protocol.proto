@@ -97,7 +97,7 @@ message Certificate {
 // Instruct the client library to deliver a payload to the host application.
 //
 // Dispatch requests are expected to map one-to-one with `DispatchResponse`,
-// which return the result of the dispatch call asynchronously.
+// which returns the result of the dispatch call asynchronously.
 message DispatchRequest {
   // An identifier to correlate any response with this request.
   //

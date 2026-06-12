@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// An identifier that uniquely identifies messages and their expected a
-/// response.
+/// An identifier that uniquely identifies messages and their expected response.
 ///
 /// A [`CorrelationId`] provides no guarantees other than being unique per
 /// connection.
