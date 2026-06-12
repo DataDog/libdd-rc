@@ -79,20 +79,21 @@ while read -r name ver; do
 done < <(cargo metadata --manifest-path "$tmpdir/Cargo.toml" --format-version 1 --no-deps 2>/dev/null | jq -r '.packages[] | [.name, .version] | @tsv')
 
 # Show any changes.
-CHANGES=0
+typeset -a CHANGES
+CHANGES=()
 for name in ${(k)CURRENT_VERSIONS}; do
 	new_ver=${CURRENT_VERSIONS[$name]}
 	old_ver=${OLD_VERSIONS[$name]:-}
 	if [[ "$old_ver" != "$new_ver" ]]; then
 		print -P "    %F{blue}$name%f: ${old_ver:-<new>} -> $new_ver" >&2
-		(( ++CHANGES ))
+		CHANGES+=($name)
 	fi
 done
 
 echo
 
 # Stop if no crates have changed - this release is useless.
-if [[ $CHANGES -eq 0 ]] then;
+if [[ ${#CHANGES} -eq 0 ]] then;
 	echoe "%F{red}no changes detected in this release - aborting%f"
 	exit 1
 fi
@@ -101,6 +102,13 @@ fi
 print -Pn "%F{yellow}proceed?%f [y/N] " >&2
 read -r CONFIRM
 [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echoe "%F{red}aborted%f"; exit 1; }
+
+echoe "performing dry run publish for each crate"
+
+cargo publish --dry-run --workspace > publish.log 2>&1 \
+	|| { cat publish.log; exit 1; }
+
+echoe "dry run successful"
 
 # Create the tag (signed).
 echoe "creating signed tag: $TAG"
