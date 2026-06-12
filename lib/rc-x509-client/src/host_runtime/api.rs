@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use futures::Stream;
+use rc_x509_proto::protocol::v1::dispatch_request::Payload;
 use thiserror::Error;
 
 use crate::{
     codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::CorrelationId,
-    payload::PayloadTopic,
 };
 
 /// The runtime host has rejected a [`RustToHost::dispatch()`] call.
@@ -79,16 +79,15 @@ pub enum ConnectionErr {
 /// representations, encapsulating any unsafe operations.
 pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
     /// Call into the host message dispatcher to pass a verified `msg` to the
-    /// registered client for `topic`. The call return value is later passed
+    /// registered client for `payload`. The call return value is later passed
     /// back providing the same unique `correlation_id`.
     ///
     /// MAY be called concurrently, MUST NOT block (expected return time is
     /// sub-millisecond).
     fn dispatch(
         &self,
-        topic: PayloadTopic,
-        msg: Vec<u8>,
         correlation_id: CorrelationId,
+        payload: Payload,
     ) -> Result<(), DispatchError>;
 }
 

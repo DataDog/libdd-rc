@@ -16,10 +16,13 @@
 
 use rc_x509_proto::{
     encode,
-    protocol::v1::{self, client_to_server::Message},
+    protocol::v1::{self, DispatchResponse, client_to_server::Message},
 };
 
-use crate::connection::{ConnectionId, GracefulDisconnectionCount, UngracefulDisconnectionCount};
+use crate::{
+    connection::{ConnectionId, GracefulDisconnectionCount, UngracefulDisconnectionCount},
+    host_runtime::CorrelationId,
+};
 
 /// All possible messages originating from this client library, sent to the RC
 /// delivery backend.
@@ -40,11 +43,23 @@ pub enum ClientToServer {
         /// Number of times the connection has been ungracefully broken.
         ungraceful: UngracefulDisconnectionCount,
     },
+
+    /// An async response to a [`ServerToClient::Dispatch`] request.
+    ///
+    /// [`ServerToClient::Dispatch`]: super::ServerToClient::Dispatch
+    DispatchResponse {
+        /// A unique ID to correlate this response with the request that
+        /// generated this dispatch.
+        correlation_id: CorrelationId,
+
+        /// The response payload from the host application.
+        result: v1::dispatch_response::Result,
+    },
 }
 
 /// Serialise this [`ClientToServer`] as a protobuf payload.
-impl From<&ClientToServer> for Vec<u8> {
-    fn from(value: &ClientToServer) -> Self {
+impl From<ClientToServer> for Vec<u8> {
+    fn from(value: ClientToServer) -> Self {
         // Construct the wire type for this `value`.
         let wire = match value {
             ClientToServer::ClientHello {
@@ -56,7 +71,16 @@ impl From<&ClientToServer> for Vec<u8> {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
             }),
+
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),
+
+            ClientToServer::DispatchResponse {
+                correlation_id,
+                result,
+            } => Message::Dispatch(DispatchResponse {
+                correlation_id: correlation_id.get(),
+                result: Some(result),
+            }),
         };
 
         encode(&v1::ClientToServer {
@@ -77,12 +101,12 @@ mod tests {
             a in any::<ClientToServer>(),
             b in any::<ClientToServer>(),
         ) {
-            let a_out = Vec::from(&a);
-            let b_out = Vec::from(&b);
+            let a_out = Vec::from(a.clone());
+            let b_out = Vec::from(b.clone());
 
             // Invariant: deterministic serialisation.
-            assert_eq!(a_out, Vec::from(&a));
-            assert_eq!(b_out, Vec::from(&b));
+            assert_eq!(a_out, Vec::from(a.clone()));
+            assert_eq!(b_out, Vec::from(b.clone()));
 
             // Invariant: if the input message variants are equal (a == b) then
             // the output message variants are equal (a_out == b_out).
