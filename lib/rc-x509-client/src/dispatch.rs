@@ -120,7 +120,7 @@ pub struct DispatchPublisher {
 impl DispatchPublisher {
     /// Asynchronously deliver [`Dispatch`] to the host application for
     /// processing.
-    pub async fn dispatch(&self, payload: Dispatch) -> Result<(), DispatchError> {
+    pub fn dispatch(&self, payload: Dispatch) -> Result<(), DispatchError> {
         match self.tx.try_send(payload) {
             Ok(()) => Ok(()),
             Err(TrySendError::Closed(_)) => Err(DispatchError::DispatchClosed),
