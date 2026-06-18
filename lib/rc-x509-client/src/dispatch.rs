@@ -159,9 +159,9 @@ impl Stream for DispatchStream {
     }
 }
 
-/// The response queue is full.
+/// The response queue is closed.
 #[derive(Debug, Error)]
-#[error("dispatch response queue is full")]
+#[error("dispatch response queue is closed")]
 pub struct DispatchResponseQueueClosed {}
 
 /// A handle to transmit [`DispatchResult`] messages back to the client library.
