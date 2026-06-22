@@ -31,7 +31,7 @@ channels:
     interface ([`FFIConnection`]) has it's own [`IOHandle`], through which
     payloads are exchanged with the FFI layer, and in turn, FFI host.
 
-[`DispatchSubscriber`]: rc_x509_client::dispatch::DispatchSubscriber
+[`DispatchStream`]: rc_x509_client::dispatch::DispatchStream
 
 ## Example Usage
 
