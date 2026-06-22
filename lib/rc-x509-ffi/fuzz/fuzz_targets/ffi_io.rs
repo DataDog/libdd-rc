@@ -44,20 +44,35 @@
 //! fuzzer issue, not the library: if the code-under-test were leaking memory,
 //! the leak sanitiser would fire as part a fuzz run.
 
-use std::{ffi::c_void, slice};
+use std::{ffi::c_void, ptr, slice};
 
+use futures::{Stream, StreamExt, pin_mut};
 use libfuzzer_sys::fuzz_target;
+use rc_x509_client::{
+    ShutdownSignal, codec,
+    connection::{ConnectionEvent, ConnectionUpdate},
+    dispatch::DispatchPublisher,
+    entrypoint::LibraryEntrypoint,
+    host_runtime::Connection,
+};
 use rc_x509_ffi::*;
 use rc_x509_proto::{decode, protocol::v1::ClientToServer};
-
-use crate::test_harness::new_echo_ctx;
-
-mod test_harness;
 
 fuzz_target!(|data: &[u8]| {
     // Register a new testing context that parses any incoming data, and replies
     // with a fixed response for each.
-    let mut ctx = new_echo_ctx();
+    let mut ctx = new_ctx();
+
+    // A no-op dispatch callback for the connection - this fuzzer exercises
+    // I/O, not dispatch.
+    unsafe extern "C" fn do_dispatch(
+        _correlation_id: u64,
+        _data: *const u8,
+        _length: u32,
+        _user_data: *const c_void,
+    ) -> DispatchRet {
+        DispatchRet::Unknown
+    }
 
     // A channel to notify the main thread that the send callback succeeded, and
     // provide the payload it saw for verification.
@@ -95,7 +110,7 @@ fuzz_target!(|data: &[u8]| {
 
     // Initialise the connection.
     let tx_ptr = Box::into_raw(tx);
-    let conn = unsafe { rc_conn_new(&mut *ctx as _) };
+    let conn = unsafe { rc_conn_new(&mut *ctx as _, do_dispatch, ptr::null()) };
     unsafe { rc_conn_send_callback(conn, do_send, tx_ptr as _) };
     unsafe { rc_conn_connected(conn) };
 
@@ -125,3 +140,54 @@ fuzz_target!(|data: &[u8]| {
     unsafe { rc_conn_free(conn) };
     unsafe { rc_free(Box::into_raw(ctx)) };
 });
+
+/// An [`EchoEntrypoint`] is designed to exercise the FFI layer, I/O handling
+/// primitives, and runtime management in isolation.
+///
+/// This entrypoint watches for connection events, and then responds to any
+/// incoming message delivered to it with a [`ClientToServer::Pong`]
+/// irrespective of the incoming message. If the incoming message could not be
+/// parsed a [`ClientToServer::Pong`] message is still returned as a heartbeat
+/// signal.
+#[derive(Debug)]
+struct EchoEntrypoint;
+impl<IO> LibraryEntrypoint<IO> for EchoEntrypoint
+where
+    IO: Connection,
+{
+    async fn entrypoint(
+        self,
+        _shutdown: ShutdownSignal,
+        conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    ) {
+        pin_mut!(conn_events);
+
+        while let Some(event) = conn_events.next().await {
+            if let ConnectionEvent::Connected(io, dispatch) = event.into_event() {
+                tokio::task::spawn(handle_conn(io, dispatch));
+            }
+        }
+    }
+}
+
+async fn handle_conn<IO>(mut io: IO, _dispatch: DispatchPublisher)
+where
+    IO: Connection,
+{
+    let recv = io.take_recv_stream().expect("first use of connection I/O");
+    pin_mut!(recv);
+
+    while let Some(_v) = recv.next().await {
+        // All other payloads generate a dummy response to drive the I/O
+        // interfaces.
+        io.send(codec::ClientToServer::Pong)
+            .await
+            .expect("handle must be alive prior to shutdown");
+    }
+}
+
+/// Construct a [`Ctx`] that uses an [`EchoEntrypoint`] instead of the default
+/// library entrypoint.
+fn new_ctx() -> Box<Ctx> {
+    Ctx::new(EchoEntrypoint)
+}
