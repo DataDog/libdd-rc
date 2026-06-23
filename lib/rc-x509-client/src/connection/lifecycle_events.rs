@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::dispatch::DispatchPublisher;
+
 /// A [`ConnectionId`] uniquely identifies a single connection managed by the
 /// FFI host (e.g. a call to `rc_conn_new()`).
 ///
@@ -86,8 +88,10 @@ pub enum ConnectionEvent<IO> {
     /// [`ConnectionId`] that has previously received an
     /// [`ConnectionEvent::Init`].
     ///
-    /// Data can be sent / received through the provided handle.
-    Connected(IO),
+    /// Data can be sent / received through the provided handle, and dispatch
+    /// requests for messages received on this connection can be published
+    /// through the provided [`DispatchPublisher`].
+    Connected(IO, DispatchPublisher),
 
     /// The FFI host has lost (or closed) the connection to the RC backend.
     Disconnected,

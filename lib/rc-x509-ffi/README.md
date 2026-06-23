@@ -18,6 +18,11 @@ and therefore minimise bug risk.
 All interaction with the non-FFI parts of the library are bridged through
 channels:
 
+  * Payloads are delivered through the FFI layer to the host application via a
+    dedicated thread invoking the dispatch callback, which consumes dispatch
+    requests from the client library and returns responses to it over a pair of
+    per-[`Ctx`] channels.
+
   * Connection lifecycle events ([`ConnectionEvent`]) pass through a per-[`Ctx`]
     channel, which the client library [`entrypoint`] consumes to react to
     FFI-driven connection state changes.
@@ -25,6 +30,8 @@ channels:
   * Each connection initialised and marked as ready to perform I/O by the FFI
     interface ([`FFIConnection`]) has it's own [`IOHandle`], through which
     payloads are exchanged with the FFI layer, and in turn, FFI host.
+
+[`DispatchStream`]: rc_x509_client::dispatch::DispatchStream
 
 ## Example Usage
 
@@ -34,11 +41,23 @@ An example using the FFI interface from rust:
 use std::{ptr, ffi::c_void};
 use rc_x509_ffi::*;
 
-// Initialise the library Ctx and obtain a handle to this library instance
+// Initialise the library Ctx and obtain a handle to this library instance.
 let ctx = unsafe { rc_init() };
 
-// Initialising a new connection
-let conn = unsafe { rc_conn_new(ctx) };
+// Define a callback that will receive the validated messages for your
+// application on this connection.
+unsafe extern "C" fn do_dispatch(
+    _correlation_id: u64,
+    _data: *const u8,
+    _length: u32,
+    _user_data: *const c_void,
+) -> DispatchRet {
+    // Copy and enqueue the message for processing in your application here.
+    DispatchRet::Unknown
+}
+
+// Initialising a new connection, referencing the message dispatch callback.
+let conn = unsafe { rc_conn_new(ctx, do_dispatch, ptr::null()) };
 
 // Configure the callback the library uses to ask the FFI host to forward data
 // to the RC server.

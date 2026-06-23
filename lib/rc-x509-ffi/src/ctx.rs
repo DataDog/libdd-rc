@@ -28,7 +28,7 @@ use rc_x509_client::{
     entrypoint::{GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main},
 };
 
-use crate::{FFIConnection, io_handle::IOHandle};
+use crate::{DispatchCb, DispatchCbUserData, FFIConnection, io_handle::IOHandle};
 
 /// Initialise a new client [`Ctx`], starting a background thread to drive
 /// internal execution.
@@ -129,6 +129,7 @@ impl Ctx {
 
         // Spawn a background thread to drive the async runtime for this client
         // instance.
+        let signal2 = signal.clone();
         let runtime_thread = std::thread::Builder::new()
             .name("rc-x509-worker".into())
             .spawn(move || {
@@ -143,7 +144,7 @@ impl Ctx {
 
                 // Execute the client library "main" entrypoint function to
                 // completion.
-                runtime.block_on(main.entrypoint(signal, UnboundedReceiverStream::new(conn_rx)));
+                runtime.block_on(main.entrypoint(signal2, UnboundedReceiverStream::new(conn_rx)));
 
                 // Allow spawned tasks to observe the shutdown signal and
                 // perform cleanup before the runtime exits.
@@ -181,13 +182,19 @@ impl Ctx {
     }
 
     /// Initialise a new [`FFIConnection`] registered to this [`Ctx`].
-    pub(super) fn new_connection(&self) -> Box<FFIConnection> {
+    pub(super) fn new_connection(
+        &self,
+        dispatch: DispatchCb,
+        dispatch_user_data: DispatchCbUserData,
+    ) -> Box<FFIConnection> {
         let id = ConnectionId::new(self.next_connection_id.fetch_add(1, Ordering::SeqCst));
 
         FFIConnection::new(
             self.runtime_handle.clone(),
             id,
             self.connection_events.clone(),
+            dispatch,
+            dispatch_user_data,
         )
     }
 }

@@ -25,7 +25,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use crate::host_runtime::CorrelationId;
 
 /// The maximum number of dispatch payloads that can be queued in memory,
-/// waiting for the [`DispatchSubscriber`] to consume.
+/// waiting for the [`DispatchStream`] to consume.
 ///
 /// Payload sizes are limited by the server, meaning the combination of server
 /// limit and this queue bounds caps the amount of memory used by this queue.

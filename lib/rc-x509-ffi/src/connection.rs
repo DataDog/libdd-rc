@@ -17,7 +17,8 @@
 use core::slice;
 use std::ffi::c_void;
 
-use futures::executor::block_on;
+use futures::{StreamExt, executor::block_on};
+use rc_x509_proto::decode;
 use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, warn};
@@ -26,6 +27,11 @@ use rc_x509_client::{
     AbortOnDrop,
     codec::{ClientToServer, DecodingError, ServerToClient},
     connection::{ConnectionEvent, ConnectionId, ConnectionUpdate},
+    dispatch::{
+        DispatchError, DispatchResponder, DispatchResult, DispatchStream,
+        new_dispatcher_interconnect,
+    },
+    host_runtime::CorrelationId,
 };
 
 use crate::io_handle::IOHandle;
@@ -38,6 +44,10 @@ const QUEUE_BUFFER_LEN: usize = 100;
 
 /// Initialise a new client connection state.
 ///
+/// The `user_data` pointer is for use by the caller to pass state to the
+/// subsequent [`DispatchCb`] calls, and is never referenced internally. It MAY
+/// be null, but it MUST be safe to pass between threads.
+///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of `conn` for the duration of the
 ///     call, and returns ownership of [`FFIConnection`].
@@ -46,16 +56,156 @@ const QUEUE_BUFFER_LEN: usize = 100;
 ///
 /// This call is safe iff `ctx` points to a handle obtained from a [`rc_init()`]
 /// call that has not yet been freed, and is concurrency safe.
+///
+/// The caller MUST provide a non-null `dispatch` callback that is safe to call
+/// concurrently at all times, until [`rc_conn_free()`] is called at which
+/// point it is guaranteed the callback will not be invoked again.
+///
+/// [`rc_init()`]: super::rc_init()
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_new(ctx: *const Ctx) -> *mut FFIConnection {
+pub unsafe extern "C" fn rc_conn_new(
+    ctx: *const Ctx,
+    dispatch: DispatchCb,
+    user_data: *const c_void,
+) -> *mut FFIConnection {
     assert!(!ctx.is_null());
 
     let conn = {
         let ctx = unsafe { &*ctx };
-        ctx.new_connection()
+        ctx.new_connection(dispatch, DispatchCbUserData(user_data))
     };
 
     Box::into_raw(conn)
+}
+
+/// The callback invoked to deliver application messages.
+///
+/// The payload data provided by this call is always a protobuf encoded
+/// [`rc_x509_proto::protocol::v1::dispatch_request::Payload`]. The callback
+/// MUST NOT block this call, which stalls the client library. The callback
+/// SHOULD enqueue work into a channel for deferred processing.
+///
+/// For each payload delivered through this callback, exactly one call to
+/// [`rc_conn_dispatch_result()`] MUST be made to return the call result after
+/// processing.
+///
+/// The correlation ID is an opaque identifier with no guarantees the callee can
+/// rely on.
+///
+/// Passes a reference to a byte slice of `length` number of bytes that is valid
+/// for the lifetime of the function call, and a correlation ID that should be
+/// used when generating a dispatch response via [`rc_conn_dispatch_result()`].
+///
+/// The callback is invoked with the `user_data` value provided by the caller
+/// when configuring the dispatch callback.
+///
+///   * Called by: `client library`.
+///   * Ownership: passes shared reference to the `data` array to the host
+///     runtime for the duration of the call.
+///
+/// This callback MUST be valid for the lifetime of the call, and MUST be safe
+/// to call concurrently.
+///
+/// NOTE: the client library retains ownership of `data` after this call, and it
+/// may be freed or modified at any time after this function returns.
+pub type DispatchCb = unsafe extern "C" fn(
+    correlation_id: u64,
+    data: *const u8,
+    length: u32,
+    user_data: *const c_void,
+) -> DispatchRet;
+
+/// The return value from a [`DispatchCb`] call.
+#[derive(Debug, PartialEq, Eq)]
+#[repr(i32)]
+pub enum DispatchRet {
+    /// The request was successfully dispatched to the registered handler.
+    Success = 0,
+
+    /// The client does not support the payload type being dispatched.
+    UnknownPayload = 1,
+
+    /// The client supports the type of payload being sent, but there is no
+    /// handler registered to process it.
+    NoDispatchHandler = 2,
+
+    /// The dispatch handler delivery queue is full.
+    ///
+    /// This occurs when the dispatch handler is not consuming messages fast
+    /// enough to keep up with the rate of new requests arriving. The message
+    /// will not be delivered.
+    QueueFull = 3,
+
+    /// An unknown error occurred.
+    Unknown = i32::MAX,
+}
+
+/// A container to hold the callback context pointer for a [`DispatchCb`] call.
+///
+/// NOTE: the pointer MAY be null and MUST never be dereferenced or modified.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct DispatchCbUserData(*const c_void);
+
+/// Safety: the FFI caller guarantees this pointer can be sent between threads.
+/// This pointer is never dereferenced by this library.
+unsafe impl Send for DispatchCbUserData {}
+
+/// Return the result of asynchronously processing a previously dispatched
+/// message.
+///
+/// The data provided to this call MUST be a protobuf serialised
+/// [`rc_x509_proto::protocol::v1::DispatchResponsePayload`] message.
+///
+/// Exactly one call per message delivered through [`DispatchCb`] MUST be made,
+/// referencing the same `correlation_id`.
+///
+///   * Called by: `host runtime`.
+///   * Ownership: passes shared reference of [`FFIConnection`] and `data` to
+///     client library for the duration of the call.
+///
+/// NOTE: the host runtime retains ownership of `data` after this call, and is
+/// responsible for freeing the memory backing it after this call completes.
+///
+/// # Safety
+///
+/// The provided `data` MUST be valid for a read of `length` bytes for the
+/// duration of this function call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rc_conn_dispatch_result(
+    conn: *mut FFIConnection,
+    correlation_id: u64,
+    data: *const u8,
+    length: u32,
+) {
+    assert!(!conn.is_null());
+    assert!(!data.is_null());
+
+    if length == 0 {
+        return;
+    }
+
+    let correlation_id = CorrelationId::new(correlation_id);
+
+    // Build a slice from the raw pointer + length tuple.
+    let payload = unsafe { slice::from_raw_parts(data, length as usize) };
+
+    // Deserialise the byte buffer ref into an owned in-memory representation.
+    //
+    // This impl is guaranteed to copy all values from the source into the
+    // destination struct (by Form<slice> impl); ownership of the "data" buffer
+    // is retained by the caller.
+    let result = match decode(payload) {
+        Ok(result) => Ok(result),
+        Err(e) => Err(DispatchError::ReplyDeserialisation(e)),
+    };
+
+    // Call into the connection to enqueue the deserialised message (or
+    // deserialisation error).
+    let conn = unsafe { &*conn };
+    conn.handle_dispatch_result(DispatchResult {
+        correlation_id,
+        result,
+    });
 }
 
 /// Mark the connection as established.
@@ -246,8 +396,8 @@ pub enum RecvRet {
 #[derive(Debug, Clone, Copy)]
 struct SendCbUserData(*const c_void);
 
-// Safety: caller guarantees the pointer can be sent between threads. This
-// pointer is never dereferenced by this library.
+/// Safety: caller guarantees the pointer can be sent between threads. This
+/// pointer is never dereferenced by this library.
 unsafe impl Send for SendCbUserData {}
 
 /// The internal configuration state of a [`FFIConnection`].
@@ -313,6 +463,19 @@ enum State {
 
         /// A signal to stop the io_task.
         io_task_stop: CancellationToken,
+
+        /// A task running in a dedicated OS thread, passing dispatch payloads
+        /// from the client library through the FFI boundary to the FFI host.
+        dispatch_task: AbortOnDrop<()>,
+
+        /// A signal to stop the dispatch_task.
+        dispatch_task_stop: CancellationToken,
+
+        /// A handle to deliver [`DispatchResult`] responses back to the client
+        /// library, used by [`rc_conn_dispatch_result()`].
+        ///
+        /// [`rc_conn_dispatch_result()`]: crate::rc_conn_dispatch_result()
+        dispatch_responder: DispatchResponder,
     },
 }
 
@@ -415,6 +578,14 @@ pub struct FFIConnection {
     /// An event sink through which updates for this connection are published.
     events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
 
+    /// The dispatch callback used to deliver application messages from this
+    /// connection across the FFI boundary.
+    ///
+    /// Safety: the FFI host guarantees this callback is valid and safe to call
+    /// concurrently for the lifetime of this [`FFIConnection`].
+    dispatch: DispatchCb,
+    dispatch_user_data: DispatchCbUserData,
+
     state: State,
 }
 
@@ -424,11 +595,17 @@ impl FFIConnection {
         runtime: tokio::runtime::Handle,
         id: ConnectionId,
         events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
+        dispatch: DispatchCb,
+        dispatch_user_data: DispatchCbUserData,
     ) -> Box<Self> {
+        assert_ne!(dispatch as usize, 0, "dispatch callback must not be null");
+
         let s = Self {
             runtime,
             id,
             events,
+            dispatch,
+            dispatch_user_data,
             state: State::Init,
         };
 
@@ -436,6 +613,31 @@ impl FFIConnection {
         s.publish_event(ConnectionEvent::Init);
 
         Box::new(s)
+    }
+
+    /// Deliver a [`DispatchResult`] response (from the FFI host) to the client
+    /// library for a previously-published [`Dispatch`] request from this
+    /// connection.
+    ///
+    /// If the connection is not currently in the [`State::Connected`] state,
+    /// the result is dropped. The host runtime should not be sending dispatch
+    /// results for disconnected connections.
+    ///
+    /// [`Dispatch`]: rc_x509_client::dispatch::Dispatch
+    fn handle_dispatch_result(&self, payload: DispatchResult) {
+        match &self.state {
+            State::Connected {
+                dispatch_responder, ..
+            } => match dispatch_responder.send_response(payload) {
+                Ok(()) => {}
+                Err(e) => {
+                    error!(error=%e, "dropping dispatch result");
+                }
+            },
+            State::Init | State::Configured { .. } => {
+                warn!("dispatch result received for non-connected connection, dropping");
+            }
+        }
     }
 
     /// A helper function to publish a [`ConnectionUpdate`] for this connection.
@@ -506,15 +708,40 @@ impl FFIConnection {
             move || io_task(lib2ffi, io_task_stop, send, user_data)
         }));
 
+        // Initialise per-connection dispatch communication, used to dispatch
+        // messages from the client library, through a dedicated dispatch
+        // thread, and into the host application via an FFI call.
+        let (publisher, stream, dispatch_responder) = new_dispatcher_interconnect();
+        let dispatch_task_stop = CancellationToken::new();
+
+        let dispatch_task = AbortOnDrop::from(self.runtime.spawn_blocking({
+            let dispatch = self.dispatch;
+            let dispatch_user_data = self.dispatch_user_data;
+            let dispatch_task_stop = dispatch_task_stop.clone();
+            let dispatch_responder = dispatch_responder.clone();
+            move || {
+                dispatch_task(
+                    stream,
+                    dispatch_responder,
+                    dispatch_task_stop,
+                    dispatch,
+                    dispatch_user_data,
+                )
+            }
+        }));
+
         self.state = State::Connected {
             send,
             user_data,
             io_task,
             io_task_stop,
             ffi2lib,
+            dispatch_task,
+            dispatch_task_stop,
+            dispatch_responder,
         };
 
-        self.publish_event(ConnectionEvent::Connected(io_handle));
+        self.publish_event(ConnectionEvent::Connected(io_handle, publisher));
     }
 
     /// Receive a payload from the RC backend, to the library.
@@ -558,14 +785,19 @@ impl FFIConnection {
                 user_data,
                 io_task,
                 io_task_stop,
+                dispatch_task,
+                dispatch_task_stop,
                 ..
             } => {
-                // Trigger the shutdown of the I/O task.
+                // Trigger the shutdown of the I/O and dispatch tasks.
                 io_task_stop.cancel();
+                dispatch_task_stop.cancel();
 
-                // Block this call until the I/O task has stopped, to prevent
-                // the race described above.
+                // Block this call until both tasks have stopped, to prevent
+                // the race described above (the same race applies to the
+                // dispatch callback as to the send callback).
                 block_on(io_task.into_inner()).expect("i/o task shutdown");
+                block_on(dispatch_task.into_inner()).expect("dispatch task shutdown");
 
                 // Restore the configuration state of the FFIConnection,
                 // preserving the believed-to-be-valid send callback.
@@ -589,6 +821,8 @@ impl FFIConnection {
     ///
     /// This call panics if the connection is in use ([`State::Connected`]).
     fn set_send_callback(&mut self, cb: SendCb, user_data: SendCbUserData) {
+        assert_ne!(cb as usize, 0, "send callback must not be null");
+
         // Correctness: the callback can only be changed when the connection is
         // not in use (and therefore the caller has an exclusive ref).
         //
@@ -635,10 +869,13 @@ fn io_task(
         // signal to exit.
         let maybe_payload = block_on(async {
             select! {
+                biased;
+
                 _ = stop.cancelled() => {
                     debug!("connection I/O task stopping due to force stop signal");
                     None
                 }
+
                 v = lib2ffi.recv() => {v}
             }
         });
@@ -693,18 +930,133 @@ fn io_task(
     debug!("stopping connection I/O task"); // Not logged when aborted
 }
 
+/// A task run in a dedicated OS thread per [`FFIConnection`] to make outgoing
+/// FFI calls via `dispatch`.
+fn dispatch_task(
+    mut stream: DispatchStream,
+    responder: DispatchResponder,
+    stop: CancellationToken,
+    dispatch: DispatchCb,
+    user_data: DispatchCbUserData,
+) {
+    debug!("starting dispatch I/O task");
+
+    loop {
+        // Block the thread, waiting for either a payload to dispatch, or a
+        // signal to exit.
+        let maybe_payload = block_on(async {
+            select! {
+                biased;
+
+                _ = stop.cancelled() => {
+                    debug!("dispatch I/O task stopping due to force stop signal");
+                    None
+                }
+
+                v = stream.next() => {v}
+            }
+        });
+
+        let data = match maybe_payload {
+            Some(v) => v,
+            None => {
+                break;
+            }
+        };
+
+        // Serialise the dispatch payload, and call into the FFI host to handle
+        // this data, blocking this thread until dispatch() returns.
+        //
+        // Safety: this dispatch task is spawned only after the FFI host
+        // provides a valid, non-null callback at rc_conn_new() and indicates
+        // it is safe to use via rc_conn_connected(). This task is signalled
+        // to stop prior to rc_conn_disconnected() returning, ensuring no
+        // calls are made to the dispatch callback after that point.
+        let mut buf = vec![];
+        data.payload.encode(&mut buf);
+
+        let dispatch_ret = unsafe {
+            dispatch(
+                data.correlation_id.get(),
+                buf.as_slice().as_ptr(),
+                buf.len() as u32,
+                user_data.0,
+            )
+        };
+
+        let return_value = match dispatch_ret {
+            DispatchRet::Success => {
+                debug!(
+                    correlation_id = %data.correlation_id.get(),
+                    "dispatch success"
+                );
+
+                // In the happy case, the DispatchResult message is
+                // asynchronously sent via the FFI interface once the message
+                // has been processed by the dispatch handler.
+                //
+                // In all error cases, a dispatch error response is returned.
+
+                continue;
+            }
+            DispatchRet::NoDispatchHandler => {
+                warn!(
+                    correlation_id = %data.correlation_id.get(),
+                    "no dispatch handler registered for payload type"
+                );
+                Err(DispatchError::NoDispatchHandler)
+            }
+            DispatchRet::UnknownPayload => {
+                warn!(
+                    correlation_id = %data.correlation_id.get(),
+                    "dispatched unknown payload type"
+                );
+                Err(DispatchError::UnknownPayload)
+            }
+            DispatchRet::QueueFull => {
+                warn!(
+                    correlation_id = %data.correlation_id.get(),
+                    "dispatch handler delivery queue is full"
+                );
+                Err(DispatchError::HandlerQueueFull)
+            }
+            DispatchRet::Unknown => {
+                warn!(
+                    correlation_id = %data.correlation_id.get(),
+                    "unknown error returned from dispatch"
+                );
+                Err(DispatchError::UnknownError)
+            }
+        };
+
+        // Return the error to the client library.
+        if let Err(e) = responder.send_response(DispatchResult {
+            correlation_id: data.correlation_id,
+            result: return_value,
+        }) {
+            // The client library has dropped the dispatch handle and is not
+            // listening, shut down the dispatch task.
+            warn!(error=%e, "dispatch task cannot publish response");
+            break;
+        }
+    }
+
+    debug!("stopping dispatch I/O task"); // Not logged when aborted
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fmt::Debug, ptr};
 
     use assert_matches::assert_matches;
-    use futures::StreamExt;
-    use rc_x509_proto::protocol::v1;
+    use futures::{Stream, StreamExt, pin_mut};
+    use rc_x509_proto::{magic_tunnel, protocol::v1};
     use tokio::pin;
 
     use crate::ctx::{rc_free, rc_init};
     use rc_x509_client::{
         ShutdownSignal,
+        dispatch::{Dispatch, DispatchPublisher},
         entrypoint::LibraryEntrypoint,
         host_runtime::{Connection, ConnectionErr},
     };
@@ -738,10 +1090,19 @@ mod tests {
 
     #[test]
     fn test_connection_init_free() {
+        unsafe extern "C" fn do_dispatch(
+            _correlation_id: u64,
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> DispatchRet {
+            DispatchRet::Unknown
+        }
+
         let ctx = unsafe { rc_init() };
         assert!(!ctx.is_null());
 
-        let conn = unsafe { rc_conn_new(ctx) };
+        let conn = unsafe { rc_conn_new(ctx, do_dispatch, ptr::null()) };
         assert!(!conn.is_null());
         assert_matches!(unsafe { &*conn }.state, State::Init);
 
@@ -766,13 +1127,22 @@ mod tests {
     /// sequential connection IDs starting from 0 per [`Ctx`].
     #[test]
     fn test_monotonic_connection_id() {
+        unsafe extern "C" fn do_dispatch(
+            _correlation_id: u64,
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> DispatchRet {
+            DispatchRet::Unknown
+        }
+
         let ctx = unsafe { rc_init() };
         assert!(!ctx.is_null());
 
         // Drive a number of connection creations and assert their IDs start at
         // 0, and increase sequentially.
         for want_id in [0, 1, 2] {
-            let conn = unsafe { rc_conn_new(ctx) };
+            let conn = unsafe { rc_conn_new(ctx, do_dispatch, ptr::null()) };
             assert!(!conn.is_null());
             assert_eq!(unsafe { &*conn }.id.as_raw(), want_id);
 
@@ -813,6 +1183,15 @@ mod tests {
         let (cb_tx, cb_rx) = std::sync::mpsc::channel::<Vec<u8>>();
         let cb_tx = Box::new(cb_tx);
 
+        unsafe extern "C" fn do_dispatch(
+            _correlation_id: u64,
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> DispatchRet {
+            DispatchRet::Unknown
+        }
+
         // A send callback that records if it was called at any point.
         unsafe extern "C" fn do_send(
             data: *const u8,
@@ -836,7 +1215,7 @@ mod tests {
         let mut ctx = Ctx::new(Entrypoint { events: tx });
 
         // FFI call: rc_conn_new()
-        let conn = unsafe { rc_conn_new(&raw mut *ctx) };
+        let conn = unsafe { rc_conn_new(&raw mut *ctx, do_dispatch, ptr::null()) };
         assert!(!conn.is_null());
         unsafe {
             let conn = &*conn;
@@ -856,7 +1235,10 @@ mod tests {
 
         // Assert the connected lifecycle event was received.
         let got = conn_events.recv().await.unwrap();
-        let mut io = assert_matches!(got.into_event(), ConnectionEvent::Connected(io) => io);
+        let (mut io, _dispatch) = assert_matches!(
+            got.into_event(),
+            ConnectionEvent::Connected(io, dispatch) => (io, dispatch)
+        );
 
         //
         // The connection is now active.
@@ -920,5 +1302,144 @@ mod tests {
 
         // Ctx not freed via FFI because not initialised via FFI.
         ctx.shutdown();
+    }
+
+    /// A mock [`LibraryEntrypoint`] that responds to any [`Dispatch`] by
+    /// returning the same payload in the [`DispatchResult`].
+    #[derive(Debug)]
+    struct DispatchEchoEndpoint;
+    impl<IO> LibraryEntrypoint<IO> for DispatchEchoEndpoint
+    where
+        IO: Connection,
+    {
+        async fn entrypoint(
+            self,
+            _shutdown: ShutdownSignal,
+            conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+        ) {
+            pin_mut!(conn_events);
+
+            while let Some(event) = conn_events.next().await {
+                if let ConnectionEvent::Connected(io, dispatch) = event.into_event() {
+                    tokio::task::spawn(handle_conn(io, dispatch));
+                }
+            }
+        }
+    }
+
+    async fn handle_conn<IO>(mut io: IO, dispatch: DispatchPublisher)
+    where
+        IO: Connection,
+    {
+        let recv = io.take_recv_stream().expect("first use of connection I/O");
+        pin_mut!(recv);
+
+        while let Some(v) = recv.next().await {
+            match v {
+                Ok(ServerToClient::Dispatch {
+                    correlation_id,
+                    payload,
+                }) => {
+                    dispatch
+                        .dispatch(Dispatch {
+                            correlation_id,
+                            payload,
+                        })
+                        .expect("FFI host must consume dispatch messages");
+                }
+                _ => {
+                    // All other payloads do nothing for this test.
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_dispatch() {
+        const CORRELATION_ID: u64 = 42;
+
+        // A dispatch callback that records if it was called at any point.
+        unsafe extern "C" fn do_dispatch(
+            correlation_id: u64,
+            data: *const u8,
+            length: u32,
+            user_data: *const c_void,
+        ) -> DispatchRet {
+            let got_data = unsafe { slice::from_raw_parts(data, length as _) }.to_vec();
+            let got_tx = unsafe { &*(user_data as *const std::sync::mpsc::Sender<(u64, Vec<u8>)>) };
+
+            // Signal the callback was executed.
+            got_tx
+                .send((correlation_id, got_data))
+                .expect("must be waiting");
+
+            DispatchRet::Success
+        }
+
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
+            SendRet::Success
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel::<(u64, Vec<u8>)>();
+        let tx_ptr = Box::into_raw(Box::new(tx));
+
+        let ctx = Box::into_raw(Ctx::new(DispatchEchoEndpoint));
+
+        // Now the library is initialised with the mock dispatch callback,
+        // configure a connection and request a dispatch.
+
+        let conn = unsafe { rc_conn_new(&raw mut *ctx, do_dispatch, tx_ptr as _) };
+        assert!(!conn.is_null());
+
+        unsafe {
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            rc_conn_connected(conn);
+        }
+
+        // The connection is configured.
+        //
+        // Deliver the dispatch request to the client.
+
+        let dispatch_request =
+            v1::dispatch_request::Payload::MagicTunnel(magic_tunnel::v1::MagicTunnelRequest {
+                namespace: 13,
+                payload: vec![1, 2, 3, 4].into(),
+            });
+        let header_wrapped = v1::ServerToClient {
+            message: Some(v1::server_to_client::Message::Dispatch(
+                v1::DispatchRequest {
+                    correlation_id: CORRELATION_ID,
+                    payload: Some(dispatch_request.clone()),
+                },
+            )),
+        };
+        let encoded = rc_x509_proto::encode(&header_wrapped);
+        unsafe {
+            rc_conn_recv(conn, encoded.as_slice().as_ptr(), encoded.len() as u32);
+        }
+
+        // The library should process this dispatch request and then invoke the
+        // dispatch callback:
+        let (correlation_id, got_data) = rx.recv().expect("can never leak");
+
+        // The client strips the dispatch header, yielding only the actual payload.
+        let mut want_data = vec![];
+        dispatch_request.encode(&mut want_data);
+
+        assert_eq!(want_data, got_data);
+        assert_eq!(correlation_id, CORRELATION_ID);
+
+        // Clean up.
+        unsafe {
+            rc_conn_disconnected(conn);
+            rc_conn_free(conn);
+            drop(Box::from_raw(tx_ptr));
+
+            rc_free(ctx);
+        }
     }
 }

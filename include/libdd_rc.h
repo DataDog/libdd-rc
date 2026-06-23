@@ -31,6 +31,46 @@
 #include <stdlib.h>
 
 /*
+ The return value from a [`DispatchCb`] call.
+ */
+enum DispatchRet
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
+    /*
+     The request was successfully dispatched to the registered handler.
+     */
+    DISPATCH_RET_SUCCESS = 0,
+    /*
+     The client does not support the payload type being dispatched.
+     */
+    DISPATCH_RET_UNKNOWN_PAYLOAD = 1,
+    /*
+     The client supports the type of payload being sent, but there is no
+     handler registered to process it.
+     */
+    DISPATCH_RET_NO_DISPATCH_HANDLER = 2,
+    /*
+     The dispatch handler delivery queue is full.
+
+     This occurs when the dispatch handler is not consuming messages fast
+     enough to keep up with the rate of new requests arriving. The message
+     will not be delivered.
+     */
+    DISPATCH_RET_QUEUE_FULL = 3,
+    /*
+     An unknown error occurred.
+     */
+    DISPATCH_RET_UNKNOWN = INT32_MAX,
+};
+#if __STDC_VERSION__ >= 202311L
+typedef enum DispatchRet DispatchRet;
+#else
+typedef int32_t DispatchRet;
+#endif // __STDC_VERSION__ >= 202311L
+
+/*
  Result of pushing data received from the RC delivery backend into the
  internal client library recv queue (returned by the client library).
  */
@@ -189,6 +229,43 @@ typedef struct Ctx Ctx;
 typedef struct FFIConnection FFIConnection;
 
 /*
+ The callback invoked to deliver application messages.
+
+ The payload data provided by this call is always a protobuf encoded
+ [`rc_x509_proto::protocol::v1::dispatch_request::Payload`]. The callback
+ MUST NOT block this call, which stalls the client library. The callback
+ SHOULD enqueue work into a channel for deferred processing.
+
+ For each payload delivered through this callback, exactly one call to
+ [`rc_conn_dispatch_result()`] MUST be made to return the call result after
+ processing.
+
+ The correlation ID is an opaque identifier with no guarantees the callee can
+ rely on.
+
+ Passes a reference to a byte slice of `length` number of bytes that is valid
+ for the lifetime of the function call, and a correlation ID that should be
+ used when generating a dispatch response via [`rc_conn_dispatch_result()`].
+
+ The callback is invoked with the `user_data` value provided by the caller
+ when configuring the dispatch callback.
+
+   * Called by: `client library`.
+   * Ownership: passes shared reference to the `data` array to the host
+     runtime for the duration of the call.
+
+ This callback MUST be valid for the lifetime of the call, and MUST be safe
+ to call concurrently.
+
+ NOTE: the client library retains ownership of `data` after this call, and it
+ may be freed or modified at any time after this function returns.
+ */
+typedef DispatchRet (*DispatchCb)(uint64_t correlation_id,
+                                  const uint8_t *data,
+                                  uint32_t length,
+                                  const void *user_data);
+
+/*
  Send `data` from the client library to the RC delivery backend over the
  network [`FFIConnection`] the callback was registered to..
 
@@ -246,6 +323,33 @@ void rc_conn_connected(struct FFIConnection *conn);
 void rc_conn_disconnected(struct FFIConnection *conn);
 
 /*
+ Return the result of asynchronously processing a previously dispatched
+ message.
+
+ The data provided to this call MUST be a protobuf serialised
+ [`rc_x509_proto::protocol::v1::DispatchResponsePayload`] message.
+
+ Exactly one call per message delivered through [`DispatchCb`] MUST be made,
+ referencing the same `correlation_id`.
+
+   * Called by: `host runtime`.
+   * Ownership: passes shared reference of [`FFIConnection`] and `data` to
+     client library for the duration of the call.
+
+ NOTE: the host runtime retains ownership of `data` after this call, and is
+ responsible for freeing the memory backing it after this call completes.
+
+ # Safety
+
+ The provided `data` MUST be valid for a read of `length` bytes for the
+ duration of this function call.
+ */
+void rc_conn_dispatch_result(struct FFIConnection *conn,
+                             uint64_t correlation_id,
+                             const uint8_t *data,
+                             uint32_t length);
+
+/*
  Release the resources held by this `conn`.
 
    * Called by: `host runtime`.
@@ -261,6 +365,10 @@ void rc_conn_free(struct FFIConnection *conn);
 /*
  Initialise a new client connection state.
 
+ The `user_data` pointer is for use by the caller to pass state to the
+ subsequent [`DispatchCb`] calls, and is never referenced internally. It MAY
+ be null, but it MUST be safe to pass between threads.
+
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of `conn` for the duration of the
      call, and returns ownership of [`FFIConnection`].
@@ -269,8 +377,16 @@ void rc_conn_free(struct FFIConnection *conn);
 
  This call is safe iff `ctx` points to a handle obtained from a [`rc_init()`]
  call that has not yet been freed, and is concurrency safe.
+
+ The caller MUST provide a non-null `dispatch` callback that is safe to call
+ concurrently at all times, until [`rc_conn_free()`] is called at which
+ point it is guaranteed the callback will not be invoked again.
+
+ [`rc_init()`]: super::rc_init()
  */
-struct FFIConnection *rc_conn_new(const struct Ctx *ctx);
+struct FFIConnection *rc_conn_new(const struct Ctx *ctx,
+                                  DispatchCb dispatch,
+                                  const void *user_data);
 
 /*
  Pass data received from the RC delivery backend for the `conn` connection.
