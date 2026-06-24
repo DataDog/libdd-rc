@@ -28,7 +28,7 @@ fn main() {
     let output_file = workspace_dir.join("include/libdd_rc.h");
 
     // Read cbindgen config from workspace root
-    let config_path = workspace_dir.join("cbindgen.toml");
+    let config_path = crate_path.join("cbindgen.toml");
 
     let config = cbindgen::Config::from_file(&config_path).expect("Failed to load cbindgen.toml");
 
