@@ -37,7 +37,7 @@
 //!     the FFI host.
 //!
 //! [`v1::DispatchRequest`]: rc_x509_proto::protocol::v1
-//! [`rc_conn_dispatch_result`]: rc_x509_proto::protocol::v1
+//! [`rc_conn_dispatch_result`]: rc_x509_ffi::rc_conn_dispatch_result
 
 #![no_main]
 
@@ -210,7 +210,7 @@ fuzz_target!(|v: (&[u8], &[u8])| {
     unsafe { rc_free(Box::into_raw(ctx)) };
 });
 
-/// An [`DispatchEndpoint`] is designed to exercise the FFI layer dispatch and
+/// A [`DispatchEndpoint`] is designed to exercise the FFI layer dispatch and
 /// dispatch response methods.
 #[derive(Debug)]
 struct DispatchEndpoint;
@@ -283,7 +283,7 @@ where
     }
 }
 
-/// Construct a [`Ctx`] that uses an [`DispatchEndpoint`] instead of the default
+/// Construct a [`Ctx`] that uses a [`DispatchEndpoint`] instead of the default
 /// library entrypoint.
 fn new_ctx() -> Box<Ctx> {
     Ctx::new(DispatchEndpoint)
