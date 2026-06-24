@@ -46,6 +46,8 @@ jobs:
         fuzzer:
           - name: "ffi_io"
             dir: lib/rc-x509-ffi
+          - name: "dispatch"
+            dir: lib/rc-x509-ffi
 
     runs-on: ubuntu-latest
     container:
