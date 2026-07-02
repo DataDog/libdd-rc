@@ -82,6 +82,7 @@ jobs:
           -rss_limit_mb=2048
           -print_final_stats=1
           -max_total_time=120
+          -timeout=10
 
       - name: Save corpus cache
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
