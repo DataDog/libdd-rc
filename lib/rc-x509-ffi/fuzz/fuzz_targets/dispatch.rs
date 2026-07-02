@@ -59,8 +59,16 @@ fuzz_target!(|v: (&[u8], &[u8])| {
     // Incoming data from the server containing a dispatch request.
     let message = v.0;
 
-    // DispatchResult reply sent from the application host to the client library, and ultimately to the backend server.
-    let response = v.1;
+    // DispatchResult reply sent from the application host to the client
+    // library, and ultimately to the backend server.
+    //
+    // If the fuzzed response is empty, then submitting it had no effect, as an
+    // empty message is not passed to the client library, therefore no response
+    // is generated.
+    //
+    // This breaks the test (only), so an empty fuzz input for the response is
+    // always replaced with a dummy payload.
+    let response = if !v.1.is_empty() { v.1 } else { &[0x00] };
 
     // Define a dispatch callback that transmits the payload it is passing back
     // to the main test thread to assert against.
@@ -170,8 +178,8 @@ fuzz_target!(|v: (&[u8], &[u8])| {
                 );
             }
 
-            // And in response, the client library will forward a DispatchResult
-            // message to the backend server.
+            // The client library will forward the DispatchResult message to the
+            // backend server.
             let response_sent_to_server = rx
                 .recv()
                 .expect("must always respond to server even if payload or response is invalid");
