@@ -41,7 +41,7 @@
 
 #![no_main]
 
-use std::{ffi::c_void, slice};
+use std::{ffi::c_void, slice, sync::mpsc::TryRecvError};
 
 use futures::{Stream, StreamExt, pin_mut};
 use libfuzzer_sys::fuzz_target;
@@ -170,29 +170,37 @@ fuzz_target!(|v: (&[u8], &[u8])| {
                 );
             }
 
-            // And in response, the client library will forward a DispatchResult
-            // message to the backend server.
-            let response_sent_to_server = rx
-                .recv()
-                .expect("must always respond to server even if payload or response is invalid");
+            // If the fuzzed response is empty, then submitting it had no
+            // effect, as an empty message is not passed to the client library,
+            // therefore no response is generated.
+            if response.is_empty() {
+                // In which case, nothing should be emitted to the server.
+                assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
+            } else {
+                // For a non-empty response, the client library will forward a
+                // DispatchResult message to the backend server.
+                let response_sent_to_server = rx
+                    .recv()
+                    .expect("must always respond to server even if payload or response is invalid");
 
-            // The client library deserialises the response bytes and
-            // re-serialises them when building the outgoing proto message.
-            // Invalid bytes are mapped to an error result. Reconstruct the
-            // expected wire message to compare against what was actually sent.
-            let expected = match decode::<v1::DispatchResponsePayload>(response) {
-                Ok(payload) => codec::ClientToServer::DispatchResponse {
-                    correlation_id: CorrelationId::new(callback_id),
-                    result: v1::dispatch_response::Result::Payload(payload),
-                },
-                Err(_) => codec::ClientToServer::DispatchResponse {
-                    correlation_id: CorrelationId::new(callback_id),
-                    result: v1::dispatch_response::Result::Error(
-                        v1::dispatch_response::DispatchError::Unspecified as i32,
-                    ),
-                },
-            };
-            assert_eq!(Vec::from(expected), response_sent_to_server);
+                // The client library deserialises the response bytes and
+                // re-serialises them when building the outgoing proto message.
+                // Invalid bytes are mapped to an error result. Reconstruct the
+                // expected wire message to compare against what was actually sent.
+                let expected = match decode::<v1::DispatchResponsePayload>(response) {
+                    Ok(payload) => codec::ClientToServer::DispatchResponse {
+                        correlation_id: CorrelationId::new(callback_id),
+                        result: v1::dispatch_response::Result::Payload(payload),
+                    },
+                    Err(_) => codec::ClientToServer::DispatchResponse {
+                        correlation_id: CorrelationId::new(callback_id),
+                        result: v1::dispatch_response::Result::Error(
+                            v1::dispatch_response::DispatchError::Unspecified as i32,
+                        ),
+                    },
+                };
+                assert_eq!(Vec::from(expected), response_sent_to_server);
+            }
         }
         _ => { /* Nothing happens */ }
     }
