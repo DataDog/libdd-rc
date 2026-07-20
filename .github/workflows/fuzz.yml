@@ -46,6 +46,8 @@ jobs:
         fuzzer:
           - name: "ffi_io"
             dir: lib/rc-x509-ffi
+          - name: "dispatch"
+            dir: lib/rc-x509-ffi
 
     runs-on: ubuntu-latest
     container:
@@ -80,6 +82,7 @@ jobs:
           -rss_limit_mb=2048
           -print_final_stats=1
           -max_total_time=120
+          -timeout=10
 
       - name: Save corpus cache
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
@@ -98,47 +101,19 @@ jobs:
           name: fuzz-crash-${{ matrix.fuzzer.name }}
           path: ${{ matrix.fuzzer.dir }}/fuzz/artifacts/${{ matrix.fuzzer.name }}
 
-  # minimise the corpus on main after merge, so subsequent runs (including PR
-  # fuzzing) start from a smaller, deduplicated seed set. This avoids unbounded
-  # corpus growth while preserving coverage, and running on commits to main
-  # avoids blocking PRs while the minimisation runs.
-  minimise:
-    needs: fuzz
-    if: ${{ github.ref == 'refs/heads/main' }}
-    strategy:
-      matrix:
-        fuzzer:
-          - name: "ffi_io"
-            dir: lib/rc-x509-ffi
-
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-
-      - uses: ./.github/actions/setup-rust
-        with:
-          cache-key-prefix: fuzz
-
-      - name: Restore corpus cache
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          enableCrossOsArchive: true
-          # Load the corpus that was cached in the "fuzz" job above.
-          key: fuzz-corpus-${{ matrix.fuzzer.name }}-${{ github.run_id }}
-          path: |
-            **/fuzz/corpus/
+      ##########################################################################
+      # These steps are only run on main because of the "if" condition.
+      #
 
       - name: minimise corpus
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: >
           cargo +nightly fuzz cmin
           --fuzz-dir ${{ matrix.fuzzer.dir }}/fuzz
           ${{ matrix.fuzzer.name }}
 
       - name: Save minimised corpus
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           enableCrossOsArchive: true

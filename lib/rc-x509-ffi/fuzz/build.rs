@@ -17,18 +17,21 @@
 use std::path::Path;
 
 use rc_x509_proto::{
-    encode,
+    encode, magic_tunnel,
     protocol::v1::{self, ServerToClient, server_to_client::Message},
 };
 use twox_hash::XxHash64;
+
+const FFI_IO: &str = "corpus/ffi_io";
+const DISPATCH: &str = "corpus/dispatch";
 
 fn main() {
     ffi_io();
 }
 
 fn ffi_io() {
-    let path = "corpus/ffi_io";
-    std::fs::create_dir_all(path).expect("failed to create corpus dir");
+    std::fs::create_dir_all(FFI_IO).expect("failed to create corpus dir");
+    std::fs::create_dir_all(DISPATCH).expect("failed to create corpus dir");
 
     /// Certificate:
     ///     Data:
@@ -104,19 +107,68 @@ fn ffi_io() {
         238, 55, 201, 48, 193, 70, 7, 123,
     ];
 
-    write_proto(path, ServerToClient { message: None });
+    write_proto(FFI_IO, ServerToClient { message: None });
     write_proto(
-        path,
+        FFI_IO,
         ServerToClient {
             message: Some(Message::Ping(v1::Ping::default())),
         },
     );
     write_proto(
-        path,
+        FFI_IO,
         ServerToClient {
             message: Some(Message::CertificatePush(v1::Certificate {
                 der: SAMPLE_CERT_DER.into(),
             })),
+        },
+    );
+
+    magic_tunnel();
+}
+
+/// Magic tunnel RPC message corpus entries.
+fn magic_tunnel() {
+    // This message is useful to both the FFI I/O fuzzing and the dispatcher.
+    let req = ServerToClient {
+        message: Some(Message::Dispatch(v1::DispatchRequest {
+            correlation_id: 42,
+            payload: Some(v1::dispatch_request::Payload::MagicTunnel(
+                magic_tunnel::v1::MagicTunnelRequest {
+                    namespace: 1234,
+                    payload: "bananas".into(),
+                },
+            )),
+        })),
+    };
+    write_proto(FFI_IO, req.clone());
+    write_proto(DISPATCH, req);
+
+    // The bytes returned from the FFI layer, through the client, to the server
+    // in the dispatch fuzz - these are only useful for the dispatcher fuzz.
+    write_proto(
+        DISPATCH,
+        v1::DispatchResponsePayload {
+            payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
+                magic_tunnel::v1::MagicTunnelResponse {
+                    result: Some(magic_tunnel::v1::magic_tunnel_response::Result::Response(
+                        vec![1, 2, 3, 4].into(),
+                    )),
+                },
+            )),
+        },
+    );
+    write_proto(
+        DISPATCH,
+        v1::DispatchResponsePayload {
+            payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
+                magic_tunnel::v1::MagicTunnelResponse {
+                    result: Some(
+                        magic_tunnel::v1::magic_tunnel_response::Result::HandlerError(
+                            "bananas".to_string(),
+                        ),
+                    ),
+                },
+            )),
         },
     );
 }
