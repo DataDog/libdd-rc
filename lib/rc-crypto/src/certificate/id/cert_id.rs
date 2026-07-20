@@ -79,6 +79,9 @@ impl CertId {
     /// Minimum bytes CertId MUST be.
     const MIN_LENGTH: usize = 16;
 
+    /// Maximum bytes CertId MUST be.
+    const MAX_LENGTH: usize = 64;
+
     /// Render this value following the conventions of OpenSSL's colon-delimited
     /// string representation.
     pub fn as_hex_str(&self) -> &str {
@@ -114,7 +117,7 @@ impl TryFrom<&[u8]> for CertId {
     type Error = InvalidLength;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        if value.len() < Self::MIN_LENGTH {
+        if value.len() < Self::MIN_LENGTH || value.len() > Self::MAX_LENGTH {
             return Err(InvalidLength {
                 actual_len: value.len(),
             });
@@ -130,7 +133,7 @@ impl TryFrom<Vec<u8>> for CertId {
     type Error = InvalidLength;
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
-        if value.len() < Self::MIN_LENGTH {
+        if value.len() < Self::MIN_LENGTH || value.len() > Self::MAX_LENGTH {
             return Err(InvalidLength {
                 actual_len: value.len(),
             });
@@ -169,6 +172,7 @@ impl Valuable for CertId {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
     use rc_x509_test_helpers::assert_valuable_repr;
     use static_assertions::assert_not_impl_any;
     use x509_parser::prelude::FromDer;
@@ -211,5 +215,19 @@ mod tests {
         let ski = fixture_ski();
 
         assert_eq!(ski.as_dangerous_comparable(), ski);
+    }
+
+    proptest! {
+        #[test]
+        fn prop_length_bounds_enforced(
+            ski in prop::collection::vec(any::<u8>(), 0..(CertId::MAX_LENGTH + 20)),
+        ) {
+            let in_bounds = (CertId::MIN_LENGTH..=CertId::MAX_LENGTH).contains(&ski.len());
+
+            // Invariant: both TryFrom impls accept iff the length is within
+            // [MIN_LENGTH, MAX_LENGTH], and reject otherwise.
+            assert_eq!(CertId::try_from(ski.as_slice()).is_ok(), in_bounds);
+            assert_eq!(CertId::try_from(ski).is_ok(), in_bounds);
+        }
     }
 }
