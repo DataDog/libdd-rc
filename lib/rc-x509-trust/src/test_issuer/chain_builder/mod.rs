@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(dead_code)]
+mod chain;
+mod forged_leaf;
+mod missing_intermediate;
+mod valid;
 
-mod ca;
-mod cert_builder;
-mod chain_builder;
-mod identity;
-
-#[allow(unused_imports)]
-pub(crate) use ca::*;
-pub(crate) use cert_builder::*;
-pub(crate) use chain_builder::*;
-pub(crate) use identity::*;
+pub(crate) use chain::*;
+pub(crate) use forged_leaf::*;
+pub(crate) use missing_intermediate::*;
+pub(crate) use valid::*;

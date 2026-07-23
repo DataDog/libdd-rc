@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(dead_code)]
+use crate::test_issuer::{
+    CertBuilder, ChainMutator, TestChain,
+    template::{intermediate::IntermediateTemplate, leaf::LeafTemplate},
+};
 
-mod ca;
-mod cert_builder;
-mod chain_builder;
-mod identity;
+/// A [`ChainMutator`] implementation that does not mutate the CSRs, resulting
+/// in a valid chain.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct ValidChain {}
 
-#[allow(unused_imports)]
-pub(crate) use ca::*;
-pub(crate) use cert_builder::*;
-pub(crate) use chain_builder::*;
-pub(crate) use identity::*;
+impl ChainMutator for ValidChain {
+    fn leaf<'a>(&self, _builder: &mut CertBuilder<LeafTemplate<'a>>) {}
+    fn intermediate<'a>(&self, _builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {}
+    fn complete(&self, chain: TestChain) -> TestChain {
+        chain
+    }
+}
