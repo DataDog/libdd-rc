@@ -14,13 +14,13 @@
 
 #![allow(dead_code)]
 
-mod arbitrary_chain;
 mod ca;
 mod cert_builder;
+mod chain_builder;
 mod identity;
 
-pub(crate) use arbitrary_chain::*;
 #[allow(unused_imports)]
 pub(crate) use ca::*;
 pub(crate) use cert_builder::*;
+pub(crate) use chain_builder::*;
 pub(crate) use identity::*;
