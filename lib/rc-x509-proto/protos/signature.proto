@@ -3,6 +3,8 @@ syntax = "proto3";
 // The signature structure used by the X509 platform.
 package rc.x509.signature.v1;
 
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
+
 // A DetachedSignature combines a cryptographic signature with the metadata
 // necessary verify it.
 message DetachedSignature {

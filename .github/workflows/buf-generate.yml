@@ -1,0 +1,86 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Verify the committed Go protobuf bindings (ffi-hosts/go/rcproto) match what
+# `buf generate` produces from the rc-x509-proto schema, the same
+# generate-then-diff pattern used for include/libdd_rc.h in cbindgen.yml.
+
+name: buf-generate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify-generated-go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ffi-hosts/go/go.mod
+
+      - name: Setup buf
+        uses: bufbuild/buf-setup-action@3e33fea8596569a62fcaa33eb3880b6ac7098941 # v1.9.0
+
+      # Pinned to the protobuf module the bindings are built against, rather
+      # than @latest: the generator records its own version in the header of
+      # every file it writes, so a new release would fail the diff below on
+      # pull requests that change nothing.
+      - name: Install protoc-gen-go
+        working-directory: ffi-hosts/go
+        run: |
+          version="$(go list -m -f '{{.Version}}' google.golang.org/protobuf)"
+          echo "Installing protoc-gen-go ${version}"
+          go install "google.golang.org/protobuf/cmd/protoc-gen-go@${version}"
+
+      # Staged outside the repository, where a copy of the bindings cannot be
+      # mistaken for a second definition of the same Go packages.
+      - name: Save committed generated code
+        run: cp -r ffi-hosts/go/rcproto "${RUNNER_TEMP}/rcproto.committed"
+
+      - name: Generate Go bindings via buf
+        run: buf generate
+
+      - name: Check for differences
+        run: |
+          if diff -r -u "${RUNNER_TEMP}/rcproto.committed" ffi-hosts/go/rcproto; then
+            echo "Generated Go bindings match committed version"
+            exit 0
+          else
+            echo "ERROR: Generated Go bindings differ from committed version!"
+            echo ""
+            echo "ffi-hosts/go/rcproto is out of sync with the rc-x509-proto schema."
+            echo ""
+            echo "To fix this, run the following commands locally:"
+            echo "  go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
+            echo "  buf generate"
+            echo "  git add ffi-hosts/go/rcproto"
+            echo "  git commit -m 'chore: update generated Go protobuf bindings'"
+            echo ""
+            echo "Differences shown above."
+            exit 1
+          fi
