@@ -1,6 +1,8 @@
 syntax = "proto3";
 package rc.x509.magic_tunnel.remote_config.v1;
 
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config;remoteconfigv1";
+
 // Magic Tunnel request payloads for the `REMOTE_CONFIG` namespace.
 message RemoteConfigRequest {
   oneof subtopic {
