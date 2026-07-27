@@ -49,12 +49,12 @@ impl ConnectionId {
 ///                     │           │
 ///                     │           ▼
 ///                     │   ┌──────────────┐
-///                     │   │  Connected   │◀──┐
-///                     │   └──────────────┘   │
-///                     │           │          │   Reconnect &
-///                     │           ▼          │      reuse
-///                     │   ┌──────────────┐   │
-///                     │   │ Disconnected │───┘
+///                     │   │  Connected   │
+///                     │   └──────────────┘
+///                     │           │
+///                     │           ▼
+///                     │   ┌──────────────┐
+///                     │   │ Disconnected │
 ///                     │   └──────────────┘
 ///                     │           │
 ///                     │           ▼
@@ -76,8 +76,9 @@ impl ConnectionId {
 ///     [`Self::Connected`] state; it can start in the [`Self::Init`] state and
 ///     transition to the [`Self::Release`] state immediately after.
 ///
-///   * A connection can be reused after becoming disconnected by transitioning
-///     back to the [`Self::Connected`] state.
+///   * Once a connection has transitioned to [`Self::Disconnected`], it MUST
+///     NOT transition back to [`Self::Connected`]. A new logical connection
+///     (and [`ConnectionId`]) is required to reconnect.
 ///
 #[derive(Debug)]
 pub enum ConnectionEvent<IO> {
