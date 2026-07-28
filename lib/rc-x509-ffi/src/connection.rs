@@ -231,9 +231,11 @@ pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
 
 /// Mark the connection as closed.
 ///
-/// The caller MUST NOT call [`rc_conn_recv()`] for this `conn` after this call,
-/// but MAY subsequently call [`rc_conn_connected()`] for the same `conn` to
-/// resume communication.
+/// This is a terminal state transition: the caller MUST NOT call
+/// [`rc_conn_recv()`] or [`rc_conn_connected()`] for this `conn` again after
+/// this call. The connection MUST be released via [`rc_conn_free()`] once
+/// disconnected; a new connection MUST be created via [`rc_conn_new()`] to
+/// reconnect.
 ///
 /// This call blocks until in-flight [`SendCb`] calls are completed and the
 /// internal I/O task exists cleanly, after which time it is guaranteed no more
@@ -409,18 +411,28 @@ unsafe impl Send for SendCbUserData {}
 ///                                  │
 ///                                  ▼
 ///                          ┌──────────────┐
-///                          │  Configured  │◀──┐
-///                          └──────────────┘   │
-///                                  │          │ Disconnect
-///                                  ▼          │
-///                          ┌──────────────┐   │
-///                          │  Connected   │───┘
+///                          │  Configured  │
+///                          └──────────────┘
+///                                  │
+///                                  ▼
+///                          ┌──────────────┐
+///                          │  Connected   │
+///                          └──────────────┘
+///                                  │
+///                                  │ Disconnect
+///                                  ▼
+///                          ┌──────────────┐
+///                          │ Disconnected │
 ///                          └──────────────┘
 /// ```
 ///
 /// This type statically asserts the lifecycle of an FFI brokered connection by
 /// requiring the `rc_init() -> rc_conn_send_callback() -> rc_conn_connected()`
 /// progression in order to construct the [`State::Connected`] state.
+///
+/// [`State::Disconnected`] is terminal - once reached, this [`State`] MUST NOT
+/// transition back to [`State::Connected`]. A new [`FFIConnection`] MUST be
+/// created to reconnect.
 #[derive(Debug)]
 enum State {
     /// The connection has been initialised, but not yet configured or
@@ -433,8 +445,7 @@ enum State {
         /// A FFI host provided callback.
         ///
         /// Safety: this callback should be considered invalid before a call to
-        /// [`rc_conn_connected()`] and after a call to
-        /// [`rc_conn_disconnected()`] by the FFI host to indicate it is safe to
+        /// [`rc_conn_connected()`] by the FFI host to indicate it is safe to
         /// use.
         send: SendCb,
         user_data: SendCbUserData,
@@ -442,17 +453,6 @@ enum State {
 
     /// The connection is currently open to the RC backend.
     Connected {
-        /// Send `data` from the client library to the RC backend over the
-        /// existing network connection managed by the host runtime.
-        ///
-        /// See [`SendCb`].
-        ///
-        /// Safety: this callback MAY be used in this [`State`], as the FFI host
-        /// has explicitly indicated it can be used by calling
-        /// [`rc_conn_connected()`].
-        send: SendCb,
-        user_data: SendCbUserData,
-
         /// The channel through which the FFI [`rc_conn_recv()`] callback
         /// publishes incoming payloads from the RC backend.
         ffi2lib: mpsc::Sender<Result<ServerToClient, DecodingError>>,
@@ -477,6 +477,12 @@ enum State {
         /// [`rc_conn_dispatch_result()`]: crate::rc_conn_dispatch_result()
         dispatch_responder: DispatchResponder,
     },
+
+    /// The connection has been closed by the FFI host and MUST NOT be reused.
+    ///
+    /// The only valid transition from this state is to be freed via
+    /// [`rc_conn_free()`].
+    Disconnected,
 }
 
 /// An [`FFIConnection`] brokers I/O between the client library and the FFI host
@@ -634,7 +640,7 @@ impl FFIConnection {
                     error!(error=%e, "dropping dispatch result");
                 }
             },
-            State::Init | State::Configured { .. } => {
+            State::Init | State::Configured { .. } | State::Disconnected => {
                 warn!("dispatch result received for non-connected connection, dropping");
             }
         }
@@ -663,7 +669,7 @@ impl FFIConnection {
         // A callback MAY be changed after being set.
         let (send, user_data) = match self.state {
             State::Configured { send, user_data } => (send, user_data),
-            State::Init | State::Connected { .. } => {
+            State::Init | State::Connected { .. } | State::Disconnected => {
                 panic!("connection not in configured state")
             }
         };
@@ -731,8 +737,6 @@ impl FFIConnection {
         }));
 
         self.state = State::Connected {
-            send,
-            user_data,
             io_task,
             io_task_stop,
             ffi2lib,
@@ -759,7 +763,9 @@ impl FFIConnection {
                     error!("IOHandle is not listening for payloads");
                 }
             }
-            State::Init | State::Configured { .. } => panic!("invalid connection state for recv"),
+            State::Init | State::Configured { .. } | State::Disconnected => {
+                panic!("invalid connection state for recv")
+            }
         }
     }
 
@@ -770,6 +776,9 @@ impl FFIConnection {
     /// any outgoing payloads via calls to [`IOHandle::send()`] will fail after
     /// this call.
     ///
+    /// This is a terminal transition: the connection MUST NOT be reused after
+    /// this call. It MUST be released via [`FFIConnection::free()`].
+    ///
     /// This call blocks until the [`io_task`] for this connection is stopped.
     ///
     /// # Panics
@@ -777,12 +786,10 @@ impl FFIConnection {
     /// This call panics if the connection was not in the "connected" state, or
     /// the [`io_task`] panicked.
     fn set_disconnected(&mut self) {
-        let last_state = std::mem::replace(&mut self.state, State::Init);
+        let last_state = std::mem::replace(&mut self.state, State::Disconnected);
 
         match last_state {
             State::Connected {
-                send,
-                user_data,
                 io_task,
                 io_task_stop,
                 dispatch_task,
@@ -798,16 +805,10 @@ impl FFIConnection {
                 // dispatch callback as to the send callback).
                 block_on(io_task.into_inner()).expect("i/o task shutdown");
                 block_on(dispatch_task.into_inner()).expect("dispatch task shutdown");
-
-                // Restore the configuration state of the FFIConnection,
-                // preserving the believed-to-be-valid send callback.
-                //
-                // Safety: this callback pointer may be dangling, but is not
-                // referenced until the FFI host indicates it is safe to do so
-                // again.
-                self.state = State::Configured { send, user_data };
             }
-            State::Init | State::Configured { .. } => {
+            State::Init | State::Configured { .. } | State::Disconnected => {
+                // Restore the state - it was not actually connected.
+                self.state = last_state;
                 panic!("disconnect on connection not in connected state")
             }
         };
@@ -832,6 +833,9 @@ impl FFIConnection {
             State::Connected { .. } => {
                 panic!("must disconnect connection before changing send callbacks")
             }
+            State::Disconnected => {
+                panic!("connection is disconnected and cannot be reconfigured")
+            }
         }
 
         self.state = State::Configured {
@@ -844,7 +848,7 @@ impl FFIConnection {
     /// any event observers.
     fn free(self: Box<Self>) {
         match &self.state {
-            State::Init | State::Configured { .. } => { /* allowed */ }
+            State::Init | State::Configured { .. } | State::Disconnected => { /* allowed */ }
             State::Connected { .. } => {
                 panic!("must disconnect connection before free")
             }

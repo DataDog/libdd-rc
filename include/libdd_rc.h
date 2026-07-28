@@ -304,9 +304,11 @@ void rc_conn_connected(struct FFIConnection *conn);
 /*
  Mark the connection as closed.
 
- The caller MUST NOT call [`rc_conn_recv()`] for this `conn` after this call,
- but MAY subsequently call [`rc_conn_connected()`] for the same `conn` to
- resume communication.
+ This is a terminal state transition: the caller MUST NOT call
+ [`rc_conn_recv()`] or [`rc_conn_connected()`] for this `conn` again after
+ this call. The connection MUST be released via [`rc_conn_free()`] once
+ disconnected; a new connection MUST be created via [`rc_conn_new()`] to
+ reconnect.
 
  This call blocks until in-flight [`SendCb`] calls are completed and the
  internal I/O task exists cleanly, after which time it is guaranteed no more
