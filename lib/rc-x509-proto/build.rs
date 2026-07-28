@@ -25,6 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bytes_fields = [
         "rc.x509.protocol.v1.Certificate.der",
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.payload",
+        "rc.x509.signature.v1.DetachedSignature.cert_id",
+        "rc.x509.signature.v1.DetachedSignature.signature",
     ];
     for v in bytes_fields {
         config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
