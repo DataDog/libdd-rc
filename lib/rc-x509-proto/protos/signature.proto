@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package rc.x509.signature;
+
+// A DetachedSignature combines a cryptographic signature with the metadata
+// necessary verify it.
+message DetachedSignature {
+  // The Subject Key Identifier (SKI) of the signing certificate.
+  //
+  // This is the raw SKI value extracted from the certificate's Subject Key
+  // Identifier extension, as defined in [RFC 5280 § 4.2.1.2]. It corresponds
+  // to the `CertId` type in rc-crypto.
+  //
+  // This is an untrusted value: the cert issuer may set it to anything, and it
+  // does not necessarily represent a cryptographic hash of the key material
+  // (e.g. `hash(cert_dn + cert_serial)` is not uncommon in practice).
+  //
+  // [RFC 5280 § 4.2.1.2]:
+  //     https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2
+  bytes cert_id = 1;
+
+  // A signature over the signed payload.
+  //
+  // This signature is a variable length ASN.1 DER-encoded Ecdsa-Sig-Value as
+  // defined in [RFC 3279 § 2.2.3], but utilising SHA-256 as the internal
+  // cryptographic hash.
+  //
+  // [RFC 3279 § 2.2.3]: https://tools.ietf.org/html/rfc3279#section-2.2.3
+  bytes signature = 2;
+}
