@@ -29,6 +29,11 @@ pub(crate) mod rc {
                 include!(concat!(env!("OUT_DIR"), "/rc.x509.magic_tunnel.v1.rs"));
             }
         }
+        pub mod signature {
+            pub mod v1 {
+                include!(concat!(env!("OUT_DIR"), "/rc.x509.signature.v1.rs"));
+            }
+        }
     }
 }
 
@@ -38,6 +43,7 @@ use prost::bytes::{Buf, Bytes};
 // Publicly export the modules at the crate root.
 pub use crate::rc::x509::magic_tunnel;
 pub use crate::rc::x509::protocol;
+pub use crate::rc::x509::signature;
 
 // Re-exports for callers to import, instead of having to depend on `prost`
 // directly.
