@@ -21,9 +21,11 @@ description = "Protocol type definitions for the RC X509 platform"
 repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
+bytes = { version = "1", features = ["serde"] }
 proptest = "1.11.0"
 proptest-derive = "0.8.0"
 prost = "0.14"
+serde = { version = "1", features = ["derive"] }
 
 [lints]
 workspace = true

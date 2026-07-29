@@ -43,6 +43,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         r#"#[proptest(strategy = "crate::arbitrary_oneof_bytes(Self::Response)")]"#,
     );
 
+    config.type_attribute(
+        "rc.x509.signature.v1.DetachedSignature",
+        "#[derive(serde::Serialize, serde::Deserialize)]",
+    );
+
     // Discover all the protobuf files.
     let mut protos = vec![];
     for entry in glob("protos/**/*.proto").expect("invalid glob") {

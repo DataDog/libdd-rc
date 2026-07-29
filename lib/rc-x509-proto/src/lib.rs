@@ -17,6 +17,10 @@
 // Crate level docs pulled from the README.
 #![doc = include_str!("../README.md")]
 
+// Only depended on directly to enable its `serde` feature for the `Bytes`
+// type used in generated code; not referenced by name otherwise.
+use bytes as _;
+
 pub(crate) mod rc {
     pub(crate) mod x509 {
         pub mod protocol {
