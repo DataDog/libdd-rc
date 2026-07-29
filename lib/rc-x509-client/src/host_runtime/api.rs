@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use futures::Stream;
-use rc_x509_proto::protocol::v1::dispatch_request::Payload;
 use thiserror::Error;
+use tokio_util::bytes::Bytes;
 
 use crate::{
     codec::{ClientToServer, DecodingError, ServerToClient},
@@ -84,11 +84,7 @@ pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
     ///
     /// MAY be called concurrently, MUST NOT block (expected return time is
     /// sub-millisecond).
-    fn dispatch(
-        &self,
-        correlation_id: CorrelationId,
-        payload: Payload,
-    ) -> Result<(), DispatchError>;
+    fn dispatch(&self, correlation_id: CorrelationId, payload: Bytes) -> Result<(), DispatchError>;
 }
 
 /// Callbacks from some abstract I/O provider and message processor.

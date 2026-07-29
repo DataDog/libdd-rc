@@ -17,10 +17,11 @@
 use rc_crypto::certificate::InvalidDer;
 use rc_x509_proto::{
     decode,
-    protocol::v1::{self, dispatch_request::Payload, server_to_client::Message},
+    protocol::v1::{self, server_to_client::Message},
 };
 use rc_x509_trust::cert::UntrustedCert;
 use thiserror::Error;
+use tokio_util::bytes::Bytes;
 
 use crate::host_runtime::CorrelationId;
 
@@ -43,9 +44,9 @@ pub enum DecodingError {
     #[error("invalid certificate DER bytes: {0}")]
     InvalidCert(#[from] InvalidDer),
 
-    /// The server sent a dispatch request with an unknown payload type.
-    #[error("unknown payload type")]
-    UnknownDispatchPayloadType,
+    /// A dispatch request was sent by the server without a detached signature.
+    #[error("no detached signature in payload dispatch")]
+    NoDispatchSignature,
 }
 
 /// All possible messages originating from the RC delivery backend, to an RC
@@ -66,7 +67,13 @@ pub enum ServerToClient {
         correlation_id: CorrelationId,
 
         /// The payload to dispatch to the host.
-        payload: Payload,
+        payload: Bytes,
+
+        /// The signature bytes that cover `payload`.
+        signature: Bytes,
+
+        /// The `CertId` of the leaf certificate used to produce `signature`.
+        signing_cert_id: Bytes,
     },
 }
 
@@ -80,10 +87,16 @@ impl TryFrom<&[u8]> for ServerToClient {
         // Construct the application type from this wire type.
         Ok(match got.message.ok_or(DecodingError::NoMessage)? {
             Message::Ping(_) => Self::Ping,
-            Message::Dispatch(v) => Self::Dispatch {
-                correlation_id: CorrelationId::new(v.correlation_id),
-                payload: v.payload.ok_or(DecodingError::UnknownDispatchPayloadType)?,
-            },
+            Message::Dispatch(v) => {
+                let detached = v.signature.ok_or(DecodingError::NoDispatchSignature)?;
+
+                Self::Dispatch {
+                    correlation_id: CorrelationId::new(v.correlation_id),
+                    payload: v.encoded_dispatch_request,
+                    signature: detached.signature,
+                    signing_cert_id: detached.cert_id,
+                }
+            }
             Message::CertificatePush(cert) => {
                 Self::CertificatePush(Box::new(UntrustedCert::from_der(cert.der)?))
             }
@@ -95,9 +108,7 @@ impl TryFrom<&[u8]> for ServerToClient {
 mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
-    use rc_x509_proto::{
-        magic_tunnel::v1::MagicTunnelRequest, protocol::v1::dispatch_request::Payload,
-    };
+    use rc_x509_proto::signature::v1::DetachedSignature;
     use tokio_util::bytes::Bytes;
 
     use super::*;
@@ -204,10 +215,9 @@ mod tests {
                         certificate.der = Bytes::from(SAMPLE_CERT_DER);
                     }
                     Message::Dispatch(dispatch) => {
-                        // Always include a payload - None is not a valid wire state.
-                        if dispatch.payload.is_none() {
-                            dispatch.payload =
-                                Some(Payload::MagicTunnel(MagicTunnelRequest::default()));
+                        // Always include a signature - None is not a valid wire state.
+                        if dispatch.signature.is_none() {
+                            dispatch.signature = Some(DetachedSignature::default());
                         }
                     }
                     _ => {}

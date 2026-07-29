@@ -81,7 +81,8 @@ pub unsafe extern "C" fn rc_conn_new(
 /// The callback invoked to deliver application messages.
 ///
 /// The payload data provided by this call is always a protobuf encoded
-/// [`rc_x509_proto::protocol::v1::dispatch_request::Payload`]. The callback
+/// [`rc_x509_proto::protocol::v1::DispatchRequestPayload`], whose signature has
+/// already been verified by the client library. The callback
 /// MUST NOT block this call, which stalls the client library. The callback
 /// SHOULD enqueue work into a channel for deferred processing.
 ///
@@ -976,14 +977,11 @@ fn dispatch_task(
         // it is safe to use via rc_conn_connected(). This task is signalled
         // to stop prior to rc_conn_disconnected() returning, ensuring no
         // calls are made to the dispatch callback after that point.
-        let mut buf = vec![];
-        data.payload.encode(&mut buf);
-
         let dispatch_ret = unsafe {
             dispatch(
                 data.correlation_id.get(),
-                buf.as_slice().as_ptr(),
-                buf.len() as u32,
+                data.payload.as_ptr(),
+                data.payload.len() as u32,
                 user_data.0,
             )
         };
@@ -1343,6 +1341,7 @@ mod tests {
                 Ok(ServerToClient::Dispatch {
                     correlation_id,
                     payload,
+                    ..
                 }) => {
                     dispatch
                         .dispatch(Dispatch {
@@ -1408,16 +1407,24 @@ mod tests {
         //
         // Deliver the dispatch request to the client.
 
-        let dispatch_request =
-            v1::dispatch_request::Payload::MagicTunnel(magic_tunnel::v1::MagicTunnelRequest {
-                namespace: 13,
-                payload: vec![1, 2, 3, 4].into(),
-            });
+        let dispatch_request = v1::DispatchRequestPayload {
+            payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
+                magic_tunnel::v1::MagicTunnelRequest {
+                    namespace: 13,
+                    payload: vec![1, 2, 3, 4].into(),
+                },
+            )),
+        };
+        let encoded_dispatch_request = rc_x509_proto::encode(&dispatch_request);
         let header_wrapped = v1::ServerToClient {
             message: Some(v1::server_to_client::Message::Dispatch(
                 v1::DispatchRequest {
                     correlation_id: CORRELATION_ID,
-                    payload: Some(dispatch_request.clone()),
+                    signature: Some(rc_x509_proto::signature::v1::DetachedSignature {
+                        cert_id: vec![1, 2, 3, 4].into(),
+                        signature: vec![5, 6, 7, 8].into(),
+                    }),
+                    encoded_dispatch_request: encoded_dispatch_request.clone().into(),
                 },
             )),
         };
@@ -1431,10 +1438,7 @@ mod tests {
         let (correlation_id, got_data) = rx.recv().expect("can never leak");
 
         // The client strips the dispatch header, yielding only the actual payload.
-        let mut want_data = vec![];
-        dispatch_request.encode(&mut want_data);
-
-        assert_eq!(want_data, got_data);
+        assert_eq!(encoded_dispatch_request, got_data);
         assert_eq!(correlation_id, CORRELATION_ID);
 
         // Clean up.

@@ -6,6 +6,7 @@ syntax = "proto3";
 package rc.x509.protocol.v1;
 
 import "magic_tunnel/protocol.proto";
+import "signature.proto";
 
 // Protocol message definitions.
 //
@@ -105,9 +106,11 @@ message DispatchRequest {
   // connection.
   uint64 correlation_id = 1;
 
-  oneof payload {
-    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
-  }
+  // The signature over the "encoded_dispatch_request" buffer.
+  rc.x509.signature.v1.DetachedSignature signature = 2;
+
+  // The protobuf-serialised DispatchRequestPayload that "signature" covers.
+  bytes encoded_dispatch_request = 3;
 }
 
 // A response to the `DispatchRequest` uniquely identified by the
@@ -144,7 +147,14 @@ message DispatchResponse {
   }
 }
 
-/// The response payload of a successful Dispatch call.
+// The signed request payload of a Dispatch call.
+message DispatchRequestPayload {
+  oneof payload {
+    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
+  }
+}
+
+// The response payload of a successful Dispatch call.
 message DispatchResponsePayload {
   oneof payload {
     rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 1;
