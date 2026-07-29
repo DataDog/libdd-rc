@@ -138,6 +138,9 @@ fn magic_tunnel() {
                 signature: vec![5, 6, 7, 8].into(),
             }),
             encoded_dispatch_request: encode(&v1::DispatchRequestPayload {
+                connection_id: Some(v1::ConnectionId {
+                    uuid_v8: vec![1, 2, 3, 4, 5, 6, 7, 8].into(),
+                }),
                 payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                     magic_tunnel::v1::MagicTunnelRequest {
                         namespace: 1234,

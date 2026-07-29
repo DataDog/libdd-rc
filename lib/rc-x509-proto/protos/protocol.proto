@@ -149,6 +149,13 @@ message DispatchResponse {
 
 // The signed request payload of a Dispatch call.
 message DispatchRequestPayload {
+  // The connection ID this message is targetted to.
+  //
+  // The client MUST validate this connection_id matches the expected value
+  // before any processing of the payload. The client SHOULD disconnect if this
+  // value differs from the expected value as an indicator of an ongoing MITM.
+  ConnectionId connection_id = 1;
+
   oneof payload {
     rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
   }
@@ -159,4 +166,13 @@ message DispatchResponsePayload {
   oneof payload {
     rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 1;
   }
+}
+
+// A globally unique identifier for the active connection.
+message ConnectionId {
+  // A [UUID Version 8] encoded as a raw [big-endian byte sequence].
+  //
+  // [big-endian byte sequence]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-format
+  // [UUID Version 8]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-8
+  bytes uuid_v8 = 1;
 }

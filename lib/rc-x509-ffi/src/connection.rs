@@ -1408,6 +1408,9 @@ mod tests {
         // Deliver the dispatch request to the client.
 
         let dispatch_request = v1::DispatchRequestPayload {
+            connection_id: Some(v1::ConnectionId {
+                uuid_v8: vec![0x01, 0x02, 0x03, 0x04, 0x04, 0x06, 0x07, 0x08].into(),
+            }),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 magic_tunnel::v1::MagicTunnelRequest {
                     namespace: 13,
