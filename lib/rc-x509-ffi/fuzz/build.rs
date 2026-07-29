@@ -19,6 +19,7 @@ use std::path::Path;
 use rc_x509_proto::{
     encode, magic_tunnel,
     protocol::v1::{self, ServerToClient, server_to_client::Message},
+    signature,
 };
 use twox_hash::XxHash64;
 
@@ -132,12 +133,22 @@ fn magic_tunnel() {
     let req = ServerToClient {
         message: Some(Message::Dispatch(v1::DispatchRequest {
             correlation_id: 42,
-            payload: Some(v1::dispatch_request::Payload::MagicTunnel(
-                magic_tunnel::v1::MagicTunnelRequest {
-                    namespace: 1234,
-                    payload: "bananas".into(),
-                },
-            )),
+            signature: Some(signature::v1::DetachedSignature {
+                cert_id: vec![1, 2, 3, 4].into(),
+                signature: vec![5, 6, 7, 8].into(),
+            }),
+            encoded_dispatch_request: encode(&v1::DispatchRequestPayload {
+                connection_id: Some(v1::ConnectionId {
+                    uuid_v8: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].into(),
+                }),
+                payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
+                    magic_tunnel::v1::MagicTunnelRequest {
+                        namespace: 1234,
+                        payload: "bananas".into(),
+                    },
+                )),
+            })
+            .into(),
         })),
     };
     write_proto(FFI_IO, req.clone());

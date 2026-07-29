@@ -150,8 +150,16 @@ fuzz_target!(|v: (&[u8], &[u8])| {
     match payload.map(|v| v.message) {
         Ok(Some(v1::server_to_client::Message::Dispatch(v1::DispatchRequest {
             correlation_id: server_sent_id,
-            payload: Some(server_sent_payload),
-        }))) => {
+            encoded_dispatch_request,
+            signature,
+        }))) => 'this: {
+            // Empty signatures cause an error in the codec, meaning the client
+            // never processes the payload, and therefore never emits a dispatch
+            // request.
+            if signature.as_ref().is_none() {
+                break 'this;
+            }
+
             // The client library will emit a Dispatch callback for this message
             // type.
             let (callback_id, callback_data) = dispatch_rx.recv().expect("sender not dropped");
@@ -160,13 +168,9 @@ fuzz_target!(|v: (&[u8], &[u8])| {
             // ID as the one that the server sent:
             assert_eq!(server_sent_id, callback_id);
 
-            // Likewise the payload must match.
-            //
-            // NOTE: this relies on deterministic serialisation, which is only
-            // true under some conditions.
-            let mut original_buf = vec![];
-            server_sent_payload.encode(&mut original_buf);
-            assert_eq!(original_buf, callback_data);
+            // Likewise the payload must match - the client passes the encoded
+            // dispatch request through to the FFI host verbatim.
+            assert_eq!(Vec::from(encoded_dispatch_request), callback_data);
 
             // This thread must return a DispatchResponse to the client.
             unsafe {
@@ -255,6 +259,7 @@ where
             Ok(codec::ServerToClient::Dispatch {
                 correlation_id,
                 payload,
+                ..
             }) => {
                 // Dispatch to the FFI host.
                 dispatch

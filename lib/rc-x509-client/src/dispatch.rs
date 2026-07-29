@@ -21,6 +21,7 @@ use rc_x509_proto::{DecodeError, protocol::v1};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::TrySendError};
 use tokio_stream::wrappers::ReceiverStream;
+use tokio_util::bytes::Bytes;
 
 use crate::host_runtime::CorrelationId;
 
@@ -41,8 +42,8 @@ pub struct Dispatch {
     /// returning a [`DispatchResult`].
     pub correlation_id: CorrelationId,
 
-    /// The attestation-verified dispatch payload.
-    pub payload: v1::dispatch_request::Payload,
+    /// The attestation-verified, encoded [`v1::DispatchRequestPayload`].
+    pub payload: Bytes,
 }
 
 /// The result of processing a [`Dispatch`].

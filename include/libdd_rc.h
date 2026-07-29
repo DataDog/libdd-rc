@@ -232,7 +232,8 @@ typedef struct FFIConnection FFIConnection;
  The callback invoked to deliver application messages.
 
  The payload data provided by this call is always a protobuf encoded
- [`rc_x509_proto::protocol::v1::dispatch_request::Payload`]. The callback
+ [`rc_x509_proto::protocol::v1::DispatchRequestPayload`], whose signature has
+ already been verified by the client library. The callback
  MUST NOT block this call, which stalls the client library. The callback
  SHOULD enqueue work into a channel for deferred processing.
 
