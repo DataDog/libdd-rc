@@ -53,9 +53,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         protos.push(v.to_owned());
     }
 
+    // Exports a `FileDescriptorSet` so downstream crates can reference these
+    // message types with `extern_path_with_descriptor()`
+    let out_dir = std::env::var("OUT_DIR")?;
+    let descriptor_path = std::path::Path::new(&out_dir).join("rc_x509_proto_descriptor.bin");
+
     config
         .bytes(["."])
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
+        .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
     Ok(())

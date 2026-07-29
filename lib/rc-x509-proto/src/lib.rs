@@ -45,6 +45,16 @@ pub use crate::rc::x509::magic_tunnel;
 pub use crate::rc::x509::protocol;
 pub use crate::rc::x509::signature;
 
+/// The compiled `FileDescriptorSet` for this crate's protobuf definitions.
+///
+/// Downstream crates that compile their own `.proto` files and `import` one
+/// of these messages (e.g. `signature.proto`) can pass this to an
+/// `extern_path`-with-descriptor style API to reference the Rust types
+/// exported above, without needing to locate this crate's `.proto` sources
+/// on disk.
+pub const FILE_DESCRIPTOR_SET: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/rc_x509_proto_descriptor.bin"));
+
 // Re-exports for callers to import, instead of having to depend on `prost`
 // directly.
 pub use prost::{DecodeError, Message as Serialisable};
