@@ -45,7 +45,7 @@ pub enum DecodingError {
     InvalidCert(#[from] InvalidDer),
 
     /// A dispatch request was sent by the server without a detached signature.
-    #[error("no detached signature in payload dispatch")]
+    #[error("dispatch request missing detached signature")]
     NoDispatchSignature,
 }
 
