@@ -1,1 +1,4 @@
 /target
+
+# Release script output
+publish.log
