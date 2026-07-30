@@ -43,6 +43,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         r#"#[proptest(strategy = "crate::arbitrary_oneof_bytes(Self::Response)")]"#,
     );
 
+    config.type_attribute(
+        "rc.x509.signature.v1.DetachedSignature",
+        "#[derive(serde::Serialize, serde::Deserialize)]",
+    );
+
     // Discover all the protobuf files.
     let mut protos = vec![];
     for entry in glob("protos/**/*.proto").expect("invalid glob") {
@@ -53,9 +58,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         protos.push(v.to_owned());
     }
 
+    // Export a `FileDescriptorSet` so downstream crates can reference these
+    // message types with `extern_path_with_descriptor()`.
+    let out_dir = std::env::var_os("OUT_DIR")
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "OUT_DIR not set"))?;
+    let descriptor_path = std::path::PathBuf::from(out_dir).join("rc_x509_proto_descriptor.bin");
     config
         .bytes(["."])
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
+        .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
     Ok(())
