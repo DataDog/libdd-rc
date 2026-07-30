@@ -46,6 +46,16 @@ if ! gh auth status &>/dev/null; then
 	exit 1
 fi
 
+# Releases need to be created with public usernames, which are the usernames
+# authorised as an open source maintainer.
+USER="$(gh api user --jq '.login')"
+if [[ "$USER" =~ "_ddog$" ]]; then 
+	echoe "%F{red}gh logged into ddoghq%f - current user is $USER"
+	echoe
+	echoe "Run 'gh auth switch --user USERNAME' to switch to your public username."
+	exit 1
+fi
+
 echoe "fetching latest repo changes"
 git fetch --tags origin
 
