@@ -284,10 +284,7 @@ func (c *Connection) Recv(data []byte) error {
 		return ErrConnectionNotConnected
 	}
 
-	cData := C.CBytes(data)
-	defer C.free(cData)
-
-	if ret := C.rc_conn_recv(c.st.conn, (*C.uint8_t)(cData), C.uint32_t(len(data))); ret != C.RECV_RET_T_SUCCESS {
+	if ret := C.rc_conn_recv(c.st.conn, (*C.uint8_t)(unsafe.Pointer(&data[0])), C.uint32_t(len(data))); ret != C.RECV_RET_T_SUCCESS {
 		return fmt.Errorf("ddrc: rc_conn_recv returned %v", ret)
 	}
 
