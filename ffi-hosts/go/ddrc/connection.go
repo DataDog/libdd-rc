@@ -15,6 +15,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"runtime/cgo"
 	"sync"
 	"unsafe"
@@ -84,6 +85,25 @@ type connState struct {
 	// dispatch worker is left to answer.
 	dispatchMu sync.Mutex
 	accepting  bool
+
+	// handlePtr is a standalone heap allocation (not a field alongside
+	// pinner or the other pointer-typed fields above) holding the cgo.Handle
+	// for this connState. *handlePtr is what gets passed across the FFI
+	// boundary as user_data.
+	//
+	// It must live in its own allocation containing nothing else: the cgo
+	// pointer-passing rules forbid passing a Go pointer into memory that
+	// itself contains other Go pointers, so handlePtr cannot be a field
+	// sitting next to connState's channels, or even next to pinner, whose
+	// own internal bookkeeping is itself a Go pointer.
+	//
+	// pinner keeps *handlePtr safe to hand to C: rc-x509-client retains
+	// user_data and hands it back on every subsequent DispatchCb/SendCb
+	// call rather than using it only for the duration of a single call,
+	// which is exactly the case runtime/cgo's docs require a
+	// runtime.Pinner for.
+	handlePtr *cgo.Handle
+	pinner    runtime.Pinner
 }
 
 // Connection represents a unique connection between the RC X509
@@ -98,8 +118,7 @@ type Connection struct {
 	// Used to broker connection specific information across the FFI
 	// boundry so that Go can find the connection without a global
 	// lookup table
-	st     *connState
-	handle cgo.Handle
+	st *connState
 }
 
 // NewConnection creates a new Connection bound to c: it calls rc_conn_new,
@@ -123,16 +142,20 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 		accepting:     true,
 	}
 
-	// The handle is passed across the FFI boundary by value as the callbacks'
-	// user_data, and is what lets them find this connection's state without a
+	// The handle is passed across the FFI boundary as st.handlePtr, and is
+	// what lets the callbacks find this connection's state without a
 	// package-global lookup table. It stays valid until rc_conn_free()
-	// returns, after which the client library guarantees no further callbacks.
-	handle := cgo.NewHandle(st)
-	userData := unsafe.Pointer(uintptr(handle))
+	// returns, after which the client library guarantees no further
+	// callbacks.
+	st.handlePtr = new(cgo.Handle)
+	*st.handlePtr = cgo.NewHandle(st)
+	st.pinner.Pin(st.handlePtr)
+	userData := unsafe.Pointer(st.handlePtr)
 
 	connPtr := C.rc_conn_new(c.ptr, C.DispatchCb(C.goDispatchCb), userData)
 	if connPtr == nil {
-		handle.Delete()
+		st.pinner.Unpin()
+		st.handlePtr.Delete()
 		return nil, errors.New("ddrc: rc_conn_new returned a nil connection")
 	}
 	st.conn = connPtr
@@ -141,7 +164,7 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	// the newly established connection
 	C.rc_conn_send_callback(connPtr, C.SendCb(C.goSendCb), userData)
 
-	conn := &Connection{ctx: c, handle: handle, st: st}
+	conn := &Connection{ctx: c, st: st}
 	c.conns[conn] = struct{}{}
 
 	st.wg.Add(1)
@@ -216,7 +239,8 @@ func (c *Connection) Disconnected() error {
 	}
 
 	C.rc_conn_free(c.st.conn)
-	c.handle.Delete()
+	c.st.pinner.Unpin()
+	c.st.handlePtr.Delete()
 
 	c.mu.Unlock()
 
