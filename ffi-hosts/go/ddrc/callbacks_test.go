@@ -23,16 +23,20 @@ func newTestConnState() *connState {
 
 // TestConnStateFromUserData_RoundTripsNewConnectionEncoding verifies that
 // connStateFromUserData can decode the user_data value exactly as
-// NewConnection constructs it. The two must agree on how a cgo.Handle is
-// packed into a void*, since NewConnection is the only place in production
-// code that performs the encode side of that contract.
+// NewConnection constructs it: a standalone, pinned cgo.Handle allocation.
+// The two must agree on how a cgo.Handle is packed into a void*, since
+// NewConnection is the only place in production code that performs the
+// encode side of that contract.
 func TestConnStateFromUserData_RoundTripsNewConnectionEncoding(t *testing.T) {
 	st := newTestConnState()
 
-	handle := cgo.NewHandle(st)
-	defer handle.Delete()
+	st.handlePtr = new(cgo.Handle)
+	*st.handlePtr = cgo.NewHandle(st)
+	st.pinner.Pin(st.handlePtr)
+	defer st.pinner.Unpin()
+	defer st.handlePtr.Delete()
 
-	userData := unsafe.Pointer(uintptr(handle))
+	userData := unsafe.Pointer(st.handlePtr)
 
 	got, ok := connStateFromUserData(userData)
 	if !ok {

@@ -129,11 +129,12 @@ func recoverCallback(onPanic func()) {
 
 // connStateFromUserData resolves the connState behind the user_data value
 // registered with rc_conn_new / rc_conn_send_callback, which carries the
-// cgo.Handle for the connection by value.
+// address of the connection's cgo.Handle.
 func connStateFromUserData(userData unsafe.Pointer) (*connState, bool) {
 	if userData == nil {
 		return nil, false
 	}
-	st, ok := cgo.Handle(uintptr(userData)).Value().(*connState)
+	handle := *(*cgo.Handle)(userData)
+	st, ok := handle.Value().(*connState)
 	return st, ok
 }
