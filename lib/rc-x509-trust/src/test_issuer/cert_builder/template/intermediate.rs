@@ -77,4 +77,10 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
         self.template.path_len = Some(n);
         self
     }
+
+    /// Set the pathLen constraint via mutable reference, for use in
+    /// [`ChainMutator`] implementations.
+    pub(crate) fn set_path_len(&mut self, n: u8) {
+        self.template.path_len = Some(n);
+    }
 }
