@@ -22,7 +22,10 @@ use tokio_util::bytes::Bytes;
 
 use crate::{
     build_version::BuildVersion,
-    connection::{GracefulDisconnectionCount, ReconnectionData, UngracefulDisconnectionCount},
+    connection::{
+        GracefulDisconnectionCount, LastConnectedDuration, ReconnectionData,
+        UngracefulDisconnectionCount,
+    },
     host_runtime::CorrelationId,
 };
 
@@ -45,6 +48,8 @@ pub enum ClientToServer {
         graceful: GracefulDisconnectionCount,
         /// Number of times the connection has been ungracefully broken.
         ungraceful: UngracefulDisconnectionCount,
+        /// Duration of time the most recently closed connection was active for.
+        last_closed_connection_duration_seconds: LastConnectedDuration,
         /// Opaque data previously set by the server, if any.
         reconnection_data: Option<ReconnectionData>,
         /// Client build version.
@@ -75,12 +80,14 @@ impl From<ClientToServer> for Vec<u8> {
                 client_nonce,
                 graceful,
                 ungraceful,
+                last_closed_connection_duration_seconds: last_conn_duration,
                 reconnection_data,
                 version_info,
                 app_name,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
+                last_closed_connection_duration_seconds: last_conn_duration.as_seconds(),
                 nonce: client_nonce,
                 reconnection_data: reconnection_data
                     .map(|v| v.as_bytes().clone())
