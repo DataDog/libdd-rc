@@ -21,6 +21,7 @@ use rc_x509_proto::{
 use tokio_util::bytes::Bytes;
 
 use crate::{
+    build_version::BuildVersion,
     connection::{GracefulDisconnectionCount, ReconnectionData, UngracefulDisconnectionCount},
     host_runtime::CorrelationId,
 };
@@ -46,6 +47,8 @@ pub enum ClientToServer {
         ungraceful: UngracefulDisconnectionCount,
         /// Opaque data previously set by the server, if any.
         reconnection_data: Option<ReconnectionData>,
+        /// Client build version.
+        version_info: BuildVersion,
     },
 
     /// An async response to a [`ServerToClient::Dispatch`] request.
@@ -71,6 +74,7 @@ impl From<ClientToServer> for Vec<u8> {
                 graceful,
                 ungraceful,
                 reconnection_data,
+                version_info,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
@@ -78,6 +82,10 @@ impl From<ClientToServer> for Vec<u8> {
                 reconnection_data: reconnection_data
                     .map(|v| v.as_bytes().clone())
                     .unwrap_or_default(),
+                version_major: version_info.major(),
+                version_minor: version_info.minor(),
+                version_patch: version_info.patch(),
+                version_commit: version_info.commit().clone(),
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),

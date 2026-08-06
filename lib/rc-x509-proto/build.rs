@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.protocol.v1.Certificate.der",
         "rc.x509.protocol.v1.ClientHello.nonce",
         "rc.x509.protocol.v1.ClientHello.reconnection_data",
+        "rc.x509.protocol.v1.ClientHello.version_commit",
         "rc.x509.protocol.v1.ClientHelloAck.server_nonce",
         "rc.x509.protocol.v1.ConnectionId.uuid_v8",
         "rc.x509.protocol.v1.DispatchRequest.encoded_dispatch_request",

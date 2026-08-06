@@ -29,6 +29,21 @@ message ClientHello {
   //
   // This data is opaque to the client; it MUST NOT change this data in any way.
   bytes reconnection_data = 4;
+
+  // Client build version information.
+  //
+  // semver major number.
+  uint32 version_major = 5;
+  // Client version: semver minor number.
+  uint32 version_minor = 6;
+  // Client version: semver patch number.
+  uint32 version_patch = 7;
+
+  // Client version: Git commit hash for client build.
+  //
+  // This field contains the raw hash bytes for the full length Git commit hash,
+  // which is typically represented as a string by hex-encoding these raw bytes.
+  bytes version_commit = 8;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
