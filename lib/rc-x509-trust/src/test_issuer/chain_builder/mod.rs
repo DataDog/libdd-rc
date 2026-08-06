@@ -15,9 +15,11 @@
 mod chain;
 mod forged_leaf;
 mod missing_intermediate;
+mod pathlen_violation;
 mod valid;
 
 pub(crate) use chain::*;
 pub(crate) use forged_leaf::*;
 pub(crate) use missing_intermediate::*;
+pub(crate) use pathlen_violation::*;
 pub(crate) use valid::*;
