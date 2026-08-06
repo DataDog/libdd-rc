@@ -13,11 +13,13 @@ extern send_ret_t goSendCb(uint8_t *data, uint32_t length, void *user_data);
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
 	"runtime/cgo"
 	"sync"
+	"time"
 	"unsafe"
 
 	"google.golang.org/protobuf/proto"
@@ -32,6 +34,15 @@ const (
 	dispatchQueueCap = 100
 	outgoingQueueCap = 100
 )
+
+// handlerTimeout bounds how long a dispatch worker waits on a single
+// HandlerFunc call before reporting a timeout to the backend. TODO: this is a
+// placeholder; it likely needs to be configurable per namespace or per
+// Connection rather than a single package-wide value.
+//
+// It is a var rather than a const so tests can shorten it rather than
+// waiting out the real timeout.
+var handlerTimeout = 30 * time.Second
 
 // ErrConnectionClosed is returned when an operation is attempted on a
 // Connection that has already been freed.
@@ -55,6 +66,10 @@ var ErrConnectionAlreadyConnected = errors.New("ddrc: connection is already conn
 // ErrEmptyPayload is returned by Recv when passed a zero-length payload,
 // which is not representable across the FFI boundary.
 var ErrEmptyPayload = errors.New("ddrc: payload is empty")
+
+// ErrHandlerTimeout is reported to the backend as a handler error when a
+// HandlerFunc call does not return within handlerTimeout.
+var ErrHandlerTimeout = errors.New("ddrc: dispatch handler timed out")
 
 // dispatchJob is a single DispatchCb invocation, already decoded and routed
 // to a handler by goDispatchCb, queued for processing by the dispatch worker
@@ -372,20 +387,51 @@ func (c *Connection) handleDispatchJob(job dispatchJob) {
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
-// converting a panic in that caller-supplied code into an error.
+// converting a panic in that caller-supplied code into an error, and
+// enforcing handlerTimeout so a slow or stuck handler cannot hold up the
+// dispatch worker indefinitely.
+//
+// The handler runs on its own goroutine so this can give up waiting on it
+// once handlerTimeout elapses: that goroutine is left running with a
+// cancelled ctx after invokeHandler returns, so ddrc has no way to actually
+// stop the handler itself. Handlers are expected to select on ctx.Done() to
+// bound their own work, but a handler that ignores ctx will keep consuming
+// resources unsupervised rather than being interrupted.
 //
 // A panic must not escape: it would take down the dispatch worker, leaving
 // this payload and every payload queued behind it for this connection without
 // the rc_conn_dispatch_result call the client library is waiting for.
-func invokeHandler(job dispatchJob) (response []byte, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			response = nil
-			err = fmt.Errorf("ddrc: dispatch handler panicked: %v", r)
-		}
+func invokeHandler(job dispatchJob) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), handlerTimeout)
+	defer cancel()
+
+	type result struct {
+		response []byte
+		err      error
+	}
+	done := make(chan result, 1)
+
+	go func() {
+		response, err := func() (response []byte, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					response = nil
+					err = fmt.Errorf("ddrc: dispatch handler panicked: %v", r)
+				}
+			}()
+
+			return job.handler(ctx, job.correlationID, job.request.GetPayload())
+		}()
+
+		done <- result{response, err}
 	}()
 
-	return job.handler(job.correlationID, job.request.GetPayload())
+	select {
+	case r := <-done:
+		return r.response, r.err
+	case <-ctx.Done():
+		return nil, ErrHandlerTimeout
+	}
 }
 
 // marshalDispatchResponse encodes the outcome of a dispatch handler as the

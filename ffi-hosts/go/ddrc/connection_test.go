@@ -1,6 +1,7 @@
 package ddrc
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -118,12 +119,12 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 
 	// Blocks the worker inside the first job, so the remaining jobs are still
 	// queued by the time Disconnected runs.
-	blocking := func(correlationID uint64, _ []byte) ([]byte, error) {
+	blocking := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		<-release
 		return nil, nil
 	}
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	recording := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
@@ -204,8 +205,8 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	conn := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
-	panicking := func(uint64, []byte) ([]byte, error) { panic("handler is unwell") }
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	panicking := func(context.Context, uint64, []byte) ([]byte, error) { panic("handler is unwell") }
+	recording := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
@@ -225,6 +226,47 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for the job queued behind a panicking handler")
+	}
+}
+
+// TestDispatchWorkerReportsHandlerTimeout verifies that a handler still
+// running once handlerTimeout elapses does not hold up the dispatch worker:
+// invokeHandler must give up waiting on it and report ErrHandlerTimeout so
+// the job behind it still gets answered.
+func TestDispatchWorkerReportsHandlerTimeout(t *testing.T) {
+	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+
+	original := handlerTimeout
+	handlerTimeout = 10 * time.Millisecond
+	t.Cleanup(func() { handlerTimeout = original })
+
+	conn := newTestConnection(t)
+
+	handled := make(chan uint64, 1)
+	stuck := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	recording := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
+		handled <- correlationID
+		return nil, nil
+	}
+
+	for i, h := range []HandlerFunc{stuck, recording} {
+		conn.st.dispatchQueue <- dispatchJob{
+			correlationID: uint64(i + 1),
+			handler:       h,
+			request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns},
+		}
+	}
+
+	select {
+	case got := <-handled:
+		if got != 2 {
+			t.Fatalf("handled correlationID = %d, want 2", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the job queued behind a stuck handler")
 	}
 }
 

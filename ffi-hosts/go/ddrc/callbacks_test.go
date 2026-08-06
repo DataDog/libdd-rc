@@ -1,6 +1,7 @@
 package ddrc
 
 import (
+	"context"
 	"runtime/cgo"
 	"testing"
 	"time"
@@ -70,7 +71,7 @@ func encodeDispatchRequest(t *testing.T, ns magictunnelv1.Namespace, innerPayloa
 func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
 	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(ns, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(ns) }()
@@ -177,7 +178,7 @@ func TestGoDispatchCb_NoDispatchHandler(t *testing.T) {
 func TestGoDispatchCb_QueueFull(t *testing.T) {
 	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(ns, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(ns) }()
@@ -205,7 +206,7 @@ func TestGoDispatchCb_QueueFull(t *testing.T) {
 func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
 	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(ns, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(ns) }()
@@ -312,7 +313,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		payload       []byte
 	}
 	called := make(chan invocation, 1)
-	handler := func(correlationID uint64, payload []byte) ([]byte, error) {
+	handler := func(ctx context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 		called <- invocation{correlationID: correlationID, payload: payload}
 		return []byte{0xaa, 0xbb}, nil
 	}

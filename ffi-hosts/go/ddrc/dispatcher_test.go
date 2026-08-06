@@ -1,6 +1,7 @@
 package ddrc
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -8,7 +9,7 @@ import (
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
 )
 
-func noopHandler(correlationID uint64, payload []byte) ([]byte, error) {
+func noopHandler(ctx context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	return nil, nil
 }
 
@@ -30,7 +31,7 @@ func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
 	}
 
 	called := false
-	replacement := func(correlationID uint64, payload []byte) ([]byte, error) {
+	replacement := func(ctx context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 		called = true
 		return nil, nil
 	}
@@ -44,7 +45,7 @@ func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected original handler to remain registered")
 	}
-	if _, _ = h(0, nil); called {
+	if _, _ = h(context.Background(), 0, nil); called {
 		t.Fatal("duplicate registration overwrote the original handler")
 	}
 }

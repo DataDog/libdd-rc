@@ -1,6 +1,7 @@
 package ddrc
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -19,7 +20,14 @@ import (
 // holding the connection lock, so a handler calling Recv or Disconnected
 // deadlocks. A handler that returns an error, or panics, has that reported to
 // the client library as a handler error.
-type HandlerFunc func(correlationID uint64, payload []byte) (response []byte, err error)
+//
+// ctx is cancelled once handlerTimeout elapses. A handler is expected to
+// bound its own work by selecting on ctx.Done() and returning promptly when
+// it fires: once the deadline passes, invokeHandler reports a timeout to the
+// backend and moves on to the next queued job regardless of whether the
+// handler has returned, so a handler that ignores ctx keeps running
+// unsupervised in the background rather than actually being interrupted.
+type HandlerFunc func(ctx context.Context, correlationID uint64, payload []byte) (response []byte, err error)
 
 // ErrHandlerExists is returned by RegisterHandler when a handler is already
 // registered for the given namespace.
