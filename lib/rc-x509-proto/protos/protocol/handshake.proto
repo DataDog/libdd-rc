@@ -44,6 +44,10 @@ message ClientHello {
   // This field contains the raw hash bytes for the full length Git commit hash,
   // which is typically represented as a string by hex-encoding these raw bytes.
   bytes version_commit = 8;
+
+  // A friendly, descriptive name that identifies the application that is
+  // connecting (e.g. "Datadog Agent").
+  string app_name = 9;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
