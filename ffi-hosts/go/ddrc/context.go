@@ -7,17 +7,13 @@ import "C"
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
 
 // ErrContextClosed is returned when an operation is attempted on an
-// FFIContext that has already been closed.
+// FFIContext that has already been closed, or that is in the process of
+// closing.
 var ErrContextClosed = errors.New("ddrc: context is closed")
-
-// ErrConnectionsOpen is returned by Close when connections created from the
-// context have not been released yet.
-var ErrConnectionsOpen = errors.New("libddrc: context still has open connections")
 
 // X509Context encapsulates a connection to a concrete instance of the
 // rc-x509-client subsystem.
@@ -29,9 +25,15 @@ type X509Context struct {
 	ptr    *C.Ctx
 	closed bool
 
+	// closing is set for the duration of Close, before conns is drained, so
+	// that NewConnection rejects new connections that would otherwise race
+	// with shutdown rather than outlive it.
+	closing bool
+
 	// conns are the connections created from this context that have not been
 	// released yet. rc_free requires every connection be disconnected and
-	// freed beforehand, so Close refuses to run while any remain.
+	// freed beforehand, so Close forcibly disconnects them before releasing
+	// the underlying rc-x509-client context.
 	conns map[*Connection]struct{}
 }
 
@@ -44,28 +46,49 @@ func Init() (*X509Context, error) {
 	return &X509Context{ptr: ptr, conns: make(map[*Connection]struct{})}, nil
 }
 
-// Close triggers shutdown of the rc-x509-client subsystem
+// Close triggers shutdown of the rc-x509-client subsystem.
 //
-// Every Connection created from this context must have been released with
-// Connection.Disconnected first, else Close returns ErrConnectionsOpen: the
-// connections are owned by their callers, and rc-x509-client aborts the
-// process if one outlives the context it belongs to.
+// Any Connection created from this context that has not already been
+// released is forcibly disconnected first, rather than requiring the caller
+// to have released every connection beforehand: rc_free requires every
+// connection be freed first, and rc-x509-client aborts the process if one
+// outlives the context it belongs to.
 //
 // It is an error to call Close more than once.
 func (c *X509Context) Close() error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.closed {
+	if c.closed || c.closing {
+		c.mu.Unlock()
 		return ErrContextClosed
 	}
-	if len(c.conns) > 0 {
-		return fmt.Errorf("%w: %d remaining", ErrConnectionsOpen, len(c.conns))
+	c.closing = true
+
+	conns := make([]*Connection, 0, len(c.conns))
+	for conn := range c.conns {
+		conns = append(conns, conn)
 	}
+	c.mu.Unlock()
+
+	// Disconnected removes each connection from c.conns itself (via forget),
+	// so c.conns is empty by the time every call below has returned. Run
+	// outside the lock: forget takes c.mu, and Disconnected can block waiting
+	// for in-flight dispatch handlers to return.
+	//
+	// The only error Disconnected can return here is ErrConnectionNotConnected,
+	// for a connection Connected was never called on; its resources are
+	// still released in that case, so it is ignored rather than aborting the
+	// rest of the shutdown.
+	for _, conn := range conns {
+		_ = conn.Disconnected()
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	C.rc_free(c.ptr)
 	c.ptr = nil
 	c.closed = true
+	c.closing = false
 	return nil
 }
 

@@ -146,7 +146,7 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.closed {
+	if c.closed || c.closing {
 		return nil, ErrContextClosed
 	}
 

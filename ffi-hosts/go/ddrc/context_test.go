@@ -71,10 +71,11 @@ func TestConnectionLifecycle(t *testing.T) {
 	}
 }
 
-// TestContextCloseWithOpenConnection verifies Close refuses to release the
-// context while a connection created from it is still open. rc_free requires
-// every connection be freed beforehand, and using a connection that outlived
-// its context aborts the process.
+// TestContextCloseWithOpenConnection verifies Close forcibly disconnects a
+// connection created from it that is still open, rather than requiring the
+// caller to have released it first: rc_free requires every connection be
+// freed beforehand, and using a connection that outlived its context aborts
+// the process.
 func TestContextCloseWithOpenConnection(t *testing.T) {
 	ctx, err := Init()
 	if err != nil {
@@ -89,17 +90,67 @@ func TestContextCloseWithOpenConnection(t *testing.T) {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
-	if err := ctx.Close(); !errors.Is(err, ErrConnectionsOpen) {
-		t.Fatalf("Close() = %v, want ErrConnectionsOpen", err)
-	}
-
-	if err := conn.Disconnected(); err != nil {
-		t.Fatalf("Disconnected() returned error: %v", err)
-	}
-
-	// Releasing the last connection lets the context close.
 	if err := ctx.Close(); err != nil {
-		t.Fatalf("Close() after Disconnected() returned error: %v", err)
+		t.Fatalf("Close() returned error: %v", err)
+	}
+
+	if err := conn.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+		t.Fatalf("Disconnected() after Close() = %v, want ErrConnectionClosed", err)
+	}
+
+	if err := ctx.Close(); !errors.Is(err, ErrContextClosed) {
+		t.Fatalf("second Close() = %v, want ErrContextClosed", err)
+	}
+}
+
+// TestContextCloseDisconnectsAllOpenConnections verifies Close tears down
+// every open connection created from the context, not just one.
+func TestContextCloseDisconnectsAllOpenConnections(t *testing.T) {
+	ctx, err := Init()
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+
+	const numConns = 3
+	conns := make([]*Connection, numConns)
+	for i := range conns {
+		conn, err := ctx.NewConnection()
+		if err != nil {
+			t.Fatalf("NewConnection() returned error: %v", err)
+		}
+		if err := conn.Connected(); err != nil {
+			t.Fatalf("Connected() returned error: %v", err)
+		}
+		conns[i] = conn
+	}
+
+	if err := ctx.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+
+	for i, conn := range conns {
+		if err := conn.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+			t.Fatalf("conns[%d].Disconnected() after Close() = %v, want ErrConnectionClosed", i, err)
+		}
+	}
+}
+
+// TestContextCloseRejectsNewConnectionDuringShutdown verifies NewConnection
+// refuses to hand out a new connection once Close has started forcibly
+// disconnecting the existing ones, rather than letting one slip in and
+// outlive the context.
+func TestContextCloseRejectsNewConnectionDuringShutdown(t *testing.T) {
+	ctx, err := Init()
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+
+	if err := ctx.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+
+	if _, err := ctx.NewConnection(); !errors.Is(err, ErrContextClosed) {
+		t.Fatalf("NewConnection() after Close() = %v, want ErrContextClosed", err)
 	}
 }
 
