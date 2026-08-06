@@ -364,10 +364,11 @@ func (c *Connection) handleDispatchJob(job dispatchJob) {
         encoded, _ = marshalDispatchResponse(nil, errors.New("handleDispatchJob: invalid empty serialised response"))
 	}
 
-	cData := C.CBytes(encoded)
-	defer C.free(cData)
-
-	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
+	// rc_conn_dispatch_result only requires data to be valid for the
+	// duration of this call (see libdd_rc.h), so a pointer straight into
+	// encoded can be passed across the FFI boundary rather than making an
+	// intermediate C-owned copy, the same as Recv does with its payload.
+	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
