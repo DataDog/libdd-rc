@@ -16,6 +16,7 @@ aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AW
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
 aws-lc-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR MIT OR BSD-3-Clause OR MIT-0,AWS-LC
 base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall Pierce <marshall@mpierce.org>
+base64,https://github.com/marshallpierce/rust-base64,MIT OR Apache-2.0,Marshall Pierce <marshall@mpierce.org>
 bindgen,https://github.com/rust-lang/rust-bindgen,BSD-3-Clause,Jyun-Yan You <jyyou.tw@gmail.com>, Emilio Cobos Álvarez <emilio@crisal.io>, Nick Fitzgerald <fitzgen@gmail.com>, The Servo project developers
 bit-set,https://github.com/contain-rs/bit-set,Apache-2.0 OR MIT,Alexis Beingessner <a.beingessner@gmail.com>
 bit-vec,https://github.com/contain-rs/bit-vec,Apache-2.0 OR MIT,Alexis Beingessner <a.beingessner@gmail.com>
@@ -93,6 +94,7 @@ once_cell,https://github.com/matklad/once_cell,MIT OR Apache-2.0,Aleksey Kladov 
 once_cell_polyfill,https://github.com/polyfill-rs/once_cell_polyfill,MIT OR Apache-2.0,N/A
 parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
+pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 petgraph,https://github.com/petgraph/petgraph,MIT OR Apache-2.0,bluss, mitchmindtree
 pin-project,https://github.com/taiki-e/pin-project,Apache-2.0 OR MIT,N/A
