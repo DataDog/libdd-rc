@@ -139,6 +139,10 @@ message DispatchResponse {
     // enough to keep up with the rate of new requests arriving. The message
     // will not be delivered.
     DISPATCH_ERROR_QUEUE_FULL = 3;
+
+    // The X509 client library successfully processed this dispatch request, and
+    // dispatched it to the host application which returned an "UNKNOWN" error.
+    DISPATCH_ERROR_CLIENT_RETURNED_UNKNOWN = 4;
   }
 
   oneof result {
