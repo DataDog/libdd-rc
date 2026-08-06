@@ -21,7 +21,7 @@ use rc_x509_proto::{
 use tokio_util::bytes::Bytes;
 
 use crate::{
-    connection::{GracefulDisconnectionCount, UngracefulDisconnectionCount},
+    connection::{GracefulDisconnectionCount, ReconnectionData, UngracefulDisconnectionCount},
     host_runtime::CorrelationId,
 };
 
@@ -44,6 +44,8 @@ pub enum ClientToServer {
         graceful: GracefulDisconnectionCount,
         /// Number of times the connection has been ungracefully broken.
         ungraceful: UngracefulDisconnectionCount,
+        /// Opaque data previously set by the server, if any.
+        reconnection_data: Option<ReconnectionData>,
     },
 
     /// An async response to a [`ServerToClient::Dispatch`] request.
@@ -68,10 +70,14 @@ impl From<ClientToServer> for Vec<u8> {
                 client_nonce,
                 graceful,
                 ungraceful,
+                reconnection_data,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
                 nonce: client_nonce,
+                reconnection_data: reconnection_data
+                    .map(|v| v.as_bytes().clone())
+                    .unwrap_or_default(),
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),
