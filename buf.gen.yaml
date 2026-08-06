@@ -20,9 +20,9 @@
 #   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 #   buf generate
 #
-# Generated output is committed (see ffi-hosts/go/rcproto), matching the
-# include/libdd_rc.h convention: regenerate and commit rather than generating
-# at build time.
+# Generated output (ffi-hosts/go/rcproto) is not committed: it's regenerated
+# on demand, either directly via the commands above or as a prerequisite of
+# `make build`/`make test`/`make vet` in ffi-hosts/go.
 version: v2
 plugins:
   - local: protoc-gen-go

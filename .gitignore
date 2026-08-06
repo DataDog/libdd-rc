@@ -2,3 +2,7 @@
 
 # Release script output
 publish.log
+
+# Generated Go protobuf bindings (regenerate with `buf generate` or `make
+# build`/`make test` in ffi-hosts/go).
+/ffi-hosts/go/rcproto/
