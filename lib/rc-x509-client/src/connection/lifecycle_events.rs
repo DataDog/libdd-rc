@@ -14,27 +14,6 @@
 
 use crate::dispatch::DispatchPublisher;
 
-/// A [`ConnectionId`] uniquely identifies a single connection managed by the
-/// FFI host (e.g. a call to `rc_conn_new()`).
-///
-/// Invariant: guaranteed to be sequential, starting from 0 for the first
-/// connection created, per client instance.
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct ConnectionId(u64);
-
-impl ConnectionId {
-    /// Construct a new [`ConnectionId`] over the ID counter value.
-    pub fn new(v: u64) -> Self {
-        Self(v)
-    }
-
-    /// Return the raw counter value.
-    pub fn as_raw(&self) -> u64 {
-        self.0
-    }
-}
-
 /// Lifecycle events for a single I/O connection brokered by the FFI host.
 ///
 /// The lifecycle event is associated with a [`ConnectionId`] identifying the
@@ -106,20 +85,13 @@ pub enum ConnectionEvent<IO> {
 /// corresponding [`ConnectionId`] it applies to.
 #[derive(Debug)]
 pub struct ConnectionUpdate<IO> {
-    id: ConnectionId,
     event: ConnectionEvent<IO>,
 }
 
 impl<IO> ConnectionUpdate<IO> {
     /// Construct a new update for the connection previously tagged with `id`.
-    pub fn new(id: ConnectionId, event: ConnectionEvent<IO>) -> Self {
-        Self { id, event }
-    }
-
-    /// Get the [`ConnectionId`] this [`ConnectionEvent`] this update applies
-    /// to.
-    pub fn id(&self) -> ConnectionId {
-        self.id
+    pub fn new(event: ConnectionEvent<IO>) -> Self {
+        Self { event }
     }
 
     /// Peek at the underlying [`ConnectionEvent`] in this update.

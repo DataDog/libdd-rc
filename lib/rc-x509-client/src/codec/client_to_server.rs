@@ -18,9 +18,10 @@ use rc_x509_proto::{
     encode,
     protocol::v1::{self, DispatchResponse, client_to_server::Message},
 };
+use tokio_util::bytes::Bytes;
 
 use crate::{
-    connection::{ConnectionId, GracefulDisconnectionCount, UngracefulDisconnectionCount},
+    connection::{GracefulDisconnectionCount, UngracefulDisconnectionCount},
     host_runtime::CorrelationId,
 };
 
@@ -36,8 +37,9 @@ pub enum ClientToServer {
 
     /// An opening handshake message sent at the start of a new connection.
     ClientHello {
-        /// The unique connection ID.
-        conn_id: ConnectionId,
+        /// The client nonce used in the construction of a connection ID.
+        #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))]
+        client_nonce: Bytes,
         /// Number of times the server has asked the client to reconnect.
         graceful: GracefulDisconnectionCount,
         /// Number of times the connection has been ungracefully broken.
@@ -63,13 +65,13 @@ impl From<ClientToServer> for Vec<u8> {
         // Construct the wire type for this `value`.
         let wire = match value {
             ClientToServer::ClientHello {
-                conn_id,
+                client_nonce,
                 graceful,
                 ungraceful,
             } => Message::ClientHello(v1::ClientHello {
-                connection_id: conn_id.as_raw(),
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
+                nonce: client_nonce,
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),

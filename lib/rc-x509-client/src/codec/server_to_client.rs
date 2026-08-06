@@ -23,7 +23,7 @@ use rc_x509_trust::cert::UntrustedCert;
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 
-use crate::host_runtime::CorrelationId;
+use crate::{connection::UntrustedConnectionId, host_runtime::CorrelationId};
 
 /// Errors parsing incoming messages from the RC delivery backend.
 #[derive(Debug, Error)]
@@ -75,6 +75,13 @@ pub enum ServerToClient {
         /// The `CertId` of the leaf certificate used to produce `signature`.
         signing_cert_id: Bytes,
     },
+
+    /// Connection handshake ACK in response to a `ClientHello`.
+    ClientHelloAck {
+        /// The derived connection ID for this connection, and the inputs needed
+        /// to verify it.
+        connection_id: UntrustedConnectionId,
+    },
 }
 
 /// Try to parse a protobuf encoded payload into a [`ServerToClient`].
@@ -100,6 +107,12 @@ impl TryFrom<&[u8]> for ServerToClient {
             Message::CertificatePush(cert) => {
                 Self::CertificatePush(Box::new(UntrustedCert::from_der(cert.der)?))
             }
+            Message::ClientHelloAck(v) => Self::ClientHelloAck {
+                connection_id: UntrustedConnectionId::new(
+                    v.server_nonce,
+                    v.connection_id.unwrap_or_default().uuid_v8,
+                ),
+            },
         })
     }
 }
