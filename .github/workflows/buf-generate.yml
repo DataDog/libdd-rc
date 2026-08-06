@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Verify the committed Go protobuf bindings (ffi-hosts/go/rcproto) match what
-# `buf generate` produces from the rc-x509-proto schema, the same
-# generate-then-diff pattern used for include/libdd_rc.h in cbindgen.yml.
+# Verify that Go protobuf bindings can be generated from the rc-x509-proto
+# schema and that the resulting ffi-hosts/go/rcproto package compiles cleanly
+# with the rest of the Go host. The generated bindings are not committed
+# (see buf.gen.yaml), so this replaces a generate-then-diff check with a
+# generate-then-build one.
 
 name: buf-generate
 
@@ -46,10 +48,6 @@ jobs:
       - name: Setup buf
         uses: bufbuild/buf-setup-action@3e33fea8596569a62fcaa33eb3880b6ac7098941 # v1.9.0
 
-      # Pinned to the protobuf module the bindings are built against, rather
-      # than @latest: the generator records its own version in the header of
-      # every file it writes, so a new release would fail the diff below on
-      # pull requests that change nothing.
       - name: Install protoc-gen-go
         working-directory: ffi-hosts/go
         run: |
@@ -57,30 +55,9 @@ jobs:
           echo "Installing protoc-gen-go ${version}"
           go install "google.golang.org/protobuf/cmd/protoc-gen-go@${version}"
 
-      # Staged outside the repository, where a copy of the bindings cannot be
-      # mistaken for a second definition of the same Go packages.
-      - name: Save committed generated code
-        run: cp -r ffi-hosts/go/rcproto "${RUNNER_TEMP}/rcproto.committed"
-
       - name: Generate Go bindings via buf
         run: buf generate
 
-      - name: Check for differences
-        run: |
-          if diff -r -u "${RUNNER_TEMP}/rcproto.committed" ffi-hosts/go/rcproto; then
-            echo "Generated Go bindings match committed version"
-            exit 0
-          else
-            echo "ERROR: Generated Go bindings differ from committed version!"
-            echo ""
-            echo "ffi-hosts/go/rcproto is out of sync with the rc-x509-proto schema."
-            echo ""
-            echo "To fix this, run the following commands locally:"
-            echo "  go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
-            echo "  buf generate"
-            echo "  git add ffi-hosts/go/rcproto"
-            echo "  git commit -m 'chore: update generated Go protobuf bindings'"
-            echo ""
-            echo "Differences shown above."
-            exit 1
-          fi
+      - name: Vet generated bindings
+        working-directory: ffi-hosts/go
+        run: go vet ./rcproto/...

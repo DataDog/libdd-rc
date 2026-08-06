@@ -1,4 +1,7 @@
-.PHONY: libffi build test vet
+.PHONY: generate libffi build test vet
+
+generate:
+	cd ../.. && buf generate
 
 libffi:
 	cd ../.. && cargo build -p rc-x509-ffi --release
@@ -7,11 +10,11 @@ libffi:
 		cp "$$fips_lib" ../../target/release/; \
 	fi
 
-build: libffi
+build: generate libffi
 	CGO_ENABLED=1 go build ./...
 
-test: libffi
+test: generate libffi
 	CGO_ENABLED=1 go test ./...
 
-vet: libffi
+vet: generate libffi
 	CGO_ENABLED=1 go vet ./...
