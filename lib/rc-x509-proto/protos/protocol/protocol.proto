@@ -5,8 +5,10 @@ syntax = "proto3";
 // of RC).
 package rc.x509.protocol.v1;
 
-import "magic_tunnel/protocol.proto";
-import "signature.proto";
+import "protocol/certificate.proto";
+import "protocol/dispatch.proto";
+import "protocol/handshake.proto";
+import "protocol/ping.proto";
 
 // Protocol message definitions.
 //
@@ -50,131 +52,4 @@ message ClientToServer {
     // Respond with the return value from a dispatch call.
     DispatchResponse dispatch = 3;
   }
-}
-
-// An application-level ping message. Each `Ping` generates exactly one `Pong`.
-//
-// While the WebSocket transport to the RC delivery backend has a transport
-// level "ping" control frame, it doesn't capture the full end-to-end delivery
-// path as it never transits through the client library.
-//
-// This application-level ping frame arrives as a standard message to the client
-// library, and transits through the FFI layer in addition to the WebSocket
-// transport.
-//
-// This message is useful for ensuring the client is still alive, in addition to
-// the WebSocket connection.
-message Ping {}
-
-// The response to a `Ping` message from the server.
-message Pong {}
-
-message ClientHello {
-  // The unique, sequential connection ID assigned to this logical client
-  // connection (starting value: 0);
-  //
-  // This value persists for the lifetime of a logical client connection, each
-  // of which may experience multiple reconnection events. This value increases
-  // only when multiple connections are created by the host runtime (calls to
-  // `rc_conn_new()`).
-  uint64 connection_id = 1;
-
-  // The number of times this client instance has been gracefully disconnected
-  // from the RC backend by the RC server.
-  uint64 graceful_disconnection_count = 2;
-
-  // The number of times this client instance has been forcibly / ungracefully
-  // disconnected from the RC backend.
-  uint64 ungraceful_disconnection_count = 3;
-}
-
-// An X509 certificate as raw DER-encoded bytes.
-message Certificate {
-  bytes der = 1;
-}
-
-// Instruct the client library to deliver a payload to the host application.
-//
-// Dispatch requests are expected to map one-to-one with `DispatchResponse`,
-// which returns the result of the dispatch call asynchronously.
-message DispatchRequest {
-  // An identifier to correlate any response with this request.
-  //
-  // The only guarantee provided by a `correlation_id` is that it is unique per
-  // connection.
-  uint64 correlation_id = 1;
-
-  // The signature over the "encoded_dispatch_request" buffer.
-  rc.x509.signature.v1.DetachedSignature signature = 2;
-
-  // The protobuf-serialised DispatchRequestPayload that "signature" covers.
-  bytes encoded_dispatch_request = 3;
-}
-
-// A response to the `DispatchRequest` uniquely identified by the
-// `correlation_id`.
-message DispatchResponse {
-  // The `correlation_id` value sent in the `DispatchRequest`.
-  uint64 correlation_id = 1;
-
-  // Error conditions for the transport & dispatch logic.
-  //
-  // These errors describe the possible failure modes of delivering the request
-  // and invoking the registered handler for the payload type.
-  enum DispatchError {
-    DISPATCH_ERROR_UNSPECIFIED = 0;
-
-    // The client does not support the payload type being dispatched.
-    DISPATCH_ERROR_UNKNOWN_PAYLOAD = 1;
-
-    // The client supports the type of payload being sent, but there is no
-    // handler registered to process it.
-    DISPATCH_ERROR_NO_DISPATCH_HANDLER = 2;
-
-    // The dispatch handler delivery queue is full.
-    //
-    // This occurs when the dispatch handler is not consuming messages fast
-    // enough to keep up with the rate of new requests arriving. The message
-    // will not be delivered.
-    DISPATCH_ERROR_QUEUE_FULL = 3;
-
-    // The X509 client library successfully processed this dispatch request, and
-    // dispatched it to the host application which returned an "UNKNOWN" error.
-    DISPATCH_ERROR_CLIENT_RETURNED_UNKNOWN = 4;
-  }
-
-  oneof result {
-    DispatchError error = 2;
-    DispatchResponsePayload payload = 3;
-  }
-}
-
-// The signed request payload of a Dispatch call.
-message DispatchRequestPayload {
-  // The connection ID this message is targetted to.
-  //
-  // The client MUST validate this connection_id matches the expected value
-  // before any processing of the payload. The client SHOULD disconnect if this
-  // value differs from the expected value as an indicator of an ongoing MITM.
-  ConnectionId connection_id = 1;
-
-  oneof payload {
-    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
-  }
-}
-
-// The response payload of a successful Dispatch call.
-message DispatchResponsePayload {
-  oneof payload {
-    rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 1;
-  }
-}
-
-// A globally unique identifier for the active connection.
-message ConnectionId {
-  // A [UUID Version 8] encoded as a raw [big-endian byte sequence].
-  //
-  // [big-endian byte sequence]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-format
-  // [UUID Version 8]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-8
-  bytes uuid_v8 = 1;
 }

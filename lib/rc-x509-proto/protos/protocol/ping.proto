@@ -1,0 +1,21 @@
+// Ping... pong!
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+// An application-level ping message. Each `Ping` generates exactly one `Pong`.
+//
+// While the WebSocket transport to the RC delivery backend has a transport
+// level "ping" control frame, it doesn't capture the full end-to-end delivery
+// path as it never transits through the client library.
+//
+// This application-level ping frame arrives as a standard message to the client
+// library, and transits through the FFI layer in addition to the WebSocket
+// transport.
+//
+// This message is useful for ensuring the client is still alive, in addition to
+// the WebSocket connection.
+message Ping {}
+
+// The response to a `Ping` message from the server.
+message Pong {}
