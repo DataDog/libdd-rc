@@ -58,5 +58,9 @@ jobs:
       - name: Bypass message
         if: failure() && steps.buf.outcome == 'failure'
         run: |
-          echo "::error::Add the breaking-proto label to the PR to allow breaking changes to be merged."
+          echo "::error::Running 'buf lint' showed errors."
+          echo ""
+          echo "Check the error message in the task above, or run 'buf lint' locally."
+          echo ""
+          echo "Add the breaking-proto label to the PR to allow breaking changes to be merged."
           exit 1
