@@ -1,0 +1,59 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Verify that Go protobuf bindings can be generated from the rc-x509-proto
+# schema and that the resulting ffi-hosts/go/rcproto package compiles cleanly
+# with the rest of the Go host. The generated bindings are not committed
+# (see buf.gen.yaml), so this replaces a generate-then-diff check with a
+# generate-then-build one.
+
+name: ffi-go
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  merge_group:
+  push:
+    branches: [main]
+
+env:
+  # https://github.com/aws/aws-lc-rs/issues/569
+  AWS_LC_FIPS_SYS_CC: clang
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key-prefix: release
+
+      - name: Add Go bin to PATH
+        run: echo "/root/go/bin" >> "$GITHUB_PATH"
+
+      - name: Generate Go bindings via buf
+        run: buf generate
+
+      - name: Run go test
+        working-directory: ffi-hosts/go
+        run: make test
