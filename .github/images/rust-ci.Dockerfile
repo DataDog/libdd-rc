@@ -21,7 +21,7 @@
 #
 #   1. Add it to this Dockerfile below and open a PR.
 #   2. Merge to main; the ci-image.yml action will run and push the new image.
-#   3. Open your PR (or re-run CI) once the CI image is built.
+#   3. Any new CI runs will use the updated image.
 #
 # To update the rust version:
 #
