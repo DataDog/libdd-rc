@@ -3,6 +3,8 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
+
 message ClientHello {
   // The unique, sequential connection ID assigned to this logical client
   // connection (starting value: 0);

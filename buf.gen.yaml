@@ -23,7 +23,7 @@
 # Generated output (ffi-hosts/go/rcproto) is not committed: it's regenerated
 # on demand, either directly via the commands above or as a prerequisite of
 # `make build`/`make test`/`make vet` in ffi-hosts/go.
-version: v1
+version: v2
 plugins:
   - local: protoc-gen-go
     out: ffi-hosts/go/rcproto
