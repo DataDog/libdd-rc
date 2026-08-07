@@ -1,0 +1,9 @@
+// X509 certificate wrapper over DER encoded bytes.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+// An X509 certificate as raw DER-encoded bytes.
+message Certificate {
+  bytes der = 1;
+}

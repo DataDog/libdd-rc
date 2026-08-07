@@ -1,0 +1,13 @@
+// Connection ID and handshake nonce wrapper types.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+// A globally unique identifier for the active connection.
+message ConnectionId {
+  // A [UUID Version 8] encoded as a raw [big-endian byte sequence].
+  //
+  // [big-endian byte sequence]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-format
+  // [UUID Version 8]: https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-8
+  bytes uuid_v8 = 1;
+}

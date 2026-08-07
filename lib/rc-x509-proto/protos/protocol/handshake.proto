@@ -1,0 +1,23 @@
+// Messages for the opening connection handshake.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+message ClientHello {
+  // The unique, sequential connection ID assigned to this logical client
+  // connection (starting value: 0);
+  //
+  // This value persists for the lifetime of a logical client connection, each
+  // of which may experience multiple reconnection events. This value increases
+  // only when multiple connections are created by the host runtime (calls to
+  // `rc_conn_new()`).
+  uint64 connection_id = 1;
+
+  // The number of times this client instance has been gracefully disconnected
+  // from the RC backend by the RC server.
+  uint64 graceful_disconnection_count = 2;
+
+  // The number of times this client instance has been forcibly / ungracefully
+  // disconnected from the RC backend.
+  uint64 ungraceful_disconnection_count = 3;
+}

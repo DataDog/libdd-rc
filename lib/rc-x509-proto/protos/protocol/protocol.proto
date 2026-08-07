@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+// This package provides the core protocol types used "on the wire" between the
+// Remote Config backend delivery servers, and a Datadog Agent (or other clients
+// of RC).
+package rc.x509.protocol.v1;
+
+import "protocol/certificate.proto";
+import "protocol/dispatch.proto";
+import "protocol/handshake.proto";
+import "protocol/ping.proto";
+
+// Protocol message definitions.
+//
+// All messages exchanged over an "RC connection" MUST be either:
+//
+//   * ServerToClient: for messages originating from the server
+//   * ClientToServer: for messages originating from the client
+//
+// Messages should be added to the oneof enum in each, and MUST always refer to
+// a variant specific message type and NOT a primitive value type to enable
+// backwards compatible changes to the variant's data in the future.
+//
+// Prefer versioning within message types using protobuf's tooling ("reserved"
+// fields), instead of versioning at the enum level (not: thing_v1, thing_v2,
+// etc).
+
+// Messages from the RC backend server, to an RC client.
+message ServerToClient {
+  oneof message {
+    Ping ping = 1;
+
+    // The server is pushing a new X509 certificate to the client to consider
+    // when chain building.
+    //
+    // This certificate MUST be treated as an untrusted input.
+    Certificate certificate_push = 2;
+
+    // Pass a message to the host application.
+    DispatchRequest dispatch = 3;
+  }
+}
+
+// Messages from an RC client, to the RC backend server.
+message ClientToServer {
+  oneof message {
+    Pong pong = 1;
+
+    // The opening message sent when establishing a new connection.
+    ClientHello client_hello = 2;
+
+    // Respond with the return value from a dispatch call.
+    DispatchResponse dispatch = 3;
+  }
+}

@@ -1,0 +1,85 @@
+// Dispatch request / response types.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+import "magic_tunnel/protocol.proto";
+import "protocol/connection_id.proto";
+import "signature.proto";
+
+// Instruct the client library to deliver a payload to the host application.
+//
+// Dispatch requests are expected to map one-to-one with `DispatchResponse`,
+// which returns the result of the dispatch call asynchronously.
+message DispatchRequest {
+  // An identifier to correlate any response with this request.
+  //
+  // The only guarantee provided by a `correlation_id` is that it is unique per
+  // connection.
+  uint64 correlation_id = 1;
+
+  // The signature over the "encoded_dispatch_request" buffer.
+  rc.x509.signature.v1.DetachedSignature signature = 2;
+
+  // The protobuf-serialised DispatchRequestPayload that "signature" covers.
+  bytes encoded_dispatch_request = 3;
+}
+
+// A response to the `DispatchRequest` uniquely identified by the
+// `correlation_id`.
+message DispatchResponse {
+  // The `correlation_id` value sent in the `DispatchRequest`.
+  uint64 correlation_id = 1;
+
+  // Error conditions for the transport & dispatch logic.
+  //
+  // These errors describe the possible failure modes of delivering the request
+  // and invoking the registered handler for the payload type.
+  enum DispatchError {
+    DISPATCH_ERROR_UNSPECIFIED = 0;
+
+    // The client does not support the payload type being dispatched.
+    DISPATCH_ERROR_UNKNOWN_PAYLOAD = 1;
+
+    // The client supports the type of payload being sent, but there is no
+    // handler registered to process it.
+    DISPATCH_ERROR_NO_DISPATCH_HANDLER = 2;
+
+    // The dispatch handler delivery queue is full.
+    //
+    // This occurs when the dispatch handler is not consuming messages fast
+    // enough to keep up with the rate of new requests arriving. The message
+    // will not be delivered.
+    DISPATCH_ERROR_QUEUE_FULL = 3;
+
+    // The X509 client library successfully processed this dispatch request, and
+    // dispatched it to the host application which returned an "UNKNOWN" error.
+    DISPATCH_ERROR_CLIENT_RETURNED_UNKNOWN = 4;
+  }
+
+  oneof result {
+    DispatchError error = 2;
+    DispatchResponsePayload payload = 3;
+  }
+}
+
+// The signed request payload of a Dispatch call.
+message DispatchRequestPayload {
+  // The connection ID this message is targetted to.
+  //
+  // The client MUST validate this connection_id matches the expected value
+  // before any processing of the payload. The client SHOULD disconnect if this
+  // value differs from the expected value as an indicator of an ongoing MITM.
+  ConnectionId connection_id = 1;
+
+  oneof payload {
+    rc.x509.magic_tunnel.v1.MagicTunnelRequest magic_tunnel = 2;
+  }
+}
+
+// The response payload of a successful Dispatch call.
+message DispatchResponsePayload {
+  oneof payload {
+    rc.x509.magic_tunnel.v1.MagicTunnelResponse magic_tunnel = 1;
+  }
+}
