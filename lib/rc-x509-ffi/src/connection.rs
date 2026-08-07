@@ -1027,7 +1027,7 @@ fn dispatch_task(
                     correlation_id = %data.correlation_id.get(),
                     "unknown error returned from dispatch"
                 );
-                Err(DispatchError::UnknownError)
+                Err(DispatchError::UnknownHostDispatchError)
             }
         };
 

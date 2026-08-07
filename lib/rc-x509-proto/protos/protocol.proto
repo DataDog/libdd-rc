@@ -79,14 +79,12 @@ message ClientHello {
   // `rc_conn_new()`).
   uint64 connection_id = 1;
 
-  // The number of times this logical connection has been gracefully
-  // disconnected from the RC backend by the RC server (per-`connection_id`,
-  // starting value: 0).
+  // The number of times this client instance has been gracefully disconnected
+  // from the RC backend by the RC server.
   uint64 graceful_disconnection_count = 2;
 
-  // The number of times this logical connection has been forcibly /
-  // ungracefully disconnected from the RC backend (per-`connection_id`,
-  // starting value: 0).
+  // The number of times this client instance has been forcibly / ungracefully
+  // disconnected from the RC backend.
   uint64 ungraceful_disconnection_count = 3;
 }
 
@@ -139,6 +137,10 @@ message DispatchResponse {
     // enough to keep up with the rate of new requests arriving. The message
     // will not be delivered.
     DISPATCH_ERROR_QUEUE_FULL = 3;
+
+    // The X509 client library successfully processed this dispatch request, and
+    // dispatched it to the host application which returned an "UNKNOWN" error.
+    DISPATCH_ERROR_CLIENT_RETURNED_UNKNOWN = 4;
   }
 
   oneof result {

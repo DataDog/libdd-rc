@@ -106,8 +106,8 @@ pub enum DispatchError {
     ReplyDeserialisation(DecodeError),
 
     /// Catch-all if the FFI layer returns an unknown error code.
-    #[error("unknown dispatch error")]
-    UnknownError,
+    #[error("unknown dispatch error from host app")]
+    UnknownHostDispatchError,
 }
 
 /// A handle to publish [`Dispatch`] requests to the host application and
