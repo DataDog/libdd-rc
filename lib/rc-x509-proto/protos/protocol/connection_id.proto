@@ -3,7 +3,7 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
-option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // A globally unique identifier for the active connection.
 message ConnectionId {

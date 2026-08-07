@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	rcproto "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto"
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
+	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
 )
 
 func newTestConnState() *connState {
@@ -53,8 +53,8 @@ func TestConnStateFromUserData_RoundTripsNewConnectionEncoding(t *testing.T) {
 func encodeDispatchRequest(t *testing.T, ns magictunnelv1.Namespace, innerPayload []byte) []byte {
 	t.Helper()
 
-	encoded, err := proto.Marshal(&rcproto.DispatchRequestPayload{
-		Payload: &rcproto.DispatchRequestPayload_MagicTunnel{
+	encoded, err := proto.Marshal(&protocolv1.DispatchRequestPayload{
+		Payload: &protocolv1.DispatchRequestPayload_MagicTunnel{
 			MagicTunnel: &magictunnelv1.MagicTunnelRequest{
 				Namespace: ns,
 				Payload:   innerPayload,
@@ -119,7 +119,7 @@ func TestDispatchRequestPayload_UnmarshalCopiesInnerBytes(t *testing.T) {
 
 	wire := encodeDispatchRequest(t, ns, innerPayload)
 
-	var req rcproto.DispatchRequestPayload
+	var req protocolv1.DispatchRequestPayload
 	if err := proto.Unmarshal(wire, &req); err != nil {
 		t.Fatalf("proto.Unmarshal() returned error: %v", err)
 	}

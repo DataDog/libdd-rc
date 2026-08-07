@@ -22,8 +22,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	rcproto "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto"
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
+	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
 )
 
 // TODO: These can be refined, but we needed some kind of placeholder as
@@ -398,7 +398,7 @@ func marshalDispatchResponse(response []byte, handlerErr error) ([]byte, error) 
 		mtResp.Result = &magictunnelv1.MagicTunnelResponse_Response{Response: response}
 	}
 
-	return proto.Marshal(&rcproto.DispatchResponsePayload{
-		Payload: &rcproto.DispatchResponsePayload_MagicTunnel{MagicTunnel: mtResp},
+	return proto.Marshal(&protocolv1.DispatchResponsePayload{
+		Payload: &protocolv1.DispatchResponsePayload_MagicTunnel{MagicTunnel: mtResp},
 	})
 }
