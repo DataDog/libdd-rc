@@ -48,6 +48,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # local "act" runs of workflows
     nodejs \
     zstd \
+    curl \
+    ca-certificates \
     # licence scripts in CI
     jq \
     ##################
