@@ -68,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Go wrapper dependency.
+ENV PATH="${HOME}/go/bin:${PATH}"
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 RUN rustup component add clippy \
