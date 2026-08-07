@@ -10,6 +10,8 @@ import "protocol/dispatch.proto";
 import "protocol/handshake.proto";
 import "protocol/ping.proto";
 
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
+
 // Protocol message definitions.
 //
 // All messages exchanged over an "RC connection" MUST be either:
