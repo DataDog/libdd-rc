@@ -18,46 +18,39 @@
 # (see buf.gen.yaml), so this replaces a generate-then-diff check with a
 # generate-then-build one.
 
-name: buf-generate
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
+name: ffi-go
 permissions:
   contents: read
 
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  merge_group:
+  push:
+    branches: [main]
+
 jobs:
-  verify-generated-go:
+  go-test:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
 
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: ./.github/actions/setup-rust
         with:
-          go-version-file: ffi-hosts/go/go.mod
-
-      - name: Setup buf
-        uses: bufbuild/buf-setup-action@3e33fea8596569a62fcaa33eb3880b6ac7098941 # v1.9.0
-
-      - name: Install protoc-gen-go
-        working-directory: ffi-hosts/go
-        run: |
-          version="$(go list -m -f '{{.Version}}' google.golang.org/protobuf)"
-          echo "Installing protoc-gen-go ${version}"
-          go install "google.golang.org/protobuf/cmd/protoc-gen-go@${version}"
+          cache-key-prefix: dev
 
       - name: Generate Go bindings via buf
         run: buf generate
 
-      - name: Vet generated bindings
+      - name: Vet generated proto bindings
         working-directory: ffi-hosts/go
         run: go vet ./rcproto/...
+
+      - name: Run go test
+        working-directory: ffi-hosts/go
+        run: make test
