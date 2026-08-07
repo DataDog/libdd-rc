@@ -5,12 +5,12 @@ syntax = "proto3";
 // of RC).
 package rc.x509.protocol.v1;
 
-option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
-
 import "protocol/certificate.proto";
 import "protocol/dispatch.proto";
 import "protocol/handshake.proto";
 import "protocol/ping.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto;rcproto";
 
 // Protocol message definitions.
 //
