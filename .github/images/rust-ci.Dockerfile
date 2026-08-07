@@ -75,6 +75,19 @@ RUN rustup component add clippy \
 RUN cargo install cargo-fuzz --all-features \
     && cargo install --git https://github.com/EmbarkStudios/cargo-deny --rev 8e63a579d8ac61faa6e00d3d4ecde495bf138540 cargo-deny
 
+# https://github.com/bufbuild/buf
+RUN BIN="/usr/local/bin" && \
+    VERSION="1.72.0" && \
+    SHA256="8720830e26a733da55bb89bcd3cb44849c0965fc0c44fb5d691cccdc64dca5af" && \
+    curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v${VERSION}/buf-$(uname -s)-$(uname -m)" \
+    -o "${BIN}/buf" && \
+    echo "${SHA256}  ${BIN}/buf" | sha256sum -c - && \
+    chmod +x "${BIN}/buf"
+
+# Verify buf install
+RUN buf --version
+
 # Debug metadata
 #
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
