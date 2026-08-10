@@ -32,6 +32,11 @@ const (
 	dispatchQueueCap = 100
 	resultQueueCap   = 100
 	outgoingQueueCap = 100
+
+	// invokeWorkerCount is the size of the goroutine pool that invokes
+	// handlers concurrently. The result worker stays single-goroutine, so
+	// only handler invocation benefits from this parallelism.
+	invokeWorkerCount = 8
 )
 
 // ErrConnectionClosed is returned when an operation is attempted on a
@@ -180,8 +185,19 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	conn := &Connection{ctx: c, st: st}
 	c.conns[conn] = struct{}{}
 
-	st.wg.Add(2)
-	go conn.invokeWorker()
+	// invokeWG tracks only the invoke pool, so resultQueue can be closed the
+	// moment every invoke worker has stopped, independent of st.wg, which
+	// Disconnected also uses to wait for resultWorker's subsequent drain.
+	var invokeWG sync.WaitGroup
+	invokeWG.Add(invokeWorkerCount)
+	st.wg.Add(invokeWorkerCount + 1)
+	for range invokeWorkerCount {
+		go conn.invokeWorker(&invokeWG)
+	}
+	go func() {
+		invokeWG.Wait()
+		close(st.resultQueue)
+	}()
 	go conn.resultWorker()
 
 	return conn, nil
@@ -305,17 +321,12 @@ func (c *Connection) Recv(data []byte) error {
 	return nil
 }
 
-// invokeWorker drains dispatchQueue, invoking each job's handler and passing
-// the outcome to resultWorker via resultQueue, until stop is closed. It
-// closes resultQueue once done, which is what lets resultWorker know it has
-// seen every result and can stop draining.
-//
-// This is deliberately kept as a single goroutine for now: invoking handlers
-// concurrently (e.g. one goroutine per job, or a fixed pool) is future work
-// this split makes possible without touching resultWorker.
-func (c *Connection) invokeWorker() {
+// invokeWorker is one of invokeWorkerCount goroutines draining dispatchQueue
+// concurrently, invoking each job's handler and passing the outcome to
+// resultWorker via resultQueue, until stop is closed.
+func (c *Connection) invokeWorker(poolWG *sync.WaitGroup) {
 	defer c.st.wg.Done()
-	defer close(c.st.resultQueue)
+	defer poolWG.Done()
 	for {
 		select {
 		case job := <-c.st.dispatchQueue:
@@ -332,11 +343,7 @@ func (c *Connection) invokeWorker() {
 //
 // libdd_rc.h requires exactly one rc_conn_dispatch_result call per payload
 // delivered through DispatchCb, so a queued job cannot simply be discarded
-// once stop is closed - not least because a select with both a ready job and
-// a closed stop channel picks between them at random.
-//
-// Disconnected clears accepting before closing stop, so no further job can be
-// enqueued and this terminates.
+// once stop is closed .
 func (c *Connection) drainDispatchQueue() {
 	for {
 		select {
