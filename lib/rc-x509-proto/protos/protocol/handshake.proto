@@ -48,6 +48,9 @@ message ClientHello {
   // A friendly, descriptive name that identifies the application that is
   // connecting (e.g. "Datadog Agent").
   string app_name = 9;
+
+  // The duration the most recently closed remained connected, if any.
+  uint64 last_closed_connection_duration_seconds = 10;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
