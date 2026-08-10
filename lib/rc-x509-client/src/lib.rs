@@ -24,3 +24,13 @@ mod shutdown_signal;
 
 pub use abort_on_drop::*;
 pub use shutdown_signal::*;
+
+#[cfg(test)]
+mod tests {
+    use proptest::prelude::*;
+    use tokio_util::bytes::Bytes;
+
+    pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
+        prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
+    }
+}

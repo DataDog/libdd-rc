@@ -15,8 +15,10 @@
 //! Types that model connections managed by the runtime host, through which this
 //! client library can perform I/O to the RC backend.
 
+mod connection_id;
 mod lifecycle_events;
 mod reconnection;
 
+pub use connection_id::*;
 pub use lifecycle_events::*;
 pub use reconnection::*;
