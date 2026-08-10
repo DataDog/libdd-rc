@@ -23,6 +23,12 @@ message ClientHello {
   // The number of times this client instance has been forcibly / ungracefully
   // disconnected from the RC backend.
   uint64 ungraceful_disconnection_count = 3;
+
+  // Opaque data previously provided by the server by a `SetReconnectionData`
+  // message, or an empty payload if none has been previously set.
+  //
+  // This data is opaque to the client; it MUST NOT change this data in any way.
+  bytes reconnection_data = 4;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
@@ -49,4 +55,15 @@ message ClientHelloAck {
 
   // The server nonce used to derive the connection ID.
   bytes server_nonce = 2;
+}
+
+// Opaque data to present to the server if this client instance is later forced
+// to reconnect.
+//
+// This data is used to speed up connection reinitialisation after a disconnect.
+message SetReconnectionData {
+  // The reconnection data.
+  //
+  // This data is opaque to the client; it MUST NOT change this data in any way.
+  bytes opaque = 1;
 }
