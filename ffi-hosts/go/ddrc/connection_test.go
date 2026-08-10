@@ -106,6 +106,132 @@ func TestConnectionConnectedTwice(t *testing.T) {
 	}
 }
 
+// newTestInvokePipeline wires up a connState's dispatchQueue/resultQueue and
+// starts invokeWorkerCount invoke workers against it, without touching the
+// FFI boundary: invokeJob only ever writes to c.st.resultQueue, so these
+// tests can drive the goroutine pool directly and inspect resultQueue
+// themselves instead of needing a real FFIConnection and resultWorker.
+func newTestInvokePipeline(t *testing.T) *Connection {
+	t.Helper()
+
+	st := &connState{
+		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
+		resultQueue:   make(chan dispatchResult, resultQueueCap),
+		stop:          make(chan struct{}),
+		accepting:     true,
+	}
+	conn := &Connection{st: st}
+
+	var poolWG sync.WaitGroup
+	poolWG.Add(invokeWorkerCount)
+	st.wg.Add(invokeWorkerCount)
+	for range invokeWorkerCount {
+		go conn.invokeWorker(&poolWG)
+	}
+
+	t.Cleanup(func() {
+		close(st.stop)
+		poolWG.Wait()
+	})
+
+	return conn
+}
+
+// TestInvokeWorkersOverlapSlowAndFastHandlers verifies that a fast handler's
+// result reaches resultQueue while a slow handler queued ahead of it is still
+// blocked, proving invocation runs across more than one goroutine rather than
+// serializing behind a single worker.
+func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
+	conn := newTestInvokePipeline(t)
+
+	started := make(chan uint64, 2)
+	release := make(chan struct{})
+
+	slow := func(correlationID uint64, _ []byte) ([]byte, error) {
+		started <- correlationID
+		<-release
+		return nil, nil
+	}
+	fast := func(correlationID uint64, _ []byte) ([]byte, error) {
+		started <- correlationID
+		return nil, nil
+	}
+
+	req := &magictunnelv1.MagicTunnelRequest{}
+	conn.st.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
+	conn.st.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
+
+	seen := map[uint64]bool{}
+	for range 2 {
+		select {
+		case id := <-started:
+			seen[id] = true
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for both handlers to start, seen: %v", seen)
+		}
+	}
+	if !seen[1] || !seen[2] {
+		t.Fatalf("started handlers = %v, want both 1 and 2", seen)
+	}
+
+	select {
+	case result := <-conn.st.resultQueue:
+		if result.correlationID != 2 {
+			t.Fatalf("first result correlationID = %d, want 2 (fast handler must finish before the slow handler is released)", result.correlationID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the fast handler's result while the slow handler is still blocked")
+	}
+
+	close(release)
+
+	select {
+	case result := <-conn.st.resultQueue:
+		if result.correlationID != 1 {
+			t.Fatalf("second result correlationID = %d, want 1", result.correlationID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the slow handler's result after release")
+	}
+}
+
+// TestInvokeWorkersYieldExactlyOneResultPerJob verifies that every job
+// accepted onto dispatchQueue produces exactly one dispatchResult, even when
+// a pool of invokeWorkerCount goroutines is processing jobs concurrently.
+// libdd_rc.h requires exactly one rc_conn_dispatch_result call per payload,
+// so the pool must neither drop nor duplicate a job's result.
+func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
+	conn := newTestInvokePipeline(t)
+
+	const jobs = 50
+	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
+	for i := uint64(1); i <= jobs; i++ {
+		conn.st.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
+	}
+
+	seen := map[uint64]int{}
+	for range jobs {
+		select {
+		case result := <-conn.st.resultQueue:
+			seen[result.correlationID]++
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timed out waiting for results, got %d of %d", len(seen), jobs)
+		}
+	}
+
+	for i := uint64(1); i <= jobs; i++ {
+		if seen[i] != 1 {
+			t.Errorf("correlationID %d yielded %d results, want exactly 1", i, seen[i])
+		}
+	}
+
+	select {
+	case extra := <-conn.st.resultQueue:
+		t.Fatalf("unexpected extra result: %+v", extra)
+	default:
+	}
+}
+
 // TestDispatchWorkerDrainsQueueOnDisconnect verifies that payloads already
 // queued when the connection is torn down are still handled. libdd_rc.h
 // requires exactly one rc_conn_dispatch_result call per payload delivered
