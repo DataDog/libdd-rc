@@ -49,6 +49,8 @@ pub enum ClientToServer {
         reconnection_data: Option<ReconnectionData>,
         /// Client build version.
         version_info: BuildVersion,
+        /// A friendly name that describes the host application.
+        app_name: String,
     },
 
     /// An async response to a [`ServerToClient::Dispatch`] request.
@@ -75,6 +77,7 @@ impl From<ClientToServer> for Vec<u8> {
                 ungraceful,
                 reconnection_data,
                 version_info,
+                app_name,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
@@ -86,6 +89,7 @@ impl From<ClientToServer> for Vec<u8> {
                 version_minor: version_info.minor(),
                 version_patch: version_info.patch(),
                 version_commit: version_info.commit().clone(),
+                app_name,
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),
