@@ -13,7 +13,7 @@ import (
 // wire format (e.g. a further protobuf-encoded oneof by subtopic); ddrc does
 // not decode past the namespace boundary.
 //
-// A handler runs on the dispatch worker goroutine of the Connection that
+// A handler runs on the invoke worker goroutine of the Connection that
 // received the payload, and must not call back into that Connection:
 // Connection.Disconnected waits for in-flight handlers to return while
 // holding the connection lock, so a handler calling Recv or Disconnected

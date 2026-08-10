@@ -30,6 +30,7 @@ import (
 // I don't think we want this unbounded.
 const (
 	dispatchQueueCap = 100
+	resultQueueCap   = 100
 	outgoingQueueCap = 100
 )
 
@@ -57,12 +58,21 @@ var ErrConnectionAlreadyConnected = errors.New("ddrc: connection is already conn
 var ErrEmptyPayload = errors.New("ddrc: payload is empty")
 
 // dispatchJob is a single DispatchCb invocation, already decoded and routed
-// to a handler by goDispatchCb, queued for processing by the dispatch worker
+// to a handler by goDispatchCb, queued for processing by the invoke worker
 // goroutine.
 type dispatchJob struct {
 	correlationID uint64
 	handler       HandlerFunc
 	request       *magictunnelv1.MagicTunnelRequest
+}
+
+// dispatchResult is the outcome of invoking a dispatchJob's handler, queued
+// for the result worker goroutine to marshal and deliver back across the FFI
+// boundary via rc_conn_dispatch_result.
+type dispatchResult struct {
+	correlationID uint64
+	response      []byte
+	err           error
 }
 
 // connState holds the state reachable from the exported callbacks via a
@@ -71,6 +81,7 @@ type dispatchJob struct {
 type connState struct {
 	conn          *C.FFIConnection
 	dispatchQueue chan dispatchJob
+	resultQueue   chan dispatchResult
 	outgoing      chan []byte
 
 	// Allows for control of internal goroutines to process
@@ -122,8 +133,9 @@ type Connection struct {
 }
 
 // NewConnection creates a new Connection bound to c: it calls rc_conn_new,
-// registers the send callback, and starts the dispatch worker goroutine that
-// routes dispatched payloads through the package-global dispatcher.
+// registers the send callback, and starts the invoke and result worker
+// goroutines that route dispatched payloads through the package-global
+// dispatcher and deliver their results back across the FFI boundary.
 //
 // The caller is responsible for signaling later to the rc-x509-client
 // system that the backend has connected via Connected().
@@ -137,6 +149,7 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 
 	st := &connState{
 		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
+		resultQueue:   make(chan dispatchResult, resultQueueCap),
 		outgoing:      make(chan []byte, outgoingQueueCap),
 		stop:          make(chan struct{}),
 		accepting:     true,
@@ -167,8 +180,9 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	conn := &Connection{ctx: c, st: st}
 	c.conns[conn] = struct{}{}
 
-	st.wg.Add(1)
-	go conn.dispatchWorker()
+	st.wg.Add(2)
+	go conn.invokeWorker()
+	go conn.resultWorker()
 
 	return conn, nil
 }
@@ -291,15 +305,21 @@ func (c *Connection) Recv(data []byte) error {
 	return nil
 }
 
-// dispatchWorker drains dispatchQueue, routing each job through the
-// package-global dispatcher and reporting the result back via
-// rc_conn_dispatch_result, until stop is closed.
-func (c *Connection) dispatchWorker() {
+// invokeWorker drains dispatchQueue, invoking each job's handler and passing
+// the outcome to resultWorker via resultQueue, until stop is closed. It
+// closes resultQueue once done, which is what lets resultWorker know it has
+// seen every result and can stop draining.
+//
+// This is deliberately kept as a single goroutine for now: invoking handlers
+// concurrently (e.g. one goroutine per job, or a fixed pool) is future work
+// this split makes possible without touching resultWorker.
+func (c *Connection) invokeWorker() {
 	defer c.st.wg.Done()
+	defer close(c.st.resultQueue)
 	for {
 		select {
 		case job := <-c.st.dispatchQueue:
-			c.handleDispatchJob(job)
+			c.invokeJob(job)
 		case <-c.st.stop:
 			c.drainDispatchQueue()
 			return
@@ -307,8 +327,8 @@ func (c *Connection) dispatchWorker() {
 	}
 }
 
-// drainDispatchQueue answers the jobs left in dispatchQueue before the worker
-// exits.
+// drainDispatchQueue answers the jobs left in dispatchQueue before
+// invokeWorker exits.
 //
 // libdd_rc.h requires exactly one rc_conn_dispatch_result call per payload
 // delivered through DispatchCb, so a queued job cannot simply be discarded
@@ -321,32 +341,46 @@ func (c *Connection) drainDispatchQueue() {
 	for {
 		select {
 		case job := <-c.st.dispatchQueue:
-			c.handleDispatchJob(job)
+			c.invokeJob(job)
 		default:
 			return
 		}
 	}
 }
 
-// handleDispatchJob invokes job.handler with the request payload decoded and
-// routed by goDispatchCb, and reports the result back via
-// rc_conn_dispatch_result.
+// invokeJob invokes job.handler with the request payload decoded and routed
+// by goDispatchCb, and hands the outcome to resultWorker via resultQueue.
 //
 // DispatchRequestPayload.connection_id is intentionally not inspected here
 // (nor by goDispatchCb): validating it against the server-assigned
 // connection is rc-x509-client's responsibility once that part of the
 // protocol is implemented, not the Go host's.
+func (c *Connection) invokeJob(job dispatchJob) {
+	response, err := invokeHandler(job)
+	c.st.resultQueue <- dispatchResult{correlationID: job.correlationID, response: response, err: err}
+}
+
+// resultWorker ranges over resultQueue, marshalling each result and
+// reporting it back via rc_conn_dispatch_result, until resultQueue is closed
+// by invokeWorker and drained.
+func (c *Connection) resultWorker() {
+	defer c.st.wg.Done()
+	for result := range c.st.resultQueue {
+		c.sendDispatchResult(result)
+	}
+}
+
+// sendDispatchResult marshals result and reports it back via
+// rc_conn_dispatch_result.
 //
 // A registered handler's own error IS representable on the wire
 // (MagicTunnelResponse.handler_error), so it is reported back to the caller
-// rather than skipped. The same is true of a handler that panics, and of a
+// rather than skipped. The same is true of a handler that panicked, and of a
 // response that cannot be marshalled: every payload has to be answered
 // exactly once, so a local failure is reported as a handler error rather than
 // dropped.
-func (c *Connection) handleDispatchJob(job dispatchJob) {
-	response, err := invokeHandler(job)
-
-	encoded, err := marshalDispatchResponse(response, err)
+func (c *Connection) sendDispatchResult(result dispatchResult) {
+	encoded, err := marshalDispatchResponse(result.response, result.err)
 	if err != nil {
 		// Reporting the marshalling failure needs marshalling too. Nothing
 		// further can be said across the boundary if that fails as well.
@@ -361,13 +395,13 @@ func (c *Connection) handleDispatchJob(job dispatchJob) {
 	// DispatchResponsePayload always carries at least the oneof field tag, so
 	// this path can never be taken.
 	if len(encoded) == 0 {
-        encoded, _ = marshalDispatchResponse(nil, errors.New("handleDispatchJob: invalid empty serialised response"))
+		encoded, _ = marshalDispatchResponse(nil, errors.New("sendDispatchResult: invalid empty serialised response"))
 	}
 
 	cData := C.CBytes(encoded)
 	defer C.free(cData)
 
-	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
+	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(result.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
