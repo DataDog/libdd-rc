@@ -40,6 +40,10 @@ message ServerToClient {
 
     // Pass a message to the host application.
     DispatchRequest dispatch = 3;
+
+    // The handshake ACK in response to a ClientHello message, sent once at the
+    // opening of the connection.
+    ClientHelloAck client_hello_ack = 4;
   }
 }
 

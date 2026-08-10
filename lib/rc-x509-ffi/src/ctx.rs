@@ -14,17 +14,14 @@
 
 //! Client library executor handle for FFI callers.
 
-use std::{
-    sync::atomic::{AtomicU64, Ordering},
-    time::Duration,
-};
+use std::time::Duration;
 
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use rc_x509_client::{
     ShutdownCtl, ShutdownSignal,
-    connection::{ConnectionId, ConnectionUpdate},
+    connection::ConnectionUpdate,
     entrypoint::{GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main},
 };
 
@@ -99,10 +96,6 @@ pub struct Ctx {
     /// work and return within the [`GRACEFUL_SHUTDOWN_TIMEOUT`].
     shutdown: ShutdownCtl,
 
-    /// The [`ConnectionId`] value that is assigned to the next call to
-    /// [`Ctx::new_connection()`].
-    next_connection_id: AtomicU64,
-
     /// A sink through which [`ConnectionUpdate`] events are published.
     ///
     /// This publisher handle is shared with each [`FFIConnection`] constructed
@@ -159,7 +152,6 @@ impl Ctx {
             runtime_thread,
             runtime_handle,
             shutdown,
-            next_connection_id: AtomicU64::new(0),
             connection_events,
         })
     }
@@ -187,11 +179,8 @@ impl Ctx {
         dispatch: DispatchCb,
         dispatch_user_data: DispatchCbUserData,
     ) -> Box<FFIConnection> {
-        let id = ConnectionId::new(self.next_connection_id.fetch_add(1, Ordering::SeqCst));
-
         FFIConnection::new(
             self.runtime_handle.clone(),
-            id,
             self.connection_events.clone(),
             dispatch,
             dispatch_user_data,

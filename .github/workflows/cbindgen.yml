@@ -26,7 +26,7 @@ jobs:
   verify-header:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
     permissions:
       contents: read
 

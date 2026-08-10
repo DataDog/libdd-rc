@@ -26,7 +26,7 @@ use tracing::{debug, error, warn};
 use rc_x509_client::{
     AbortOnDrop,
     codec::{ClientToServer, DecodingError, ServerToClient},
-    connection::{ConnectionEvent, ConnectionId, ConnectionUpdate},
+    connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
         DispatchError, DispatchResponder, DispatchResult, DispatchStream,
         new_dispatcher_interconnect,
@@ -576,8 +576,6 @@ enum State {
 #[derive(Debug)]
 #[repr(Rust)] // Explicitly not exposing internals across FFI boundary.
 pub struct FFIConnection {
-    id: ConnectionId,
-
     /// A handle to the tokio runtime running in the [`Ctx`] this connection is
     /// registered to.
     runtime: tokio::runtime::Handle,
@@ -600,7 +598,6 @@ pub struct FFIConnection {
 impl FFIConnection {
     pub(super) fn new(
         runtime: tokio::runtime::Handle,
-        id: ConnectionId,
         events: mpsc::UnboundedSender<ConnectionUpdate<IOHandle>>,
         dispatch: DispatchCb,
         dispatch_user_data: DispatchCbUserData,
@@ -609,7 +606,6 @@ impl FFIConnection {
 
         let s = Self {
             runtime,
-            id,
             events,
             dispatch,
             dispatch_user_data,
@@ -650,7 +646,7 @@ impl FFIConnection {
     /// A helper function to publish a [`ConnectionUpdate`] for this connection.
     fn publish_event(&self, event: ConnectionEvent<IOHandle>) {
         self.events
-            .send(ConnectionUpdate::new(self.id, event))
+            .send(ConnectionUpdate::new(event))
             .expect("runtime task not running");
     }
 
@@ -1125,48 +1121,6 @@ mod tests {
         unsafe { rc_free(ctx) };
     }
 
-    /// Ensure connections obtained from the FFI layer have monotonic,
-    /// sequential connection IDs starting from 0 per [`Ctx`].
-    #[test]
-    fn test_monotonic_connection_id() {
-        unsafe extern "C" fn do_dispatch(
-            _correlation_id: u64,
-            _data: *const u8,
-            _length: u32,
-            _user_data: *const c_void,
-        ) -> DispatchRet {
-            DispatchRet::Unknown
-        }
-
-        let ctx = unsafe { rc_init() };
-        assert!(!ctx.is_null());
-
-        // Drive a number of connection creations and assert their IDs start at
-        // 0, and increase sequentially.
-        for want_id in [0, 1, 2] {
-            let conn = unsafe { rc_conn_new(ctx, do_dispatch, ptr::null()) };
-            assert!(!conn.is_null());
-            assert_eq!(unsafe { &*conn }.id.as_raw(), want_id);
-
-            unsafe extern "C" fn do_send(
-                _data: *const u8,
-                _length: u32,
-                _user_data: *const c_void,
-            ) -> SendRet {
-                SendRet::Unknown
-            }
-
-            unsafe {
-                rc_conn_send_callback(conn, do_send, ptr::null());
-                assert_matches!((&*conn).state, State::Configured { .. });
-            }
-
-            unsafe { rc_conn_free(conn) };
-        }
-
-        unsafe { rc_free(ctx) };
-    }
-
     /// This test drives the lifecycle of a connection, covering:
     ///
     ///   * Expected FFI usage is successful / no panics.
@@ -1222,7 +1176,6 @@ mod tests {
         unsafe {
             let conn = &*conn;
             assert_matches!(conn.state, State::Init);
-            assert_eq!(conn.id.as_raw(), 0); // First connection starts at 0.
         }
 
         // Assert the correct lifecycle event was received.
