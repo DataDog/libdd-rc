@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	rcproto "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto"
+	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
 )
 
 // goDispatchCb is the DispatchCb registered with rc_conn_new. It MUST NOT
@@ -37,7 +37,7 @@ func goDispatchCb(correlationID C.uint64_t, data *C.uint8_t, length C.uint32_t, 
 		return C.DISPATCH_RET_UNKNOWN
 	}
 
-	var req rcproto.DispatchRequestPayload
+	var req protocolv1.DispatchRequestPayload
 	if err := proto.Unmarshal(C.GoBytes(unsafe.Pointer(data), C.int(length)), &req); err != nil {
 		return C.DISPATCH_RET_UNKNOWN_PAYLOAD
 	}

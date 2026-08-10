@@ -26,5 +26,5 @@
 version: v2
 plugins:
   - local: protoc-gen-go
-    out: ffi-hosts/go/rcproto
-    opt: paths=source_relative
+    out: ffi-hosts/go
+    opt: module=github.com/DataDog/libdd-rc/ffi-hosts/go
