@@ -51,9 +51,6 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "/root/go/bin" >> "$GITHUB_PATH"
 
-      - name: Generate Go bindings via buf
-        run: buf generate
-
-      - name: Run go test
+      - name: Run go vet + tests
         working-directory: ffi-hosts/go
-        run: make test
+        run: make vet test
