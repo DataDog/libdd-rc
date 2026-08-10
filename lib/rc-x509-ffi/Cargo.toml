@@ -21,6 +21,9 @@ license = "Apache-2.0"
 description = "FFI interface to rc-x509-client"
 repository = "https://github.com/DataDog/libdd-rc"
 
+[lib]
+crate-type = ["lib", "staticlib"]
+
 [dependencies]
 futures = "0.3.32"
 rc-x509-client = { version = "0.1.0", path = "../rc-x509-client" }

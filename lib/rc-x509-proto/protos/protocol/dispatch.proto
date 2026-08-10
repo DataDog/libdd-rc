@@ -7,6 +7,8 @@ import "magic_tunnel/protocol.proto";
 import "protocol/connection_id.proto";
 import "signature.proto";
 
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
+
 // Instruct the client library to deliver a payload to the host application.
 //
 // Dispatch requests are expected to map one-to-one with `DispatchResponse`,
