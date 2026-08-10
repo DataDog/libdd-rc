@@ -3,9 +3,9 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
-option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
-
 import "protocol/connection_id.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // A `ClientHello` is the opening message sent by the client to the delivery
 // backend once a connection is established.
