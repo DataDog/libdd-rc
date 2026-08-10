@@ -48,7 +48,7 @@ jobs:
   check-3rdparty-bom:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -61,7 +61,7 @@ jobs:
   check-1stparty-licenses:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/datadog/libdd-rc/rust-ci:1.93.0
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
