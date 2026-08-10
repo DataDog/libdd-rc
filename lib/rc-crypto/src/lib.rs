@@ -34,6 +34,7 @@ use criterion as _;
 
 mod cached_string_repr;
 pub mod certificate;
+pub mod hash;
 mod hex;
 pub mod issuer;
 pub mod keys;
