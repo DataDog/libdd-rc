@@ -364,10 +364,11 @@ func (c *Connection) handleDispatchJob(job dispatchJob) {
         encoded, _ = marshalDispatchResponse(nil, errors.New("handleDispatchJob: invalid empty serialised response"))
 	}
 
-	cData := C.CBytes(encoded)
-	defer C.free(cData)
-
-	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
+	// rc_conn_dispatch_result only requires data to be valid for the duration
+	// of the call (like rc_conn_recv), so encoded can be passed directly
+	// rather than copied into C memory first: the client library makes its
+	// own copy before returning.
+	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
