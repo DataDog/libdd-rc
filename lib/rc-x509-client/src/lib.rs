@@ -30,13 +30,8 @@ pub use shutdown_signal::*;
 mod tests {
     use proptest::prelude::*;
     use tokio_util::bytes::Bytes;
-    use uuid::Uuid;
 
     pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
         prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
-    }
-
-    pub(crate) fn arbitrary_uuid_v8() -> impl Strategy<Value = Uuid> {
-        any::<[u8; 16]>().prop_map(Uuid::new_v8)
     }
 }

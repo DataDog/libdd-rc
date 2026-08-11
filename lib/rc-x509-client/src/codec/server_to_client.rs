@@ -14,7 +14,7 @@
 
 //! Codec for incoming [`ServerToClient`] messages.
 
-use rc_crypto::certificate::InvalidDer;
+use rc_crypto::{certificate::InvalidDer, connection_id::UntrustedConnectionId};
 use rc_x509_proto::{
     decode,
     protocol::v1::{self, server_to_client::Message},
@@ -23,10 +23,7 @@ use rc_x509_trust::cert::UntrustedCert;
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 
-use crate::{
-    connection::{ReconnectionData, UntrustedConnectionId},
-    host_runtime::CorrelationId,
-};
+use crate::{connection::ReconnectionData, host_runtime::CorrelationId};
 
 /// Errors parsing incoming messages from the RC delivery backend.
 #[derive(Debug, Error)]
@@ -237,11 +234,9 @@ mod tests {
                         // Always return a valid certificate.
                         certificate.der = Bytes::from(SAMPLE_CERT_DER);
                     }
-                    Message::Dispatch(dispatch) => {
+                    Message::Dispatch(dispatch) if dispatch.signature.is_none() => {
                         // Always include a signature - None is not a valid wire state.
-                        if dispatch.signature.is_none() {
-                            dispatch.signature = Some(DetachedSignature::default());
-                        }
+                        dispatch.signature = Some(DetachedSignature::default());
                     }
                     _ => {}
                 }

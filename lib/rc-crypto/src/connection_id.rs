@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Safely constructing a connection ID.
+
 use std::fmt::Display;
 
-use rc_crypto::hash::{HashAlgo, IncrementalHashState, Sha256};
+use crate::hash::{HashAlgo, IncrementalHashState, Sha256};
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 use uuid::Uuid;
@@ -27,10 +29,7 @@ pub struct ConnectionIdInvalid;
 /// A [`ConnectionId`] uniquely identifies a single connection to the Remote
 /// Config backend.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct ConnectionId(
-    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_uuid_v8()"))] Uuid,
-);
+pub struct ConnectionId(Uuid);
 
 impl ConnectionId {
     /// Construct a new [`ConnectionId`] by deriving it from the server and
@@ -72,11 +71,8 @@ impl Display for ConnectionId {
 /// The unverified [`ConnectionId`], and the input parameters needed to verify
 /// it was derived from the client nonce provided to the server.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct UntrustedConnectionId {
-    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))]
     server_nonce: Bytes,
-    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))]
     id: Bytes,
 }
 
@@ -105,7 +101,9 @@ impl UntrustedConnectionId {
 mod tests {
     use proptest::prelude::*;
 
-    use crate::tests::arbitrary_bytes;
+    fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
+        prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
+    }
 
     use super::*;
 
