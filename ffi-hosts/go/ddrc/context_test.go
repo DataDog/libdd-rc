@@ -71,35 +71,41 @@ func TestConnectionLifecycle(t *testing.T) {
 	}
 }
 
-// TestContextCloseWithOpenConnection verifies Close refuses to release the
-// context while a connection created from it is still open. rc_free requires
-// every connection be freed beforehand, and using a connection that outlived
-// its context aborts the process.
-func TestContextCloseWithOpenConnection(t *testing.T) {
+// TestContextCloseForceDisconnectsOpenConnections verifies Close forcibly
+// disconnects any connections created from it that are still open, rather
+// than refusing to run. rc_free requires every connection be freed
+// beforehand, and using a connection that outlived its context aborts the
+// process, so Close must not leave that step to the caller.
+func TestContextCloseForceDisconnectsOpenConnections(t *testing.T) {
 	ctx, err := Init()
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
 
-	conn, err := ctx.NewConnection()
+	connected, err := ctx.NewConnection()
 	if err != nil {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
-	if err := conn.Connected(); err != nil {
+	if err := connected.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
-	if err := ctx.Close(); !errors.Is(err, ErrConnectionsOpen) {
-		t.Fatalf("Close() = %v, want ErrConnectionsOpen", err)
+	// A connection on which Connected was never called should also be
+	// force-disconnected cleanly.
+	unconnected, err := ctx.NewConnection()
+	if err != nil {
+		t.Fatalf("NewConnection() returned error: %v", err)
 	}
 
-	if err := conn.Disconnected(); err != nil {
-		t.Fatalf("Disconnected() returned error: %v", err)
-	}
-
-	// Releasing the last connection lets the context close.
 	if err := ctx.Close(); err != nil {
-		t.Fatalf("Close() after Disconnected() returned error: %v", err)
+		t.Fatalf("Close() with open connections returned error: %v", err)
+	}
+
+	if err := connected.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+		t.Fatalf("Disconnected() on force-closed connection = %v, want ErrConnectionClosed", err)
+	}
+	if err := unconnected.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+		t.Fatalf("Disconnected() on force-closed connection = %v, want ErrConnectionClosed", err)
 	}
 }
 
