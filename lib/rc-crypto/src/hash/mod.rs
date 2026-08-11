@@ -19,6 +19,8 @@
 
 mod digest;
 mod sha256;
+mod traits;
 
 pub use digest::*;
 pub use sha256::*;
+pub use traits::*;

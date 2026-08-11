@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use aws_lc_rs::digest::SHA256;
+use aws_lc_rs::digest::{Context, SHA256};
 
-use crate::hash::{Digest, HashAlgo, Sealed};
+use crate::hash::{Digest, HashAlgo, IncrementalHashState, Sealed};
 
 /// The byte size of a [`Sha256`] hash.
 pub const SHA256_OUTPUT_LEN: usize = aws_lc_rs::digest::SHA256_OUTPUT_LEN;
@@ -29,13 +29,37 @@ pub struct Sha256;
 impl Sealed for Sha256 {}
 
 impl HashAlgo<SHA256_OUTPUT_LEN> for Sha256 {
-    fn hash(data: &[u8]) -> Digest<SHA256_OUTPUT_LEN, Self> {
-        let digest = aws_lc_rs::digest::digest(&SHA256, data)
-            .as_ref()
-            .try_into()
-            .expect("sha256 digest is 32 bytes");
+    type Context<D> = Sha256State;
 
-        Digest::from_raw(digest)
+    fn incremental() -> Self::Context<Self> {
+        Sha256State(Context::new(&SHA256))
+    }
+}
+
+/// Incremental hash state.
+///
+/// This type can only be constructed via [`IncrementalHashAlgo`].
+pub struct Sha256State(aws_lc_rs::digest::Context);
+
+impl std::fmt::Debug for Sha256State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Sha256State").finish()
+    }
+}
+
+impl IncrementalHashState<SHA256_OUTPUT_LEN, Sha256> for Sha256State {
+    fn update(&mut self, data: &[u8]) {
+        self.0.update(data);
+    }
+
+    fn finish(self) -> Digest<SHA256_OUTPUT_LEN, Sha256> {
+        Digest::from_raw(
+            self.0
+                .finish()
+                .as_ref()
+                .try_into()
+                .expect("sha256 digest is 32 bytes"),
+        )
     }
 }
 
@@ -61,17 +85,27 @@ mod tests {
     proptest! {
         #[test]
         fn prop_hash(
-            mut input in prop::collection::vec(any::<u8>(), 0..258),
+            input in prop::collection::vec(any::<u8>(), 0..258),
         ) {
             let a = Sha256::hash(&input[..]);
             let b = Sha256::hash(&input[..]);
 
             assert_eq!(a, b); // Deterministic hashes
 
-            input.push(42);
-            let c = Sha256::hash(&input);
+            // Hash a modified input.
+            let mut modified = input.clone();
+            modified.push(42);
+            let c = Sha256::hash(&modified);
 
-            assert_ne!(a, c); // Not equal after modification
+            assert_ne!(a, c); // Modified buffer hash != unmodified.
+
+            // Construct the modified hash incrementally:
+            let mut inc = Sha256::incremental();
+            inc.update(&input);
+            inc.update(&[42]);
+
+            let d = inc.finish();
+            assert_eq!(c, d); // Incremental hash matches one-shot hash
         }
     }
 }
