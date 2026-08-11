@@ -34,9 +34,13 @@ const (
 	outgoingQueueCap = 100
 
 	// invokeWorkerCount is the size of the goroutine pool that invokes
-	// handlers concurrently. The result worker stays single-goroutine, so
-	// only handler invocation benefits from this parallelism.
+	// handlers concurrently.
 	invokeWorkerCount = 8
+
+	// resultWorkerCount is the size of the goroutine pool that writes
+	// results to the FFI layer. We don't intend to make this concurrent
+	// but this variable helps with reading intent later.
+	resultWorkerCount = 1
 )
 
 // ErrConnectionClosed is returned when an operation is attempted on a
@@ -134,7 +138,7 @@ type Connection struct {
 	// Used to broker connection specific information across the FFI
 	// boundry so that Go can find the connection without a global
 	// lookup table
-	st *connState
+	state *connState
 }
 
 // NewConnection creates a new Connection bound to c: it calls rc_conn_new,
@@ -152,7 +156,7 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 		return nil, ErrContextClosed
 	}
 
-	st := &connState{
+	state := &connState{
 		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
 		resultQueue:   make(chan dispatchResult, resultQueueCap),
 		outgoing:      make(chan []byte, outgoingQueueCap),
@@ -165,40 +169,50 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	// package-global lookup table. It stays valid until rc_conn_free()
 	// returns, after which the client library guarantees no further
 	// callbacks.
-	st.handlePtr = new(cgo.Handle)
-	*st.handlePtr = cgo.NewHandle(st)
-	st.pinner.Pin(st.handlePtr)
-	userData := unsafe.Pointer(st.handlePtr)
+	state.handlePtr = new(cgo.Handle)
+	*state.handlePtr = cgo.NewHandle(state)
+	state.pinner.Pin(state.handlePtr)
+	userData := unsafe.Pointer(state.handlePtr)
 
 	connPtr := C.rc_conn_new(c.ptr, C.DispatchCb(C.goDispatchCb), userData)
 	if connPtr == nil {
-		st.pinner.Unpin()
-		st.handlePtr.Delete()
+		state.pinner.Unpin()
+		state.handlePtr.Delete()
 		return nil, errors.New("ddrc: rc_conn_new returned a nil connection")
 	}
-	st.conn = connPtr
+	state.conn = connPtr
 
 	// Our send callback is generic, so we can go ahead and set this for
 	// the newly established connection
 	C.rc_conn_send_callback(connPtr, C.SendCb(C.goSendCb), userData)
 
-	conn := &Connection{ctx: c, st: st}
+	conn := &Connection{ctx: c, state: state}
 	c.conns[conn] = struct{}{}
 
-	// invokeWG tracks only the invoke pool, so resultQueue can be closed the
-	// moment every invoke worker has stopped, independent of st.wg, which
-	// Disconnected also uses to wait for resultWorker's subsequent drain.
+	// invokeWG tracks only the invoke pool to manage when we can safely close the
+	// resultQueue in order to signal to the resultWorker it's time to close.
 	var invokeWG sync.WaitGroup
 	invokeWG.Add(invokeWorkerCount)
-	st.wg.Add(invokeWorkerCount + 1)
+
+	// Disconnected() needs to wait for everybody to shut down and only has a handle
+	// to the top-level `WaitGroup` store in the `connState`, which is we must increment
+	// this by `invokeWorkerCount + resultWorkerCount`
+	state.wg.Add(invokeWorkerCount + resultWorkerCount)
+
+	// Fire off the worker pools
 	for range invokeWorkerCount {
 		go conn.invokeWorker(&invokeWG)
 	}
+	for range resultWorkerCount {
+		go conn.resultWorker()
+	}
+
+	// This function is our "orchestrator", invokeWorkers borrow the resultQueue, it's effectively
+	// owned here, so we cannot shut it down until all the workers have stopped.
 	go func() {
 		invokeWG.Wait()
-		close(st.resultQueue)
+		close(state.resultQueue)
 	}()
-	go conn.resultWorker()
 
 	return conn, nil
 }
@@ -219,7 +233,7 @@ func (c *Connection) Connected() error {
 		return ErrConnectionAlreadyConnected
 	}
 
-	C.rc_conn_connected(c.st.conn)
+	C.rc_conn_connected(c.state.conn)
 	c.connected = true
 
 	return nil
@@ -254,23 +268,23 @@ func (c *Connection) Disconnected() error {
 	// answers every payload goDispatchCb accepted, and payloads arriving
 	// during the rest of the teardown are refused at the callback rather than
 	// accepted and abandoned.
-	c.st.dispatchMu.Lock()
-	c.st.accepting = false
-	c.st.dispatchMu.Unlock()
+	c.state.dispatchMu.Lock()
+	c.state.accepting = false
+	c.state.dispatchMu.Unlock()
 
 	// Stop the connection processing pipeline. The drain runs before
 	// rc_conn_disconnected below, because rc-x509-client discards dispatch
 	// results for a connection that is no longer connected.
-	close(c.st.stop)
-	c.st.wg.Wait()
+	close(c.state.stop)
+	c.state.wg.Wait()
 
 	if wasConnected {
-		C.rc_conn_disconnected(c.st.conn)
+		C.rc_conn_disconnected(c.state.conn)
 	}
 
-	C.rc_conn_free(c.st.conn)
-	c.st.pinner.Unpin()
-	c.st.handlePtr.Delete()
+	C.rc_conn_free(c.state.conn)
+	c.state.pinner.Unpin()
+	c.state.handlePtr.Delete()
 
 	c.mu.Unlock()
 
@@ -314,7 +328,7 @@ func (c *Connection) Recv(data []byte) error {
 		return ErrConnectionNotConnected
 	}
 
-	if ret := C.rc_conn_recv(c.st.conn, (*C.uint8_t)(unsafe.Pointer(&data[0])), C.uint32_t(len(data))); ret != C.RECV_RET_T_SUCCESS {
+	if ret := C.rc_conn_recv(c.state.conn, (*C.uint8_t)(unsafe.Pointer(&data[0])), C.uint32_t(len(data))); ret != C.RECV_RET_T_SUCCESS {
 		return fmt.Errorf("ddrc: rc_conn_recv returned %v", ret)
 	}
 
@@ -325,13 +339,13 @@ func (c *Connection) Recv(data []byte) error {
 // concurrently, invoking each job's handler and passing the outcome to
 // resultWorker via resultQueue, until stop is closed.
 func (c *Connection) invokeWorker(poolWG *sync.WaitGroup) {
-	defer c.st.wg.Done()
+	defer c.state.wg.Done()
 	defer poolWG.Done()
 	for {
 		select {
-		case job := <-c.st.dispatchQueue:
+		case job := <-c.state.dispatchQueue:
 			c.invokeJob(job)
-		case <-c.st.stop:
+		case <-c.state.stop:
 			c.drainDispatchQueue()
 			return
 		}
@@ -347,7 +361,7 @@ func (c *Connection) invokeWorker(poolWG *sync.WaitGroup) {
 func (c *Connection) drainDispatchQueue() {
 	for {
 		select {
-		case job := <-c.st.dispatchQueue:
+		case job := <-c.state.dispatchQueue:
 			c.invokeJob(job)
 		default:
 			return
@@ -364,15 +378,15 @@ func (c *Connection) drainDispatchQueue() {
 // protocol is implemented, not the Go host's.
 func (c *Connection) invokeJob(job dispatchJob) {
 	response, err := invokeHandler(job)
-	c.st.resultQueue <- dispatchResult{correlationID: job.correlationID, response: response, err: err}
+	c.state.resultQueue <- dispatchResult{correlationID: job.correlationID, response: response, err: err}
 }
 
 // resultWorker ranges over resultQueue, marshalling each result and
 // reporting it back via rc_conn_dispatch_result, until resultQueue is closed
 // by invokeWorker and drained.
 func (c *Connection) resultWorker() {
-	defer c.st.wg.Done()
-	for result := range c.st.resultQueue {
+	defer c.state.wg.Done()
+	for result := range c.state.resultQueue {
 		c.sendDispatchResult(result)
 	}
 }
@@ -408,7 +422,7 @@ func (c *Connection) sendDispatchResult(result dispatchResult) {
 	cData := C.CBytes(encoded)
 	defer C.free(cData)
 
-	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(result.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
+	C.rc_conn_dispatch_result(c.state.conn, C.uint64_t(result.correlationID), (*C.uint8_t)(cData), C.uint32_t(len(encoded)))
 }
 
 // invokeHandler calls the handler registered for the job's namespace,

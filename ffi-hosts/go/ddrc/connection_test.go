@@ -120,7 +120,7 @@ func newTestInvokePipeline(t *testing.T) *Connection {
 		stop:          make(chan struct{}),
 		accepting:     true,
 	}
-	conn := &Connection{st: st}
+	conn := &Connection{state: st}
 
 	var poolWG sync.WaitGroup
 	poolWG.Add(invokeWorkerCount)
@@ -158,8 +158,8 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	req := &magictunnelv1.MagicTunnelRequest{}
-	conn.st.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
-	conn.st.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
+	conn.state.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
+	conn.state.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
 
 	seen := map[uint64]bool{}
 	for range 2 {
@@ -175,7 +175,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	select {
-	case result := <-conn.st.resultQueue:
+	case result := <-conn.state.resultQueue:
 		if result.correlationID != 2 {
 			t.Fatalf("first result correlationID = %d, want 2 (fast handler must finish before the slow handler is released)", result.correlationID)
 		}
@@ -186,7 +186,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	close(release)
 
 	select {
-	case result := <-conn.st.resultQueue:
+	case result := <-conn.state.resultQueue:
 		if result.correlationID != 1 {
 			t.Fatalf("second result correlationID = %d, want 1", result.correlationID)
 		}
@@ -206,13 +206,13 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	const jobs = 50
 	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
 	for i := uint64(1); i <= jobs; i++ {
-		conn.st.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
+		conn.state.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
 	}
 
 	seen := map[uint64]int{}
 	for range jobs {
 		select {
-		case result := <-conn.st.resultQueue:
+		case result := <-conn.state.resultQueue:
 			seen[result.correlationID]++
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for results, got %d of %d", len(seen), jobs)
@@ -226,7 +226,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	}
 
 	select {
-	case extra := <-conn.st.resultQueue:
+	case extra := <-conn.state.resultQueue:
 		t.Fatalf("unexpected extra result: %+v", extra)
 	default:
 	}
@@ -276,7 +276,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		}
 	}
 
-	conn.st.dispatchQueue <- newJob(1, blocking)
+	conn.state.dispatchQueue <- newJob(1, blocking)
 
 	// Wait until the worker is inside the blocking handler before queueing
 	// the jobs that must survive teardown.
@@ -289,8 +289,8 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		t.Fatal("timed out waiting for the dispatch worker to pick up the first job")
 	}
 
-	conn.st.dispatchQueue <- newJob(2, recording)
-	conn.st.dispatchQueue <- newJob(3, recording)
+	conn.state.dispatchQueue <- newJob(2, recording)
+	conn.state.dispatchQueue <- newJob(3, recording)
 
 	disconnected := make(chan error, 1)
 	go func() { disconnected <- conn.Disconnected() }()
@@ -337,7 +337,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	}
 
 	for i, h := range []HandlerFunc{panicking, recording} {
-		conn.st.dispatchQueue <- dispatchJob{
+		conn.state.dispatchQueue <- dispatchJob{
 			correlationID: uint64(i + 1),
 			handler:       h,
 			request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns},
