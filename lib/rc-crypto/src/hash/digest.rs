@@ -47,6 +47,11 @@ where
     pub fn as_array(&self) -> &[u8; N] {
         &self.digest
     }
+
+    /// Return the underlying fixed size backing array.
+    pub fn into_inner(self) -> [u8; N] {
+        self.digest
+    }
 }
 
 impl<const N: usize, T> Clone for Digest<N, T>

@@ -34,6 +34,7 @@ tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
 tracing = "0.1.44"
 pin-project = "1.1.13"
+uuid = { version = "1.24.0", features = ["v8", "v4"] }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
