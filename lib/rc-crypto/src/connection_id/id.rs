@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Safely constructing a connection ID.
-
 use std::fmt::Display;
 
-use crate::hash::{HashAlgo, IncrementalHashState, Sha256};
+use crate::{
+    connection_id::IdNonce,
+    hash::{HashAlgo, IncrementalHashState, Sha256},
+};
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 use uuid::Uuid;
@@ -84,8 +85,8 @@ impl UntrustedConnectionId {
 
     /// Verify this [`UntrustedConnectionId`], proving it was derived by
     /// incorporating the `client_nonce`, and therefore can be trusted.
-    pub fn verify(self, client_nonce: &Bytes) -> Result<ConnectionId, ConnectionIdInvalid> {
-        let derived = ConnectionId::new(client_nonce, &self.server_nonce);
+    pub fn verify(self, client_nonce: IdNonce) -> Result<ConnectionId, ConnectionIdInvalid> {
+        let derived = ConnectionId::new(client_nonce.as_bytes(), &self.server_nonce);
 
         // If the client cannot reproduce the construction of the connection ID
         // using the client nonce, this connection ID cannot be trusted.
@@ -99,16 +100,20 @@ impl UntrustedConnectionId {
 
 #[cfg(test)]
 mod tests {
-    use proptest::prelude::*;
+    use proptest::{prelude::*, strategy::LazyJust};
 
     fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
         prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
     }
 
+    fn arbitrary_nonce() -> impl Strategy<Value = IdNonce> {
+        LazyJust::new(IdNonce::default)
+    }
+
     use super::*;
 
-    fn id_bytes_for(server_nonce: &Bytes, client_nonce: &Bytes) -> [u8; 16] {
-        *ConnectionId::new(client_nonce, server_nonce).as_bytes()
+    fn id_bytes_for(server_nonce: &Bytes, client_nonce: &IdNonce) -> [u8; 16] {
+        *ConnectionId::new(client_nonce.as_bytes(), server_nonce).as_bytes()
     }
 
     /// A test that fails if the construction of the Connection ID is changed in
@@ -126,7 +131,7 @@ mod tests {
         /// Correct construction via the UntrustedConnectionId.
         #[test]
         fn prop_construction_from_untrusted(
-            client_nonce in arbitrary_bytes(),
+            client_nonce in arbitrary_nonce(),
             server_nonce in arbitrary_bytes(),
         ) {
             let expected = id_bytes_for(&server_nonce, &client_nonce);
@@ -135,7 +140,7 @@ mod tests {
             assert_eq!(untrusted.server_nonce, server_nonce);
             assert_eq!(&*untrusted.id, expected);
 
-            let trusted = untrusted.verify(&client_nonce).expect("valid inputs");
+            let trusted = untrusted.verify(client_nonce).expect("valid inputs");
             assert_eq!(*trusted.as_bytes(), expected);
         }
 
@@ -149,16 +154,16 @@ mod tests {
         /// have been captured.
         #[test]
         fn prop_incorrect_client_nonce(
-            client_nonce in arbitrary_bytes(),
+            client_nonce in arbitrary_nonce(),
             server_nonce in arbitrary_bytes(),
-            attacker_nonce in arbitrary_bytes(),
+            attacker_nonce in arbitrary_nonce(),
         ) {
             // If the client ID and the ID that replaces it are identical, then
             // the client ID was incorporated, and there is no attack to detect.
             //
             // This is why the client choosing a cryptographically random nonce
             // is important!
-            prop_assume!(client_nonce != attacker_nonce);
+            prop_assume!(client_nonce.as_bytes() != attacker_nonce.as_bytes());
 
             // Create an ID the client is going to receive that does not
             // incorporate the client nonce, but instead some random other
@@ -167,7 +172,7 @@ mod tests {
 
             let _: ConnectionIdInvalid =
                 UntrustedConnectionId::new(server_nonce, Bytes::from_owner(proposed_id))
-                    .verify(&client_nonce)
+                    .verify(client_nonce)
                     .expect_err("incorrect client ID must fail");
         }
     }
