@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Copies the aws-lc-fips-sys crypto lib built by `cargo build -p rc-x509-ffi`
 # to a version-agnostic name next to librc_x509_ffi.a, so bridge.go's LDFLAGS
 # don't need updating when the aws-lc-fips-sys version in Cargo.lock changes.
