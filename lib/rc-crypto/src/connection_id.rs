@@ -34,7 +34,7 @@ pub struct ConnectionId(Uuid);
 impl ConnectionId {
     /// Construct a new [`ConnectionId`] by deriving it from the server and
     /// client nonce values.
-    fn new(client_nonce: &[u8], server_nonce: &[u8]) -> Self {
+    pub fn new(client_nonce: &[u8], server_nonce: &[u8]) -> Self {
         let mut h = Sha256::incremental();
         h.update(server_nonce);
         h.update(client_nonce);
