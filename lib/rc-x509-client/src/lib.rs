@@ -27,6 +27,9 @@ pub use abort_on_drop::*;
 pub use shutdown_signal::*;
 
 #[cfg(test)]
+mod mocks;
+
+#[cfg(test)]
 mod tests {
     use proptest::prelude::*;
     use tokio_util::bytes::Bytes;
