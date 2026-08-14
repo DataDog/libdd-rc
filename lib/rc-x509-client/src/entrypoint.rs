@@ -17,11 +17,16 @@
 use std::time::Duration;
 
 use futures::{Stream, StreamExt};
-use tracing::{debug, info};
+use tokio_util::sync::CancellationToken;
+use tracing::{debug, error, info};
 
 use tokio::pin;
 
-use crate::{AbortOnDrop, ShutdownSignal, connection::ConnectionUpdate, host_runtime::Connection};
+use crate::{
+    AbortOnDrop, ShutdownSignal,
+    connection::{ConnectionEvent, ConnectionHandler, ConnectionUpdate},
+    host_runtime::Connection,
+};
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
@@ -66,24 +71,93 @@ where
             "starting rc-x509-client instance"
         );
 
-        let _conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
+        // Begin processing the connection events.
+        let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
+
+        // Wait forever for the shutdown signal.
         shutdown.wait_for_shutdown().await;
 
-        info!("stopping rc-x509-client instance");
+        //
+        // Graceful shutdown has begun.
+        //
+
+        info!("stopping rc-x509-client");
+
+        // Wait for the connection event loop to complete, which internally
+        // shuts down and waits for for the active connection to complete.
+        if let Err(e) = conn_events.into_inner().await {
+            error!(error=%e, "connection event loop panic");
+        }
+
+        info!("stopped rc-x509-client instance");
     }
 }
 
+/// Process the stream of connection state changes from the host application.
+///
+/// # Graceful Shutdown
+///
+/// `incoming` is closed to signal this function should close any existing
+/// connections and exit.
 async fn handle_connection_events<IO>(
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
 ) where
-    IO: std::fmt::Debug,
+    IO: Connection,
 {
     debug!("starting connection event handler");
-    pin!(incoming);
 
+    // A single connection can be active at any one time.
+    //
+    // TODO: this assumes the host opens a single connection - this needs to be
+    // enforced at the FFI API.
+    let mut active_conn = None;
+
+    pin!(incoming);
     while let Some(event) = incoming.next().await {
         debug!(?event, "received connection lifecycle event");
+
+        match event.into_event() {
+            ConnectionEvent::Init => debug!("new connection registered"),
+            ConnectionEvent::Connected(io, dispatch) => {
+                let stop = CancellationToken::default();
+                let conn = ConnectionHandler::new(io, dispatch);
+                let task = tokio::spawn(conn.run(stop.clone()));
+
+                let old = active_conn.replace(ActiveConn { task, stop });
+                if let Some(v) = old {
+                    v.stop().await;
+                }
+            }
+            ConnectionEvent::Disconnected => {
+                if let Some(v) = active_conn.take() {
+                    v.stop().await;
+                }
+            }
+            ConnectionEvent::Release => debug!("connection released"),
+        }
     }
 
     debug!("stopping connection event handler");
+}
+
+/// A container that holds the active connection.
+struct ActiveConn {
+    task: tokio::task::JoinHandle<()>,
+    stop: CancellationToken,
+}
+
+impl ActiveConn {
+    /// Shutdown and wait for the connection control loop to exit.
+    async fn stop(self) {
+        info!("stopping connection");
+        self.stop.cancel();
+
+        debug!("waiting for connection stop");
+        if let Err(e) = self.task.await {
+            error!(error=%e, "connection shutdown failure");
+            return;
+        }
+
+        debug!("connection shutdown complete");
+    }
 }
