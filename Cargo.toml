@@ -29,10 +29,11 @@ members = [
 ]
 
 [workspace.lints.clippy]
-clone_on_ref_ptr = "warn" # A ref +1 is not the same as a deep copy
-future_not_send = "warn"  # Required for multithreaded runtimes
-dbg_macro = "warn"        # Used for debugging, should not be in committed code
-todo = "warn"             # Should not be in committed code - use unreachable!("reason")
+clone_on_ref_ptr = "warn"  # A ref +1 is not the same as a deep copy
+future_not_send = "warn"   # Required for multithreaded runtimes
+dbg_macro = "warn"         # Used for debugging, should not be in committed code
+todo = "warn"              # Should not be in committed code - use unreachable!("reason")
+module_inception = "allow" # Tidy, self-contained modules if there's flat public path.
 
 field_reassign_with_default = "allow"      # Default values, plus a field override.
 default_constructed_unit_structs = "allow" # Unit structs do not appear as values.
