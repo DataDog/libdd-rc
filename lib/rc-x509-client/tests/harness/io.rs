@@ -47,6 +47,7 @@ impl Connection for MockIO {
 
 /// A handle to transmit messages "from the server" over the mocked transport,
 /// to the client library.
+#[derive(Debug)]
 pub(crate) struct MockIOServer {
     to_client: mpsc::Sender<Result<ServerToClient, DecodingError>>,
     to_server: mpsc::Receiver<ClientToServer>,
