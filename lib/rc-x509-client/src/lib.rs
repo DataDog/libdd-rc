@@ -14,6 +14,10 @@
 
 #![doc = "../README.md"]
 
+// Spurious unused crate lints:
+#[cfg(test)]
+use tracing_subscriber as _;
+
 mod abort_on_drop;
 mod build_version;
 pub mod codec;
