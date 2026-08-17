@@ -14,12 +14,8 @@
 
 use futures::Stream;
 use thiserror::Error;
-use tokio_util::bytes::Bytes;
 
-use crate::{
-    codec::{ClientToServer, DecodingError, ServerToClient},
-    host_runtime::CorrelationId,
-};
+use crate::codec::{ClientToServer, DecodingError, ServerToClient};
 
 /// The runtime host has rejected a [`RustToHost::dispatch()`] call.
 #[derive(Debug, Error)]
@@ -48,84 +44,6 @@ pub enum ConnectionErr {
     /// The outgoing payload queue is full.
     #[error("tx queue full")]
     QueueFull,
-}
-
-/// Boundary layer between calls from this library, to some abstract
-/// implementation that can perform I/O and consume verified messages from RC.
-///
-/// ```text
-///
-///                                Go Program
-///
-///                                     ▲
-///                                     │
-///                             ┌──────────────┐
-///                             │   FFI Impl   │
-///                             └──────────────┘
-///                                     ▲
-///                                     │
-///                             ╔══════════════╗
-///                             ║  RustToHost  ║
-///                             ╚══════════════╝
-///                                     ▲
-///                                     │
-///
-///                              Client Library
-///
-/// ```
-///
-/// This layer presents a rust API, with the FFI implementation of this trait
-/// responsible for performing all conversions between rust types and their FFI
-/// representations, encapsulating any unsafe operations.
-pub trait RustToHost: std::fmt::Debug + Send + Sync + 'static {
-    /// Call into the host message dispatcher to pass a verified `msg` to the
-    /// registered client for `payload`. The call return value is later passed
-    /// back providing the same unique `correlation_id`.
-    ///
-    /// MAY be called concurrently, MUST NOT block (expected return time is
-    /// sub-millisecond).
-    fn dispatch(&self, correlation_id: CorrelationId, payload: Bytes) -> Result<(), DispatchError>;
-}
-
-/// Callbacks from some abstract I/O provider and message processor.
-///
-/// ```text
-///
-///                                Go Program
-///
-///                                     │
-///                                     ▼
-///                             ┌──────────────┐
-///                             │   FFI Impl   │
-///                             └──────────────┘
-///                                     │
-///                                     ▼
-///                             ╔══════════════╗
-///                             ║  HostToRust  ║
-///                             ╚══════════════╝
-///                                     │
-///                                     ▼
-///
-///                              Client Library
-///
-/// ```
-///
-/// This layer presents a rust API, with the FFI implementation of this trait
-/// responsible for performing all conversions between rust types and their FFI
-/// representations, encapsulating any unsafe operations.
-pub trait HostToRust: std::fmt::Debug + Send + Sync + 'static {
-    /// A `dispatch()` has completed, and the handler returned the provided byte
-    /// response.
-    ///
-    /// If a fatal system error occurred (such as the handler panicking) that
-    /// prevented the client from returning a value itself, then an
-    /// `InvokeError` enum is returned describing the failure (vs. a client
-    /// returning an error is a successful response).
-    fn dispatch_complete(
-        &mut self,
-        correlation_id: CorrelationId,
-        response: Result<Vec<u8>, InvokeError>,
-    );
 }
 
 /// An abstract broker of I/O to the RC delivery backend.
