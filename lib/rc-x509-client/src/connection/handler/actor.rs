@@ -19,13 +19,14 @@ use tracing::{debug, warn};
 
 use crate::{
     codec::{DecodingError, ServerToClient},
+    connection::handler::{ServerMessageDelegate, delegate::MessageDelegate},
     dispatch::{DispatchPublisher, DispatchResult},
     host_runtime::Connection,
 };
 
 /// The control loop for a single connection to the RC backend.
 #[derive(Debug)]
-pub(crate) struct ConnectionHandler<IO> {
+pub(crate) struct ConnectionActor<IO, T> {
     /// The interface through which I/O events can be communicated via the host
     /// application.
     ///
@@ -35,9 +36,12 @@ pub(crate) struct ConnectionHandler<IO> {
 
     /// Application dispatch request / response bridge.
     dispatcher: DispatchPublisher,
+
+    /// A [`ServerToClient`] message processing delegate.
+    delegate: T,
 }
 
-impl<IO> ConnectionHandler<IO>
+impl<IO> ConnectionActor<IO, MessageDelegate>
 where
     IO: Connection,
 {
@@ -47,9 +51,20 @@ where
     /// [`Self::run()`] must be called to completion in order to drive the
     /// connection control loop.
     pub(crate) fn new(io: IO, dispatcher: DispatchPublisher) -> Self {
-        Self { io, dispatcher }
+        Self {
+            io,
+            dispatcher,
+            delegate: MessageDelegate::default(),
+        }
     }
+}
 
+#[allow(private_bounds)]
+impl<IO, T> ConnectionActor<IO, T>
+where
+    IO: Connection,
+    T: ServerMessageDelegate<IO>,
+{
     /// Run the connection control loop to completion.
     ///
     /// Use `stop` to request a graceful shutdown of this task.
@@ -64,28 +79,27 @@ where
             tokio::select! {
                 biased; // Priority select in the order below:
 
-                // Prefer draining the dispatch queue and completing existing
-                // in-flight dispatches prior to accepting new work.
-
-                v = dispatch_ack.next() => {
-                    match v {
-                        Some(v) => self.dispatch_response(v).await,
-                        None => { debug!("dispatch response closed"); return }
-                    }
-                }
+                // In-flight messages from the server and dispatch responses are
+                // dropped when the connection is shut down; the host
+                // application isn't going to forward any messages for this
+                // client after calling for connection shutdown.
                 _ = stop.cancelled() => {
                     return;
                 }
 
-                // In-flight messages from the server are dropped when the
-                // connection is shut down; the host application isn't going to
-                // forward any responses for this client after calling
-                // connection shutdown anyway.
+                // Prefer draining the dispatch queue and completing existing
+                // in-flight dispatches prior to accepting new work.
+                v = dispatch_ack.next() => {
+                    match v {
+                        Some(v) => self.dispatch_response(v).await,
+                        None => { debug!("dispatch processor stopped"); return }
+                    }
+                }
 
                 v = server_messages.next() => {
                     match v {
                         Some(v) => self.server_message(v).await,
-                        None => { debug!("server connection closed"); return }
+                        None => { debug!("io broker stopped"); return }
                     }
                 }
             };
@@ -103,7 +117,8 @@ where
 
         debug!(?msg, "received message from server");
 
-        unimplemented!()
+        // Delegate processing of messages to the dedicated handler:
+        self.delegate.process(msg, &mut self.io).await;
     }
 
     async fn dispatch_response(&mut self, _v: DispatchResult) {
@@ -119,13 +134,14 @@ mod tests {
 
     use super::*;
 
+    /// The actor stops when asked.
     #[tokio::test]
     async fn test_graceful_stop_signal() {
         let (client, _server) = new_io_pair();
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionHandler::new(client, dispatch_publish);
+        let actor = ConnectionActor::new(client, dispatch_publish);
 
         let stop = CancellationToken::default();
         let task = tokio::spawn(actor.run(stop.clone()));
@@ -140,13 +156,15 @@ mod tests {
             .expect("connection control panic");
     }
 
+    /// The actor stops when the IO broker drops the IO handle, signalling it
+    /// will no longer be processing I/O requests.
     #[tokio::test]
     async fn test_graceful_stop_io() {
         let (client, server) = new_io_pair();
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionHandler::new(client, dispatch_publish);
+        let actor = ConnectionActor::new(client, dispatch_publish);
 
         let stop = CancellationToken::default();
         let task = tokio::spawn(actor.run(stop.clone()));
@@ -161,13 +179,15 @@ mod tests {
             .expect("connection control panic");
     }
 
+    /// The actor stops when the dispatch processor signals it will no longer
+    /// process dispatch requests.
     #[tokio::test]
     async fn test_graceful_stop_dispatch_response_stream() {
         let (client, _server) = new_io_pair();
         let (dispatch_publish, _dispatch_stream, dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionHandler::new(client, dispatch_publish);
+        let actor = ConnectionActor::new(client, dispatch_publish);
 
         let stop = CancellationToken::default();
         let task = tokio::spawn(actor.run(stop.clone()));
@@ -180,5 +200,39 @@ mod tests {
             .await
             .expect("timeout waiting for shutdown")
             .expect("connection control panic");
+    }
+
+    // Race a graceful shutdown signal with a server message, to ensure the
+    // shutdown takes priority.
+    #[tokio::test]
+    async fn test_race_shutdown_with_server_message() {
+        let (client, mut server) = new_io_pair();
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+
+        let actor = ConnectionActor::new(client, dispatch_publish);
+
+        let stop = CancellationToken::default();
+
+        // Before the actor runs for the first time, stage the two inputs to
+        // race:
+        stop.cancel();
+        server
+            .send(Ok(ServerToClient::Ping))
+            .await
+            .expect("buffered");
+
+        // Run the task:
+        let task = tokio::spawn(actor.run(stop.clone()));
+
+        // Wait for the actor to stop:
+        tokio::time::timeout(Duration::from_secs(5), task)
+            .await
+            .expect("timeout waiting for shutdown")
+            .expect("connection control panic");
+
+        // The client should not have generated any PONG response, as it shut
+        // down immediately:
+        assert_eq!(server.recv().await, None);
     }
 }
