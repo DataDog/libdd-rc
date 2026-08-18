@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use tokio::sync::mpsc;
+use std::time::Duration;
+
+use tokio::{sync::mpsc, time::timeout};
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::{
@@ -52,16 +54,18 @@ pub(crate) struct MockIOServer {
 
 impl MockIOServer {
     pub(crate) async fn recv(&mut self) -> Option<ClientToServer> {
-        self.to_server.recv().await
+        timeout(Duration::from_secs(5), self.to_server.recv())
+            .await
+            .expect("mock transport timeout: recv from client")
     }
 
     pub(crate) async fn send(
         &mut self,
         v: Result<ServerToClient, DecodingError>,
     ) -> Result<(), ConnectionErr> {
-        self.to_client
-            .send(v)
+        timeout(Duration::from_secs(5), self.to_client.send(v))
             .await
+            .expect("mock transport timeout: sending to client")
             .map_err(|_| ConnectionErr::Closed)
     }
 }
