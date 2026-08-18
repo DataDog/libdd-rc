@@ -423,7 +423,7 @@ func (c *Connection) sendDispatchResult(result dispatchResult) {
 	// of the call (like rc_conn_recv), so encoded can be passed directly
 	// rather than copied into C memory first: the client library makes its
 	// own copy before returning.
-	C.rc_conn_dispatch_result(c.st.conn, C.uint64_t(job.correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
+	C.rc_conn_dispatch_result(c.state.conn, C.uint64_t(result.correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
