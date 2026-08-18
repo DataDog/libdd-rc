@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::time::Duration;
+
+use tokio_util::bytes::Bytes;
+
 /// A [`GracefulDisconnectionCount`] tracks the number of times a single
 /// [`ConnectionId`] has been gracefully disconnected by the server. (calls to
 /// `rc_conn_disconnected()`, caused by a "go away" message from the server).
@@ -54,5 +58,41 @@ impl UngracefulDisconnectionCount {
     /// Return the raw reconnection count.
     pub fn as_raw(&self) -> u64 {
         self.0
+    }
+}
+
+/// The duration of time a connection remained open / connected to the RC
+/// delivery backend before it was marked as closed by the host application.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct LastConnectedDuration(u64);
+
+impl LastConnectedDuration {
+    /// Construct a new [`LastConnectedDuration`].
+    pub fn new(v: Duration) -> Self {
+        Self(v.as_secs())
+    }
+
+    /// Return the number of seconds the connection was in the "open" state.
+    pub fn as_seconds(&self) -> u64 {
+        self.0
+    }
+}
+
+/// Immutable opaque data sent by the server, to be reflected back in any
+/// subsequent reconnection handshake.
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[derive(Debug, PartialEq, Clone)]
+pub struct ReconnectionData(
+    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))] Bytes,
+);
+
+impl ReconnectionData {
+    pub(crate) fn new(bytes: Bytes) -> Self {
+        Self(bytes)
+    }
+
+    pub(crate) fn as_bytes(&self) -> &Bytes {
+        &self.0
     }
 }

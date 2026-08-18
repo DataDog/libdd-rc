@@ -3,9 +3,9 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
-option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
-
 import "protocol/connection_id.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // A `ClientHello` is the opening message sent by the client to the delivery
 // backend once a connection is established.
@@ -23,6 +23,34 @@ message ClientHello {
   // The number of times this client instance has been forcibly / ungracefully
   // disconnected from the RC backend.
   uint64 ungraceful_disconnection_count = 3;
+
+  // Opaque data previously provided by the server by a `SetReconnectionData`
+  // message, or an empty payload if none has been previously set.
+  //
+  // This data is opaque to the client; it MUST NOT change this data in any way.
+  bytes reconnection_data = 4;
+
+  // Client build version information.
+  //
+  // semver major number.
+  uint32 version_major = 5;
+  // Client version: semver minor number.
+  uint32 version_minor = 6;
+  // Client version: semver patch number.
+  uint32 version_patch = 7;
+
+  // Client version: Git commit hash for client build.
+  //
+  // This field contains the raw hash bytes for the full length Git commit hash,
+  // which is typically represented as a string by hex-encoding these raw bytes.
+  bytes version_commit = 8;
+
+  // A friendly, descriptive name that identifies the application that is
+  // connecting (e.g. "Datadog Agent").
+  string app_name = 9;
+
+  // The duration the most recently closed remained connected, if any.
+  uint64 last_closed_connection_duration_seconds = 10;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
@@ -49,4 +77,15 @@ message ClientHelloAck {
 
   // The server nonce used to derive the connection ID.
   bytes server_nonce = 2;
+}
+
+// Opaque data to present to the server if this client instance is later forced
+// to reconnect.
+//
+// This data is used to speed up connection reinitialisation after a disconnect.
+message SetReconnectionData {
+  // The reconnection data.
+  //
+  // This data is opaque to the client; it MUST NOT change this data in any way.
+  bytes opaque = 1;
 }

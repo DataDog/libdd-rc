@@ -14,10 +14,14 @@
 
 use std::fmt::Display;
 
-use aws_lc_rs::digest::{SHA256, SHA256_OUTPUT_LEN};
 use thiserror::Error;
 
-use crate::{cached_string_repr::CachedStringRepr, hex::colon_string, keys::PublicKey};
+use crate::{
+    cached_string_repr::CachedStringRepr,
+    hash::{Digest, HashAlgo, SHA256_OUTPUT_LEN, Sha256},
+    hex::colon_string,
+    keys::PublicKey,
+};
 
 /// Constructing a [`KeyId`] from a byte slice failed due to incorrect length.
 #[derive(Debug, Error)]
@@ -36,7 +40,7 @@ pub struct KeyIdParseError(usize);
 ///     https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct KeyId {
-    digest: [u8; SHA256_OUTPUT_LEN],
+    digest: Digest<SHA256_OUTPUT_LEN, Sha256>,
 
     /// A lazily-rendered string representation of `digest`.
     ///
@@ -57,7 +61,7 @@ impl KeyId {
 
     /// Return this [`KeyId`] as a raw byte slice.
     pub fn as_bytes(&self) -> &[u8] {
-        &self.digest
+        self.digest.as_bytes()
     }
 }
 
@@ -65,7 +69,7 @@ impl std::ops::Deref for KeyId {
     type Target = [u8; 32];
 
     fn deref(&self) -> &Self::Target {
-        &self.digest
+        self.digest.as_array()
     }
 }
 
@@ -76,10 +80,7 @@ impl From<&PublicKey<'_>> for KeyId {
         let info = rcgen::PublicKeyData::subject_public_key_info(key);
 
         Self {
-            digest: aws_lc_rs::digest::digest(&SHA256, &info)
-                .as_ref()
-                .try_into()
-                .expect("sha256 digest is 32 bytes"),
+            digest: Sha256::hash(&info),
             rendered: Default::default(),
         }
     }
@@ -90,7 +91,7 @@ impl TryFrom<&[u8]> for KeyId {
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Ok(Self {
-            digest: value.try_into().map_err(|_| KeyIdParseError(value.len()))?,
+            digest: Digest::from_raw(value.try_into().map_err(|_| KeyIdParseError(value.len()))?),
             rendered: Default::default(),
         })
     }

@@ -44,6 +44,10 @@ message ServerToClient {
     // The handshake ACK in response to a ClientHello message, sent once at the
     // opening of the connection.
     ClientHelloAck client_hello_ack = 4;
+
+    // Update the reconnection data the client should present in a subsequent
+    // reconnection (if any).
+    SetReconnectionData set_reconnection_data = 5;
   }
 }
 

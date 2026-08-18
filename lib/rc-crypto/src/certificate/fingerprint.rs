@@ -14,13 +14,16 @@
 
 use std::fmt::Display;
 
-use aws_lc_rs::digest::{SHA256, digest};
 use x509_parser::prelude::X509Certificate;
 
-use crate::{cached_string_repr::CachedStringRepr, hex::colon_string};
+use crate::{
+    cached_string_repr::CachedStringRepr,
+    hash::{Digest, HashAlgo, Sha256},
+    hex::colon_string,
+};
 
 /// The byte length of a fingerprint is always 32 for SHA256 digests.
-const FINGERPRINT_LEN: usize = aws_lc_rs::digest::SHA256_OUTPUT_LEN;
+const FINGERPRINT_LEN: usize = crate::hash::SHA256_OUTPUT_LEN;
 
 /// A [`Fingerprint`] is a deterministic, fixed-length SHA-256 hash that
 /// uniquely identifies a single issued [`Certificate`].
@@ -37,7 +40,7 @@ const FINGERPRINT_LEN: usize = aws_lc_rs::digest::SHA256_OUTPUT_LEN;
 /// [RFC 4387 § 2.2]: https://datatracker.ietf.org/doc/html/rfc4387#section-2.2
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Fingerprint {
-    digest: [u8; FINGERPRINT_LEN],
+    digest: Digest<FINGERPRINT_LEN, Sha256>,
 
     /// A lazily-rendered string representation of `digest`.
     ///
@@ -58,7 +61,7 @@ impl Fingerprint {
 
     /// Return the raw fingerprint digest bytes.
     pub fn as_bytes(&self) -> &[u8] {
-        &self.digest
+        self.digest.as_bytes()
     }
 }
 
@@ -70,13 +73,8 @@ impl Display for Fingerprint {
 
 impl<'a> From<&'a X509Certificate<'a>> for Fingerprint {
     fn from(cert: &'a X509Certificate<'a>) -> Self {
-        let hash = digest(&SHA256, cert.as_raw());
-
         Self {
-            digest: hash
-                .as_ref()
-                .try_into()
-                .expect("sha256 digest length is fixed"),
+            digest: Sha256::hash(cert.as_raw()),
             rendered: Default::default(),
         }
     }
@@ -104,7 +102,7 @@ mod tests {
             25, 26, 27, 28, 29, 30, 31, 32,
         ];
         let f = Fingerprint {
-            digest: input,
+            digest: Digest::from_raw(input),
             rendered: Default::default(),
         };
 
