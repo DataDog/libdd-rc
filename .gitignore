@@ -1,5 +1,9 @@
 /target
 
+# Local Go workspace file (per-developer IDE setup)
+/go.work
+/go.work.sum
+
 # Release script output
 publish.log
 

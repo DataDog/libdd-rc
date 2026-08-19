@@ -339,7 +339,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		handler:       handler,
 		request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns, Payload: innerPayload},
 	}
-	conn.st.dispatchQueue <- job
+	conn.state.dispatchQueue <- job
 
 	select {
 	case got := <-called:
