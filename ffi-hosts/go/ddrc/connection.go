@@ -30,7 +30,14 @@ import (
 // I don't think we want this unbounded.
 const (
 	dispatchQueueCap = 100
-	resultQueueCap   = 100
+
+	// resultQueueCap must be able to absorb the full shutdown drain without
+	// forcing invoke workers to block on enqueue if the result worker or the
+	// FFI dispatch path is temporarily backpressured. In the worst case, that
+	// means one result for every queued dispatch plus one result for every
+	// invoke worker currently processing a job.
+	resultQueueCap = dispatchQueueCap + invokeWorkerCount
+
 	outgoingQueueCap = 100
 
 	// invokeWorkerCount is the size of the goroutine pool that invokes
