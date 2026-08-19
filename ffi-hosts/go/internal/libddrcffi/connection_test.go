@@ -398,3 +398,114 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// TestDisconnectedClosesOutgoing verifies that the outgoing channel is closed
+// once the connection has been freed. A consumer draining it needs that close
+// as its termination signal, since it is what tells the consumer that no
+// further payload can arrive from the client library.
+func TestDisconnectedClosesOutgoing(t *testing.T) {
+	ctx, err := Init()
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+	defer func() { _ = ctx.Close() }()
+
+	conn, err := ctx.NewConnection()
+	if err != nil {
+		t.Fatalf("NewConnection() returned error: %v", err)
+	}
+	if err := conn.Connected(); err != nil {
+		t.Fatalf("Connected() returned error: %v", err)
+	}
+
+	outgoing := conn.Outgoing()
+	select {
+	case payload, ok := <-outgoing:
+		t.Fatalf("outgoing yielded (%v, %v) before Disconnected, want it to block", payload, ok)
+	default:
+	}
+
+	if err := conn.Disconnected(); err != nil {
+		t.Fatalf("Disconnected() returned error: %v", err)
+	}
+
+	select {
+	case _, ok := <-outgoing:
+		if ok {
+			t.Fatal("outgoing yielded a payload, want it to be closed")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for outgoing to be closed by Disconnected")
+	}
+}
+
+// TestDisconnectedPreservesQueuedOutgoing verifies that payloads the client
+// library handed us before teardown are still readable after Disconnected has
+// closed the channel. The session layer answers dispatch results during the
+// shutdown drain, so closing the channel must not cost us the payloads already
+// queued on it.
+func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
+	ctx, err := Init()
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+	defer func() { _ = ctx.Close() }()
+
+	conn, err := ctx.NewConnection()
+	if err != nil {
+		t.Fatalf("NewConnection() returned error: %v", err)
+	}
+	if err := conn.Connected(); err != nil {
+		t.Fatalf("Connected() returned error: %v", err)
+	}
+
+	// Stands in for goSendCb enqueueing a dispatch result: rc-x509-client's
+	// Main is a no-op today, so no organic send reaches the channel.
+	payload := []byte{0x01, 0x02, 0x03}
+	conn.state.outgoing <- payload
+
+	if err := conn.Disconnected(); err != nil {
+		t.Fatalf("Disconnected() returned error: %v", err)
+	}
+
+	var drained [][]byte
+	for msg := range conn.Outgoing() {
+		drained = append(drained, msg)
+	}
+
+	if len(drained) != 1 || string(drained[0]) != string(payload) {
+		t.Fatalf("drained %v, want exactly one payload %v", drained, payload)
+	}
+}
+
+// TestContextCloseClosesOutgoing verifies that a connection torn down by the
+// context rather than by its own caller also has its outgoing channel closed.
+// A session still holding the channel would otherwise spin on a receive that
+// never blocks again.
+func TestContextCloseClosesOutgoing(t *testing.T) {
+	ctx, err := Init()
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+
+	conn, err := ctx.NewConnection()
+	if err != nil {
+		t.Fatalf("NewConnection() returned error: %v", err)
+	}
+	if err := conn.Connected(); err != nil {
+		t.Fatalf("Connected() returned error: %v", err)
+	}
+
+	if err := ctx.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+
+	select {
+	case _, ok := <-conn.Outgoing():
+		if ok {
+			t.Fatal("outgoing yielded a payload, want it to be closed")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for outgoing to be closed by ctx.Close")
+	}
+}
