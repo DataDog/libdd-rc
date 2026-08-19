@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 // NOTE: rc-crypto defaults to the "fips" feature, and AWS-LC's FIPS-validated
 // crypto module ships only as a shared object (never a static archive) since
@@ -11,9 +11,9 @@ package ddrc
 // bumps in Cargo.lock.
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../../../include
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -liconv -framework CoreFoundation -framework Security -lm -Wl,-rpath,${SRCDIR}/../../../target/release
-#cgo linux LDFLAGS: -L${SRCDIR}/../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -lpthread -ldl -lm -Wl,-rpath,${SRCDIR}/../../../target/release
+#cgo CFLAGS: -I${SRCDIR}/../../../../include
+#cgo darwin LDFLAGS: -L${SRCDIR}/../../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -liconv -framework CoreFoundation -framework Security -lm -Wl,-rpath,${SRCDIR}/../../../../target/release
+#cgo linux LDFLAGS: -L${SRCDIR}/../../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -lpthread -ldl -lm -Wl,-rpath,${SRCDIR}/../../../../target/release
 #include "libdd_rc.h"
 */
 import "C"

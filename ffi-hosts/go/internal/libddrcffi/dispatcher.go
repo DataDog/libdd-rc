@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 import (
 	"errors"

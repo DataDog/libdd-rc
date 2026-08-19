@@ -1,7 +1,9 @@
-# ddrc — Go bindings for libdd-rc
+# libddrcffi — Go bindings for libdd-rc
 
 Go bindings for the libdd-rc C FFI interface (`include/libdd_rc.h`), built
-via cgo against a statically linked `rc-x509-ffi` archive.
+via cgo against a statically linked `rc-x509-ffi` archive. This package is
+internal: it's only intended to be used by the Go wrapper built on top of it
+in this module.
 
 ## Building
 
