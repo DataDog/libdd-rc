@@ -255,7 +255,10 @@ func (c *Connection) Connected() error {
 //
 // It blocks until dispatched payloads that have already been accepted have
 // been handled and answered, which includes waiting for in-flight handler
-// calls to return.
+// calls to return. Answering those payloads enqueues onto the channel returned
+// by Outgoing, so a caller that wants those responses delivered to the RC
+// backend has to keep draining it concurrently with this call. The channel is
+// closed before Disconnected returns.
 //
 // If Connected was never called, the rc-x509-client backend is not notified
 // (doing so would panic), but the connection's resources are still freed as we
@@ -292,6 +295,11 @@ func (c *Connection) Disconnected() error {
 	C.rc_conn_free(c.state.conn)
 	c.state.pinner.Unpin()
 	c.state.handlePtr.Delete()
+
+	// rc_conn_free has returned, so the client library guarantees no further
+	// callbacks. That makes this the first point at which closing outgoing
+	// cannot race a goSendCb send onto it, which would panic.
+	close(c.state.outgoing)
 
 	c.mu.Unlock()
 
@@ -340,6 +348,21 @@ func (c *Connection) Recv(data []byte) error {
 	}
 
 	return nil
+}
+
+// Outgoing returns the channel carrying payloads that rc-x509-client wants
+// written to the RC backend.
+//
+// The caller is expected to keep draining it for the lifetime of the
+// connection, including while Disconnected is running: the dispatch results
+// produced by the shutdown drain are enqueued here, and goSendCb drops
+// payloads rather than blocking once the channel is full.
+//
+// Disconnected closes the channel once the connection has been freed, so a
+// receive reporting the channel as closed means every payload the client
+// library will ever produce has already been delivered.
+func (c *Connection) Outgoing() <-chan []byte {
+	return c.state.outgoing
 }
 
 // invokeWorker is one of invokeWorkerCount goroutines draining dispatchQueue
