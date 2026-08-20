@@ -38,19 +38,18 @@ message ClientHello {
   uint32 version_minor = 6;
   // Client version: semver patch number.
   uint32 version_patch = 7;
+  // Client version: optional pre-release string.
+  optional string version_pre = 8;
 
   // Client version: Git commit hash for client build.
-  //
-  // This field contains the raw hash bytes for the full length Git commit hash,
-  // which is typically represented as a string by hex-encoding these raw bytes.
-  bytes version_commit = 8;
+  string version_commit = 9;
 
   // A friendly, descriptive name that identifies the application that is
   // connecting (e.g. "Datadog Agent").
-  string app_name = 9;
+  string app_name = 10;
 
   // The duration the most recently closed remained connected, if any.
-  uint64 last_closed_connection_duration_seconds = 10;
+  uint64 last_closed_connection_duration_seconds = 11;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
