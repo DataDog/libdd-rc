@@ -162,7 +162,7 @@ fn magic_tunnel() {
             payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
                 magic_tunnel::v1::MagicTunnelResponse {
                     result: Some(magic_tunnel::v1::magic_tunnel_response::Result::Response(
-                        vec![1, 2, 3, 4].into(),
+                        vec![1, 2, 3, 4],
                     )),
                 },
             )),

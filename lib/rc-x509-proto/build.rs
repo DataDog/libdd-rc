@@ -19,9 +19,11 @@ use glob::glob;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = prost_build::Config::new();
 
-    // A list of paths to fields that use `Bytes`, which need a manual impl of
-    // Arbitrary defined to avoid compilation errors caused by derive(Arbitrary)
-    // not being implemented for Bytes.
+    // A list of paths to fields that use `Bytes` instead of `Vec<u8>`.
+    //
+    // This configures the field type, and adds a manual impl of Arbitrary to
+    // avoid compilation errors caused by derive(Arbitrary) not being
+    // implemented for Bytes.
     let bytes_fields = [
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.payload",
         "rc.x509.protocol.v1.Certificate.der",
@@ -39,13 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
     }
 
-    // The `response` field is inside a `oneof`, so it becomes an enum variant
-    // (`Result::Response(Bytes)`) rather than a struct field. The proptest
-    // `strategy` attribute on an enum variant must produce the full enum value,
-    // not just the inner field, so we use a dedicated helper.
+    // `google.protobuf.Timestamp` is mapped to `prost_types::Timestamp`, which
+    // doesn't implement `Arbitrary`, so it needs a manual strategy too.
     config.field_attribute(
-        "rc.x509.magic_tunnel.v1.MagicTunnelResponse.result.response",
-        r#"#[proptest(strategy = "crate::arbitrary_oneof_bytes(Self::Response)")]"#,
+        "rc.x509.magic_tunnel.remote_config.v1.PingResponse.now",
+        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
 
     config.type_attribute(
@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "OUT_DIR not set"))?;
     let descriptor_path = std::path::PathBuf::from(out_dir).join("rc_x509_proto_descriptor.bin");
     config
-        .bytes(["."])
+        .bytes(bytes_fields)
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;

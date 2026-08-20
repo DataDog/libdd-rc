@@ -1,34 +1,39 @@
 syntax = "proto3";
 package rc.x509.magic_tunnel.remote_config.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config;remoteconfigv1";
 
 // Magic Tunnel request payloads for the `REMOTE_CONFIG` namespace.
 message RemoteConfigRequest {
   oneof subtopic {
-    FlareRequest flare_request = 1;
+    // "Ping" the host application, through the dispatch interface to verify
+    // end-to-end functionality.
+    PingRequest ping = 1;
   }
 }
 
 // Response payloads for `RemoteConfigRequest` calls.
 message RemoteConfigResponse {
   oneof subtopic {
-    FlareResponse flare_response = 1;
+    PingResponse ping_response = 1;
   }
 }
 
-// Request the agent return gather and return troubleshooting data to Datadog
-// servers - an "Agent Flare":
-//
-//  https://docs.datadoghq.com/agent/troubleshooting/send_a_flare/?tab=agent
-//
-message FlareRequest {
-  string uuid = 1;
-  string user_handle = 2;
-  uint64 case_id = 3;
+message PingRequest {
+  // The Connection ID of the client to ping.
+  string connection_id = 1;
+
+  // A reason for the ping, logged on the client.
+  string reason = 2;
+
+  // Some opaque payload the client should return (e.g. to measure approximate
+  // bandwidth by sending a known size payload and recording the response time).
+  bytes payload = 3;
 }
 
-message FlareResponse {
-  // The zip archive containing the flare data.
-  bytes zip_archive = 1;
+message PingResponse {
+  // The current timestamp as reported by the client.
+  google.protobuf.Timestamp now = 1;
 }

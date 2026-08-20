@@ -25,6 +25,7 @@ bytes = { version = "1", features = ["serde"] }
 proptest = "1.11.0"
 proptest-derive = "0.8.0"
 prost = "0.14"
+prost-types = "0.14"
 serde = { version = "1", features = ["derive"] }
 
 [lints]
