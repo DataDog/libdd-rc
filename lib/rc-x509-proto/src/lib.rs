@@ -32,6 +32,14 @@ pub(crate) mod rc {
             pub mod v1 {
                 include!(concat!(env!("OUT_DIR"), "/rc.x509.magic_tunnel.v1.rs"));
             }
+            pub mod remote_config {
+                pub mod v1 {
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_config.v1.rs"
+                    ));
+                }
+            }
         }
         pub mod signature {
             pub mod v1 {
@@ -86,16 +94,11 @@ pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
     proptest::prelude::any::<Vec<u8>>().prop_map(Bytes::from)
 }
 
-/// A value generator for [`Bytes`] fields inside `oneof` enum variants.
-///
-/// Unlike struct fields where the strategy produces just the field value, an
-/// enum variant `#[proptest(strategy)]` must produce the full enum value. This
-/// helper takes the variant constructor and wraps [`arbitrary_bytes()`] with
-/// any `T` enum variant.
-pub(crate) fn arbitrary_oneof_bytes<T: std::fmt::Debug>(
-    f: fn(Bytes) -> T,
-) -> impl Strategy<Value = T> {
-    arbitrary_bytes().prop_map(f)
+/// A value generator for [`prost_types::Timestamp`] fields (to satisfy the
+/// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<prost_types::Timestamp>> {
+    proptest::prelude::any::<(i64, i32)>()
+        .prop_map(|(seconds, nanos)| Some(prost_types::Timestamp { seconds, nanos }))
 }
 
 #[cfg(test)]

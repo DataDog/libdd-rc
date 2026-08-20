@@ -41,13 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
     }
 
-    // The `response` field is inside a `oneof`, so it becomes an enum variant
-    // (`Result::Response(Bytes)`) rather than a struct field. The proptest
-    // `strategy` attribute on an enum variant must produce the full enum value,
-    // not just the inner field, so we use a dedicated helper.
+    // `google.protobuf.Timestamp` is mapped to `prost_types::Timestamp`, which
+    // doesn't implement `Arbitrary`, so it needs a manual strategy too.
     config.field_attribute(
-        "rc.x509.magic_tunnel.v1.MagicTunnelResponse.result.response",
-        r#"#[proptest(strategy = "crate::arbitrary_oneof_bytes(Self::Response)")]"#,
+        "rc.x509.magic_tunnel.remote_config.v1.PingResponse.now",
+        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
 
     config.type_attribute(
