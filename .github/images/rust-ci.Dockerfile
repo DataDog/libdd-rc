@@ -61,7 +61,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     golang-go \
     # rc-x509-proto -> prost deps
+    #
+    # libprotobuf-dev provides the well-known-types .proto sources (e.g.
+    # google/protobuf/timestamp.proto) that protoc needs an explicit -I to
+    # find on Debian, unlike newer protoc releases which embed them.
     protobuf-compiler \
+    libprotobuf-dev \
     #
     ##################
     # cleanup
@@ -69,6 +74,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Go wrapper dependency.
 ENV PATH="${HOME}/go/bin:${PATH}"
+# protoc well-known-types include path, see the apt install step above.
+ENV PROTOC_INCLUDE="/usr/include"
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 RUN rustup component add clippy \
