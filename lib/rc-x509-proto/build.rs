@@ -19,9 +19,11 @@ use glob::glob;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = prost_build::Config::new();
 
-    // A list of paths to fields that use `Bytes`, which need a manual impl of
-    // Arbitrary defined to avoid compilation errors caused by derive(Arbitrary)
-    // not being implemented for Bytes.
+    // A list of paths to fields that use `Bytes` instead of `Vec<u8>`.
+    //
+    // This configures the field type, and adds a manual impl of Arbitrary to
+    // avoid compilation errors caused by derive(Arbitrary) not being
+    // implemented for Bytes.
     let bytes_fields = [
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.payload",
         "rc.x509.protocol.v1.Certificate.der",
@@ -69,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "OUT_DIR not set"))?;
     let descriptor_path = std::path::PathBuf::from(out_dir).join("rc_x509_proto_descriptor.bin");
     config
-        .bytes(["."])
+        .bytes(bytes_fields)
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
