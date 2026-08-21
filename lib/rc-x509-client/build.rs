@@ -41,16 +41,4 @@ fn main() {
             println!("cargo:warning=client will have no embedded commit hash: {err}");
         }
     }
-
-    // Rerun this build script whenever the git HEAD pointer changes (new commit
-    // or change branch).
-    if let Some(git_dir) = Command::new("git")
-        .args(["rev-parse", "--git-dir"])
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .and_then(|output| String::from_utf8(output.stdout).ok())
-    {
-        println!("cargo:rerun-if-changed={}/HEAD", git_dir.trim());
-    }
 }
