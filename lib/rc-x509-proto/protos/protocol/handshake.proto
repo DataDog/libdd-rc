@@ -42,7 +42,7 @@ message ClientHello {
   optional string version_pre = 8;
 
   // Client version: Git commit hash for client build.
-  string version_commit = 9;
+  optional string version_commit = 9;
 
   // A friendly, descriptive name that identifies the application that is
   // connecting (e.g. "Datadog Agent").

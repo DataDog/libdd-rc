@@ -18,8 +18,10 @@ use std::fmt::Display;
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct BuildVersion {
-    #[cfg_attr(test, proptest(value = r#"env!("BUILD_GIT_COMMIT_HASH")"#))]
-    commit: &'static str,
+    // When used as a library, it will be downloaded without a git repo, and
+    // this value will be empty.
+    #[cfg_attr(test, proptest(value = r#"Some(env!("BUILD_GIT_COMMIT_HASH"))"#))]
+    commit: Option<&'static str>,
 
     major: u32,
     minor: u32,
@@ -51,7 +53,7 @@ impl BuildVersion {
     }
 
     /// Return the Git commit hash of the build.
-    pub(crate) fn commit(&self) -> &'static str {
+    pub(crate) fn commit(&self) -> Option<&'static str> {
         self.commit
     }
 
@@ -67,7 +69,7 @@ impl BuildVersion {
             minor: env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
             patch: env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
             pre,
-            commit: env!("BUILD_GIT_COMMIT_HASH"),
+            commit: option_env!("BUILD_GIT_COMMIT_HASH"),
         }
     }
 }
@@ -80,28 +82,23 @@ impl Default for BuildVersion {
 
 impl Display for BuildVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.pre {
-            Some(pre) => {
-                write!(
-                    f,
-                    "{major}.{minor}.{patch}-{pre} ({hash})",
-                    major = self.major(),
-                    minor = self.minor(),
-                    patch = self.patch(),
-                    hash = self.commit()
-                )
-            }
-            None => {
-                write!(
-                    f,
-                    "{major}.{minor}.{patch} ({hash})",
-                    major = self.major(),
-                    minor = self.minor(),
-                    patch = self.patch(),
-                    hash = self.commit()
-                )
-            }
+        write!(
+            f,
+            "{major}.{minor}.{patch}",
+            major = self.major(),
+            minor = self.minor(),
+            patch = self.patch(),
+        )?;
+
+        if let Some(pre) = self.pre() {
+            write!(f, "-{pre}")?;
         }
+
+        if let Some(hash) = self.commit() {
+            write!(f, " ({hash})")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -117,13 +114,13 @@ mod tests {
         assert_eq!(v.patch(), env!("CARGO_PKG_VERSION_PATCH").parse().unwrap());
         assert_eq!(v.pre().unwrap_or_default(), env!("CARGO_PKG_VERSION_PRE"));
 
-        assert_eq!(v.commit().len(), 40);
+        assert_eq!(v.commit().expect("tests run in real git repo").len(), 40);
     }
 
     #[test]
     fn test_display_with_pre() {
         let v = BuildVersion {
-            commit: "c97b3db69056405b8116dc94d8033a4cb335fe9e",
+            commit: Some("c97b3db69056405b8116dc94d8033a4cb335fe9e"),
             major: 4,
             minor: 2,
             patch: 0,
@@ -137,9 +134,35 @@ mod tests {
     }
 
     #[test]
+    fn test_display_without_commit_hash_without_pre() {
+        let v = BuildVersion {
+            commit: None,
+            major: 4,
+            minor: 2,
+            patch: 0,
+            pre: None,
+        };
+
+        assert_eq!(v.to_string(), "4.2.0");
+    }
+
+    #[test]
+    fn test_display_without_commit_hash_with_pre() {
+        let v = BuildVersion {
+            commit: None,
+            major: 4,
+            minor: 2,
+            patch: 0,
+            pre: Some("alpha"),
+        };
+
+        assert_eq!(v.to_string(), "4.2.0-alpha");
+    }
+
+    #[test]
     fn test_display() {
         let v = BuildVersion {
-            commit: "c97b3db69056405b8116dc94d8033a4cb335fe9e",
+            commit: Some("c97b3db69056405b8116dc94d8033a4cb335fe9e"),
             major: 4,
             minor: 2,
             patch: 0,
