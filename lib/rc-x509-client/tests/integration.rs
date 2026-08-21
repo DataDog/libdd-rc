@@ -18,6 +18,8 @@
 
 mod harness;
 
+use std::time::Duration;
+
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::UntrustedConnectionId;
 use rc_x509_client::codec::{ClientToServer, ServerToClient};
@@ -109,6 +111,55 @@ async fn test_handshake() {
         connection_id: UntrustedConnectionId::new(Default::default(), Default::default()),
     }))
     .await;
+
+    client.shutdown().await;
+}
+
+/// Ensure instance statistics accumulate / are reported across connections.
+#[tokio::test]
+async fn test_connection_metrics() {
+    harness::logging::init();
+
+    const DELAY: Duration = Duration::from_secs(60);
+
+    let mut client = TestClient::default();
+
+    let mut conn = client.new_connection().await;
+    let got = conn.recv().await;
+    assert_matches!(
+        got,
+        ClientToServer::ClientHello {
+            graceful,
+            ungraceful,
+            last_closed_connection_duration,
+            ..
+        } => {
+            assert_eq!(graceful.as_raw(), 0);
+            assert_eq!(ungraceful.as_raw(), 0);
+            assert_eq!(last_closed_connection_duration.as_seconds(), 0);
+        }
+    );
+
+    tokio::time::pause();
+    tokio::time::advance(DELAY).await;
+
+    conn.close().await;
+
+    let mut conn = client.new_connection().await;
+    let got = conn.recv().await;
+    assert_matches!(
+        got,
+        ClientToServer::ClientHello {
+            graceful,
+            ungraceful,
+            last_closed_connection_duration,
+            ..
+        } => {
+            assert_eq!(graceful.as_raw(), 0);
+            assert_eq!(ungraceful.as_raw(), 0);
+            assert!(last_closed_connection_duration.as_seconds() >= DELAY.as_secs());
+        }
+    );
 
     client.shutdown().await;
 }

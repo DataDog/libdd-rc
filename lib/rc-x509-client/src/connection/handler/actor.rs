@@ -15,6 +15,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::pin_mut;
+use tokio::time::Instant;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
@@ -81,7 +82,19 @@ where
     /// Run the connection control loop to completion.
     ///
     /// Use `stop` to request a graceful shutdown of this task.
-    pub(crate) async fn run(mut self, stop: CancellationToken) {
+    pub(crate) async fn run(self, stop: CancellationToken) {
+        // Grab the timestamp for connection lifetime reporting later.
+        let start = Instant::now();
+        let metrics = Arc::clone(&self.metrics);
+
+        // Run the main actor loop.
+        self.run_loop(stop).await;
+
+        // Record the duration this connection was active.
+        metrics.set_last_conn_duration(start.elapsed());
+    }
+
+    async fn run_loop(mut self, stop: CancellationToken) {
         let dispatch_ack = self.dispatcher.take_recv_stream().expect("first call");
         let server_messages = self.io.take_recv_stream().expect("first call");
 
