@@ -95,7 +95,8 @@ impl From<ClientToServer> for Vec<u8> {
                 version_major: version_info.major(),
                 version_minor: version_info.minor(),
                 version_patch: version_info.patch(),
-                version_commit: version_info.commit().clone(),
+                version_commit: version_info.commit().map(|v| v.to_string()),
+                version_pre: version_info.pre().map(|v| v.to_string()),
                 app_name,
             }),
 
