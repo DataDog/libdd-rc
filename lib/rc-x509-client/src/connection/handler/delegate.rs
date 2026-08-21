@@ -14,6 +14,8 @@
 
 use std::fmt::Debug;
 
+use tracing::debug;
+
 use crate::{
     codec::{ClientToServer, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate},
@@ -31,6 +33,9 @@ where
     async fn process(&mut self, msg: ServerToClient, reply: &mut IO) {
         match msg {
             ServerToClient::Ping => reply.send(ClientToServer::Pong).await.expect("pong!"),
+            ServerToClient::ClientHelloAck { connection_id } => {
+                debug!(?connection_id, "obtained unverified connection ID");
+            }
             _ => unimplemented!(),
         }
     }

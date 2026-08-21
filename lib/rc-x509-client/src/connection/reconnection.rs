@@ -22,7 +22,7 @@ use tokio_util::bytes::Bytes;
 ///
 /// Invariant: guaranteed to be sequential, starting from 0 for the first,
 /// tracked per connection.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GracefulDisconnectionCount(u64);
 
@@ -45,7 +45,7 @@ impl GracefulDisconnectionCount {
 ///
 /// Invariant: guaranteed to be sequential, starting from 0 for the first,
 /// tracked per connection.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct UngracefulDisconnectionCount(u64);
 
@@ -63,7 +63,7 @@ impl UngracefulDisconnectionCount {
 
 /// The duration of time a connection remained open / connected to the RC
 /// delivery backend before it was marked as closed by the host application.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct LastConnectedDuration(u64);
 
@@ -82,7 +82,7 @@ impl LastConnectedDuration {
 /// Immutable opaque data sent by the server, to be reflected back in any
 /// subsequent reconnection handshake.
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct ReconnectionData(
     #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))] Bytes,
 );

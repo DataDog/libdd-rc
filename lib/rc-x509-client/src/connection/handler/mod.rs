@@ -14,6 +14,7 @@
 
 mod actor;
 mod delegate;
+mod hello;
 mod traits;
 
 pub(crate) use actor::*;

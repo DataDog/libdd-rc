@@ -25,6 +25,7 @@ pub mod connection;
 pub mod dispatch;
 pub mod entrypoint;
 pub mod host_runtime;
+mod metrics;
 mod shutdown_signal;
 
 pub use abort_on_drop::*;
