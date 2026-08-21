@@ -17,23 +17,33 @@
 use std::process::Command;
 
 fn main() {
-    let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .expect("failed to run `git rev-parse HEAD`");
-    if !output.status.success() {
-        panic!(
-            "`git rev-parse HEAD` failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+    let git_call = Command::new("git").args(["rev-parse", "HEAD"]).output();
+
+    // Check if the execution succeeded (Ok) and if it did, check if the git
+    // command returned 0, else capture the error output.
+    let err = match git_call {
+        Ok(output) if output.status.success() => {
+            let hash = String::from_utf8_lossy(&output.stdout);
+            println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={hash}");
+            None
+        }
+        Ok(output) => Some(String::from_utf8_lossy(&output.stderr).to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+
+    // The hash couldn't be read, because of the error output in "err".
+    if let Some(err) = err {
+        // If there is a build-time override set, use this value:
+        if let Some(v) = option_env!("_OVERRIDE_GIT_VERSION_HASH") {
+            println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={v}");
+        } else {
+            // else the build is broken.
+            println!("cargo:warning=client will have no embedded commit hash: {err}");
+        }
     }
-    let commit_hash = String::from_utf8(output.stdout)
-        .expect("git commit hash was not valid UTF-8")
-        .trim()
-        .to_string();
 
-    println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={commit_hash}");
-
+    // Rerun this build script whenever the git HEAD pointer changes (new commit
+    // or change branch).
     if let Some(git_dir) = Command::new("git")
         .args(["rev-parse", "--git-dir"])
         .output()

@@ -63,3 +63,7 @@ runs:
     - name: Clean stale aws-lc build state
       shell: bash
       run: cargo clean -p aws-lc-fips-sys -p aws-lc-sys 2>/dev/null || true
+
+    - name: Set git ref for build info
+      shell: bash
+      run: echo "_OVERRIDE_GIT_VERSION_HASH=${{ github.sha }}" >> $GITHUB_ENV
