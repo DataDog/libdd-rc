@@ -24,7 +24,7 @@ use tokio::pin;
 
 use crate::{
     AbortOnDrop, ShutdownSignal,
-    connection::{ConnectionEvent, ConnectionHandler, ConnectionUpdate},
+    connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate},
     host_runtime::Connection,
 };
 
@@ -120,7 +120,7 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Init => debug!("new connection registered"),
             ConnectionEvent::Connected(io, dispatch) => {
                 let stop = CancellationToken::default();
-                let conn = ConnectionHandler::new(io, dispatch);
+                let conn = ConnectionActor::new(io, dispatch);
                 let task = tokio::spawn(conn.run(stop.clone()));
 
                 let old = active_conn.replace(ActiveConn { task, stop });
