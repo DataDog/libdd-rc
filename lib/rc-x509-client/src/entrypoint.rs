@@ -72,7 +72,10 @@ where
         );
 
         // Begin processing the connection events.
-        let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(conn_events)));
+        let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
+            shutdown.clone(),
+            conn_events,
+        )));
 
         // Wait forever for the shutdown signal.
         shutdown.wait_for_shutdown().await;
@@ -100,6 +103,7 @@ where
 /// `incoming` is closed to signal this function should close any existing
 /// connections and exit.
 async fn handle_connection_events<IO>(
+    shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
 ) where
     IO: Connection,
@@ -110,16 +114,38 @@ async fn handle_connection_events<IO>(
     //
     // TODO: this assumes the host opens a single connection - this needs to be
     // enforced at the FFI API.
-    let mut active_conn = None;
+    let mut active_conn: Option<ActiveConn> = None;
 
     pin!(incoming);
-    while let Some(event) = incoming.next().await {
+    loop {
+        let event = tokio::select! {
+            v = incoming.next() => v,
+            _ = shutdown.wait_for_shutdown() => {
+                debug!("gracefully stopping connection event handler");
+                if let Some(v) = active_conn.take() {
+                    v.stop().await;
+                }
+                return;
+            }
+        };
+
+        let event = match event {
+            Some(v) => v,
+            None => {
+                debug!("connection event stream closed");
+                if let Some(v) = active_conn.take() {
+                    v.stop().await;
+                }
+                return;
+            }
+        };
+
         debug!(?event, "received connection lifecycle event");
 
         match event.into_event() {
             ConnectionEvent::Init => debug!("new connection registered"),
             ConnectionEvent::Connected(io, dispatch) => {
-                let stop = CancellationToken::default();
+                let stop = shutdown.child_token();
                 let conn = ConnectionActor::new(io, dispatch);
                 let task = tokio::spawn(conn.run(stop.clone()));
 
@@ -136,8 +162,6 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Release => debug!("connection released"),
         }
     }
-
-    debug!("stopping connection event handler");
 }
 
 /// A container that holds the active connection.
