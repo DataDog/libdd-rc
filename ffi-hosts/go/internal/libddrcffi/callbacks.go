@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 /*
 #include "libdd_rc.h"
@@ -62,10 +62,10 @@ func goDispatchCb(correlationID C.uint64_t, data *C.uint8_t, length C.uint32_t, 
 		request:       mt,
 	}
 
-    // Aquire the lock to check the validity of this connState and enqueue
-    // the job if valid.
-    // 
-    // This lock only contends with the connection close path.
+	// Aquire the lock to check the validity of this connState and enqueue
+	// the job if valid.
+	//
+	// This lock only contends with the connection close path.
 	st.dispatchMu.Lock()
 	defer st.dispatchMu.Unlock()
 	// The connection is being torn down, and the dispatch worker that would
