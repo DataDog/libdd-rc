@@ -32,6 +32,14 @@ impl ShutdownSignal {
         (Self(token.clone()), ShutdownCtl(token))
     }
 
+    /// Return a [`CancellationToken`] that is cancelled when this
+    /// [`ShutdownSignal`] is signalled, but can also be cancelled within the
+    /// scope of the returned [`CancellationToken`] independently of this
+    /// [`ShutdownSignal`].
+    pub fn child_token(&self) -> CancellationToken {
+        self.0.child_token()
+    }
+
     /// Wait for the shutdown signal.
     pub async fn wait_for_shutdown(&self) {
         self.0.cancelled().await
@@ -184,5 +192,29 @@ mod tests {
         // Worker tasks should not have panicked.
         assert!(a.is_ok());
         assert!(b.is_ok());
+    }
+
+    #[test]
+    fn test_child_token() {
+        let (signal, shutdown) = ShutdownSignal::new();
+
+        let child_a = signal.child_token();
+        let child_b = signal.child_token();
+
+        assert!(!child_a.is_cancelled());
+        assert!(!child_b.is_cancelled());
+
+        // Cancelling one child works:
+        child_a.cancel();
+        assert!(child_a.is_cancelled());
+
+        // Does not affect child B or the shutdown signal:
+        assert!(!child_b.is_cancelled());
+        assert!(!signal.0.is_cancelled());
+
+        // But cancelling the shutdown token cancels all children:
+        shutdown.shutdown_now();
+        assert!(child_b.is_cancelled());
+        assert!(signal.0.is_cancelled());
     }
 }
