@@ -1,0 +1,44 @@
+// Graceful disconnect notification.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
+
+// The client is disconnecting due to a protocol error.
+//
+// This typically caused by the server sending a protocol message that is
+// unexpected for the current client state.
+//
+// Upon receipt of a ClientProtocolError, the server MUST close the connection.
+message ClientProtocolError {
+  // Error conditions that cause the client to report a protocol error.
+  //
+  // These errors describe the possible failure modes that cause the client to
+  // terminate the connection.
+  enum ProtocolError {
+    PROTOCOL_ERROR_UNSPECIFIED = 0;
+
+    // The server has sent a ClientHelloAck before the client has sent the
+    // ClientHello handshake message.
+    PROTOCOL_ERROR_HANDSHAKE_ACK_BEFORE_HELLO = 1;
+
+    // The server has sent a ClientHelloAck after the client had previously
+    // marked the handshake as complete.
+    PROTOCOL_ERROR_HANDSHAKE_DUPLICATE_ACK = 2;
+
+    // The connection ID proposed by the server cannot be verified to have been
+    // derived from the client nonce, and therefore cannot be trusted as unique
+    // for this client.
+    //
+    // See the ConnectionId proto type docs for more info.
+    PROTOCOL_ERROR_HANDSHAKE_CONNECTION_ID_REJECTED = 3;
+  }
+
+  // The reported protocol error.
+  ProtocolError error = 1;
+
+  // True if the client believes the handshake has completed successfully
+  // prior to raising this error.
+  bool is_handshake_complete = 2;
+}
