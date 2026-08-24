@@ -152,8 +152,8 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Init => debug!("new connection registered"),
             ConnectionEvent::Connected(io, dispatch) => {
                 let stop = shutdown.child_token();
-                let conn = ConnectionActor::new(io, dispatch, Arc::clone(&metrics));
-                let task = tokio::spawn(conn.run(stop.clone()));
+                let conn = ConnectionActor::new(io, stop.clone(), dispatch, Arc::clone(&metrics));
+                let task = tokio::spawn(conn.run());
 
                 let old = active_conn.replace(ActiveConn { task, stop });
                 if let Some(v) = old {
