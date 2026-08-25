@@ -15,7 +15,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    codec::{ClientToServer, ServerToClient},
+    codec::{ClientToServer, DecodingError, ServerToClient},
     host_runtime::{Connection, ConnectionErr},
 };
 
@@ -27,10 +27,11 @@ pub(super) trait ServerMessageDelegate<IO: SendToServer>: Debug + Send + Sync {
     /// Send a `ClientHello` handshake message.
     fn send_hello(&mut self, reply: &mut IO) -> impl Future<Output = ()> + Send + Sync;
 
-    /// Process the request in `msg`.
+    /// Process the request in `msg`, raising a protocol error if it could not
+    /// be decoded.
     fn process(
         &mut self,
-        msg: ServerToClient,
+        msg: Result<ServerToClient, DecodingError>,
         reply: &mut IO,
     ) -> impl Future<Output = ()> + Send + Sync;
 }

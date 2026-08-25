@@ -33,6 +33,13 @@ message ClientProtocolError {
     //
     // See the ConnectionId proto type docs for more info.
     PROTOCOL_ERROR_HANDSHAKE_CONNECTION_ID_REJECTED = 3;
+
+    // The protobuf wire representation could not be deserialised.
+    //
+    // This either means the wire data was corrupt when it reached the client
+    // library, or a message type was sent to the client that is not aware of a
+    // new addition (breaking protobuf change).
+    PROTOCOL_ERROR_DESERIALISATION_FAILED = 4;
   }
 
   // The reported protocol error.

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This module is responsible for processing [`ServerToClient`] messages from
+//! the backend.
+
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
@@ -20,7 +23,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, warn};
 
 use crate::{
-    codec::{ClientToServer, ServerToClient},
+    codec::{ClientToServer, DecodingError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, hello::build_hello},
     host_runtime::ConnectionErr,
     metrics::InstanceMetrics,
@@ -178,7 +181,7 @@ impl<IO> ServerMessageDelegate<IO> for MessageDelegate
 where
     IO: SendToServer,
 {
-    async fn process(&mut self, msg: ServerToClient, io: &mut IO) {
+    async fn process(&mut self, msg: Result<ServerToClient, DecodingError>, io: &mut IO) {
         // If the connection has been marked as having experienced a protocol
         // error, all further messages are dropped. This client is waiting for
         // the server to close the connection.
@@ -186,6 +189,17 @@ where
             debug!("dropping message due to protocol error");
             return;
         }
+
+        // Report any deserialisation errors to the server.
+        let msg = match msg {
+            Ok(v) => v,
+            Err(e) => {
+                warn!(error=%e, "dropping invalid message from server");
+                return self
+                    .protocol_error(io, ProtocolError::DeserialisationFailed)
+                    .await;
+            }
+        };
 
         match msg {
             ServerToClient::Ping => retry_send(io, ClientToServer::Pong, &self.stop).await,
@@ -345,10 +359,37 @@ mod tests {
 
         let (mut client, mut server) = new_io_pair();
 
-        d.process(ServerToClient::Ping, &mut client).await;
+        d.process(Ok(ServerToClient::Ping), &mut client).await;
 
         let got = server.recv().await.expect("must reply");
         assert_matches!(got, ClientToServer::Pong);
+    }
+
+    /// A message that could not be decoded off the wire raises a protocol
+    /// error, and transitions the connection into the error state.
+    #[tokio::test]
+    async fn test_decode_error() {
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        d.process(Err(DecodingError::NoMessage), &mut client).await;
+
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete
+            }) => {
+                assert!(!is_handshake_complete);
+                assert_eq!(reason, ProtocolError::DeserialisationFailed);
+            }
+        );
+
+        assert_matches!(d.state, ConnState::Error);
     }
 
     /// Happy path test for a successful handshake.
@@ -400,12 +441,12 @@ mod tests {
 
         // Deliver the ACK to the delegate:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::copy_from_slice(server_nonce.as_bytes()),
                     Bytes::copy_from_slice(connection_id.as_bytes()),
                 ),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -554,12 +595,12 @@ mod tests {
 
         // Deliver the out-of-order ACK to the delegate:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::copy_from_slice(server_nonce.as_bytes()),
                     Bytes::copy_from_slice(connection_id.as_bytes()),
                 ),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -588,7 +629,7 @@ mod tests {
 
         // The client MUST now be in the error state, and ignore any further
         // messages from the server, no matter their content:
-        d.process(post_ack_msg, &mut client).await;
+        d.process(Ok(post_ack_msg), &mut client).await;
         assert_matches!(server.recv().now_or_never(), None);
 
         // Remaining in the error state:
@@ -628,12 +669,12 @@ mod tests {
 
         // Deliver the ACK containing a bogus ID:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::copy_from_slice(&server_nonce),
                     Bytes::copy_from_slice(&proposed_id),
                 ),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -655,7 +696,7 @@ mod tests {
 
         // The client is now in the error state, and MUST ignore any further
         // messages from the server, no matter their content:
-        d.process(post_error_msg, &mut client).await;
+        d.process(Ok(post_error_msg), &mut client).await;
         assert_matches!(server.recv().now_or_never(), None);
 
         // Remaining in the error state:
@@ -696,9 +737,9 @@ mod tests {
 
         // Deliver the ACK to the delegate:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: proposed_id.clone(),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -708,9 +749,9 @@ mod tests {
 
         // Attempt a second delivery:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: proposed_id.clone(),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -732,7 +773,7 @@ mod tests {
 
         // The client is now in the error state, and MUST ignore any further
         // messages from the server, no matter their content:
-        d.process(post_ack_msg, &mut client).await;
+        d.process(Ok(post_ack_msg), &mut client).await;
         assert_matches!(server.recv().now_or_never(), None);
 
         // Remaining in the error state:
@@ -759,7 +800,7 @@ mod tests {
         // optionally drain any response it generates):
         if let Some(msg) = pre_handshake {
             let has_reply = has_reply(&msg);
-            d.process(msg, &mut client).await;
+            d.process(Ok(msg), &mut client).await;
             if has_reply {
                 server.recv().await.expect("must reply");
             }
@@ -781,7 +822,7 @@ mod tests {
         // optionally drain any response it generates):
         if let Some(msg) = during_handshake {
             let has_reply = has_reply(&msg);
-            d.process(msg, &mut client).await;
+            d.process(Ok(msg), &mut client).await;
             if has_reply {
                 server.recv().await.expect("must reply");
             }
@@ -793,12 +834,12 @@ mod tests {
 
         // Deliver the ACK to the delegate:
         d.process(
-            ServerToClient::ClientHelloAck {
+            Ok(ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::copy_from_slice(server_nonce.as_bytes()),
                     Bytes::copy_from_slice(connection_id.as_bytes()),
                 ),
-            },
+            }),
             &mut client,
         )
         .await;
@@ -807,7 +848,7 @@ mod tests {
         // optionally drain any response it generates):
         if let Some(msg) = post_handshake {
             let has_reply = has_reply(&msg);
-            d.process(msg, &mut client).await;
+            d.process(Ok(msg), &mut client).await;
             if has_reply {
                 server.recv().await.expect("must reply");
             }
