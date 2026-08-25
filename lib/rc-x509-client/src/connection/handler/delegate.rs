@@ -271,12 +271,16 @@ mod tests {
     use assert_matches::assert_matches;
     use futures::FutureExt;
     use proptest::{option, prelude::*, strategy::LazyJust};
-    use rc_x509_trust::cert::UntrustedCert;
+    use rc_x509_trust::cert::UntrustedCertBytes;
     use tokio_util::bytes::Bytes;
 
     use crate::{
-        build_version::BuildVersion, codec::tests::SAMPLE_CERT_DER, connection::ReconnectionData,
-        host_runtime::CorrelationId, mocks::io::new_io_pair, tests::arbitrary_bytes,
+        build_version::BuildVersion,
+        codec::{DetachedSignature, tests::SAMPLE_CERT_DER},
+        connection::ReconnectionData,
+        host_runtime::CorrelationId,
+        mocks::io::new_io_pair,
+        tests::arbitrary_bytes,
     };
 
     use super::*;
@@ -459,14 +463,16 @@ mod tests {
     fn any_server_to_client() -> impl Strategy<Value = ServerToClient> {
         prop_oneof![
             LazyJust::new(|| ServerToClient::Ping),
-            LazyJust::new(|| ServerToClient::CertificatePush(Box::new(
-                UntrustedCert::from_der(SAMPLE_CERT_DER).unwrap()
-            ))),
+            LazyJust::new(|| ServerToClient::CertificatePush(
+                UntrustedCertBytes::new(SAMPLE_CERT_DER)
+            )),
             LazyJust::new(|| ServerToClient::Dispatch {
                 correlation_id: CorrelationId::new(42),
                 payload: Bytes::from_static(&[1, 2, 3, 4]),
-                signature: Bytes::from_static(&[5, 6, 7, 8]),
-                signing_cert_id: Bytes::from_static(&[9, 10, 11, 12]),
+                detached_signature: Some(DetachedSignature {
+                    cert_id: Bytes::from_static(&[9, 10, 11, 12]),
+                    signature: Bytes::from_static(&[5, 6, 7, 8]),
+                }),
             }),
             LazyJust::new(|| ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(

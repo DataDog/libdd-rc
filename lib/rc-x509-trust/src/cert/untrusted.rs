@@ -16,6 +16,28 @@ use bytes::Bytes;
 use rc_crypto::certificate::{Certificate, Fingerprint, InvalidDer, id::IssuerCertId};
 use valuable::Valuable;
 
+/// Raw DER bytes for a certificate received from the RC delivery server, not
+/// yet parsed and therefore untrusted.
+///
+/// This type exists to statically mark certificate bytes taken directly off the
+/// wire as untrusted. Use [`UntrustedCertBytes::parse()`] to attempt to parse
+/// these raw bytes into an [`UntrustedCert`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct UntrustedCertBytes(Bytes);
+
+impl UntrustedCertBytes {
+    /// Wrap `der` bytes obtained from an untrusted source, without parsing
+    /// them.
+    pub fn new(der: impl Into<Bytes>) -> Self {
+        Self(der.into())
+    }
+
+    /// Parse these bytes into an [`UntrustedCert`].
+    pub fn parse(self) -> Result<UntrustedCert, InvalidDer> {
+        UntrustedCert::from_der(self.0)
+    }
+}
+
 /// An [`UntrustedCert`] is a [`Certificate`] that has been received from the RC
 /// delivery server, but not yet verified by the client to chain to the root.
 ///
