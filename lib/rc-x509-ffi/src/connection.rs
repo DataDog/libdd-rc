@@ -1301,6 +1301,7 @@ mod tests {
                             correlation_id,
                             payload,
                         })
+                        .await
                         .expect("FFI host must consume dispatch messages");
                 }
                 _ => {
