@@ -19,10 +19,11 @@ impl Connection for MockIO {
     type Incoming = ReceiverStream<Result<ServerToClient, DecodingError>>;
 
     async fn send(&mut self, payload: ClientToServer) -> Result<(), ConnectionErr> {
-        self.to_server
-            .send(payload)
-            .await
-            .map_err(|_| ConnectionErr::Closed)
+        match self.to_server.try_send(payload) {
+            Ok(()) => Ok(()),
+            Err(mpsc::error::TrySendError::Closed(_)) => Err(ConnectionErr::Closed),
+            Err(mpsc::error::TrySendError::Full(_)) => Err(ConnectionErr::QueueFull),
+        }
     }
 
     fn take_recv_stream(&mut self) -> Option<Self::Incoming> {
