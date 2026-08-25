@@ -195,7 +195,7 @@ where
             Err(e) => {
                 warn!(error=%e, "dropping invalid message from server");
                 return self
-                    .protocol_error(io, ProtocolError::DeserialisationFailed)
+                    .protocol_error(io, ProtocolError::DeserialisationFailed(e.to_string()))
                     .await;
             }
         };
@@ -388,7 +388,10 @@ mod tests {
                 is_handshake_complete
             }) => {
                 assert!(!is_handshake_complete);
-                assert_eq!(reason, ProtocolError::DeserialisationFailed);
+                assert_matches!(reason, ProtocolError::DeserialisationFailed(msg) => {
+                    // Error message is reported to the server:
+                    assert_eq!(msg, DecodingError::NoMessage.to_string());
+                });
             }
         );
 
@@ -462,9 +465,9 @@ mod tests {
     fn any_server_to_client() -> impl Strategy<Value = ServerToClient> {
         prop_oneof![
             LazyJust::new(|| ServerToClient::Ping),
-            LazyJust::new(|| ServerToClient::CertificatePush(
-                UntrustedCertBytes::new(SAMPLE_CERT_DER)
-            )),
+            LazyJust::new(|| ServerToClient::CertificatePush(UntrustedCertBytes::new(
+                SAMPLE_CERT_DER
+            ))),
             LazyJust::new(|| ServerToClient::Dispatch {
                 correlation_id: CorrelationId::new(42),
                 payload: Bytes::from_static(&[1, 2, 3, 4]),

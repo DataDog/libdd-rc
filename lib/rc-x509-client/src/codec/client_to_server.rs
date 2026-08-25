@@ -16,7 +16,7 @@
 
 use rc_x509_proto::{
     encode,
-    protocol::v1::{self, DispatchResponse, client_protocol_error, client_to_server::Message},
+    protocol::v1::{self, DispatchResponse, client_to_server::Message},
 };
 use tokio_util::bytes::Bytes;
 
@@ -34,7 +34,7 @@ use crate::{
 ///
 /// Each variant is encoded on the wire as its own message, so error-specific
 /// context can be attached to a variant without affecting the others.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum ProtocolError {
     /// The server has sent a ClientHelloAck before the client has sent the
@@ -55,7 +55,10 @@ pub enum ProtocolError {
     /// This either means the wire data was corrupt when it reached the
     /// client library, or a message type was sent to the client that is not
     /// aware of a new addition (breaking protobuf change).
-    DeserialisationFailed,
+    ///
+    /// The attached `String` is reported to the server as a deserialisation
+    /// error message.
+    DeserialisationFailed(String),
 }
 
 /// All possible messages originating from this client library, sent to the RC
@@ -164,8 +167,8 @@ impl From<ClientToServer> for Vec<u8> {
                     ProtocolError::HandshakeConnectionIdRejected => {
                         Error::HandshakeConnectionIdRejected(HandshakeConnectionIdRejected {})
                     }
-                    ProtocolError::DeserialisationFailed => {
-                        Error::DeserialisationFailed(DeserialisationFailed {})
+                    ProtocolError::DeserialisationFailed(error_msg) => {
+                        Error::DeserialisationFailed(DeserialisationFailed { error_msg })
                     }
                 };
 
