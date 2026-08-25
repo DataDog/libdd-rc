@@ -12,40 +12,38 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;p
 //
 // Upon receipt of a ClientProtocolError, the server MUST close the connection.
 message ClientProtocolError {
-  // Error conditions that cause the client to report a protocol error.
+  // The server has sent a ClientHelloAck before the client has sent the
+  // ClientHello handshake message.
+  message HandshakeAckBeforeHello {}
+
+  // The server has sent a ClientHelloAck after the client had previously
+  // marked the handshake as complete.
+  message HandshakeDuplicateAck {}
+
+  // The connection ID proposed by the server cannot be verified to have been
+  // derived from the client nonce, and therefore cannot be trusted as unique
+  // for this client.
   //
-  // These errors describe the possible failure modes that cause the client to
-  // terminate the connection.
-  enum ProtocolError {
-    PROTOCOL_ERROR_UNSPECIFIED = 0;
+  // See the ConnectionId proto type docs for more info.
+  message HandshakeConnectionIdRejected {}
 
-    // The server has sent a ClientHelloAck before the client has sent the
-    // ClientHello handshake message.
-    PROTOCOL_ERROR_HANDSHAKE_ACK_BEFORE_HELLO = 1;
+  // The protobuf wire representation could not be deserialised.
+  //
+  // This either means the wire data was corrupt when it reached the client
+  // library, or a message type was sent to the client that is not aware of a
+  // new addition (breaking protobuf change).
+  message DeserialisationFailed {}
 
-    // The server has sent a ClientHelloAck after the client had previously
-    // marked the handshake as complete.
-    PROTOCOL_ERROR_HANDSHAKE_DUPLICATE_ACK = 2;
-
-    // The connection ID proposed by the server cannot be verified to have been
-    // derived from the client nonce, and therefore cannot be trusted as unique
-    // for this client.
-    //
-    // See the ConnectionId proto type docs for more info.
-    PROTOCOL_ERROR_HANDSHAKE_CONNECTION_ID_REJECTED = 3;
-
-    // The protobuf wire representation could not be deserialised.
-    //
-    // This either means the wire data was corrupt when it reached the client
-    // library, or a message type was sent to the client that is not aware of a
-    // new addition (breaking protobuf change).
-    PROTOCOL_ERROR_DESERIALISATION_FAILED = 4;
+  // The reported protocol error, including error-specific context if
+  // appropriate.
+  oneof error {
+    HandshakeAckBeforeHello handshake_ack_before_hello = 1;
+    HandshakeDuplicateAck handshake_duplicate_ack = 2;
+    HandshakeConnectionIdRejected handshake_connection_id_rejected = 3;
+    DeserialisationFailed deserialisation_failed = 4;
   }
-
-  // The reported protocol error.
-  ProtocolError error = 1;
 
   // True if the client believes the handshake has completed successfully
   // prior to raising this error.
-  bool is_handshake_complete = 2;
+  bool is_handshake_complete = 5;
 }

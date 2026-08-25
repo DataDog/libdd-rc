@@ -23,8 +23,7 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use futures::FutureExt;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
-use rc_x509_client::codec::{ClientToServer, ServerToClient};
-use rc_x509_proto::protocol::v1::client_protocol_error::ProtocolError;
+use rc_x509_client::codec::{ClientToServer, ProtocolError, ServerToClient};
 use tokio_util::bytes::Bytes;
 
 use crate::harness::client::TestClient;

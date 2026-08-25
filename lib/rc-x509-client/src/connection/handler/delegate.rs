@@ -18,12 +18,11 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
-use rc_x509_proto::protocol::v1::client_protocol_error::ProtocolError;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, warn};
 
 use crate::{
-    codec::{ClientToServer, DecodingError, ServerToClient},
+    codec::{ClientToServer, DecodingError, ProtocolError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, hello::build_hello},
     host_runtime::ConnectionErr,
     metrics::InstanceMetrics,
@@ -98,7 +97,7 @@ impl MessageDelegate {
     where
         IO: SendToServer,
     {
-        warn!(error = reason.as_str_name(), "protocol error");
+        warn!(error = ?reason, "protocol error");
 
         // Record the current state, before changing it.
         let is_handshake_complete = self.state.is_handshake_complete();
