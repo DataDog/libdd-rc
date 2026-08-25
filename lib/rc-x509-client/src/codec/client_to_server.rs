@@ -59,6 +59,9 @@ pub enum ProtocolError {
     /// The attached `String` is reported to the server as a deserialisation
     /// error message.
     DeserialisationFailed(String),
+
+    /// A `CertId` was received with an invalid / out-of-bounds length.
+    CertIdInvalidLength(usize),
 }
 
 /// All possible messages originating from this client library, sent to the RC
@@ -169,6 +172,9 @@ impl From<ClientToServer> for Vec<u8> {
                     }
                     ProtocolError::DeserialisationFailed(error_msg) => {
                         Error::DeserialisationFailed(DeserialisationFailed { error_msg })
+                    }
+                    ProtocolError::CertIdInvalidLength(v) => {
+                        Error::CertIdInvalidLength(CertIdInvalidLength { got_len: v as u64 })
                     }
                 };
 

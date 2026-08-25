@@ -38,6 +38,12 @@ message ClientProtocolError {
     string error_msg = 1;
   }
 
+  // A certificate ID was refused by the client as being too long / short.
+  message CertIdInvalidLength {
+    // The certificate ID length that was refused by the client.
+    uint64 got_len = 1;
+  }
+
   // The reported protocol error, including error-specific context if
   // appropriate.
   oneof error {
@@ -45,6 +51,7 @@ message ClientProtocolError {
     HandshakeDuplicateAck handshake_duplicate_ack = 2;
     HandshakeConnectionIdRejected handshake_connection_id_rejected = 3;
     DeserialisationFailed deserialisation_failed = 4;
+    CertIdInvalidLength cert_id_invalid_length = 6;
   }
 
   // True if the client believes the handshake has completed successfully

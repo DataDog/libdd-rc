@@ -30,9 +30,16 @@ pub struct ErrorNoSKI;
 
 /// Certificate ID was an invalid length.
 #[derive(Debug, Error)]
-#[error("certificate ID is an invalid length")]
+#[error("certificate ID is an invalid length (got {actual_len} bytes)")]
 pub struct InvalidLength {
     actual_len: usize,
+}
+
+impl InvalidLength {
+    /// Return the length of the [`CertId`] that was refused as invalid.
+    pub fn got_len(&self) -> usize {
+        self.actual_len
+    }
 }
 
 /// Error extracting a [`CertId`] from an [`X509Certificate`].
@@ -222,6 +229,11 @@ mod tests {
         fn prop_length_bounds_enforced(
             ski in prop::collection::vec(any::<u8>(), 0..(CertId::MAX_LENGTH + 20)),
         ) {
+            // The error length reported must match the input len.
+            if let Err(e) = CertId::try_from(ski.as_slice()) {
+                assert_eq!(e.got_len(), ski.len());
+            }
+
             let in_bounds = (CertId::MIN_LENGTH..=CertId::MAX_LENGTH).contains(&ski.len());
 
             // Invariant: both TryFrom impls accept iff the length is within
