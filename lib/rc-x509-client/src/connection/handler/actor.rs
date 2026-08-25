@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use futures::pin_mut;
+use futures::{Stream, pin_mut};
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
@@ -22,15 +22,15 @@ use tracing::debug;
 
 use crate::{
     codec::{DecodingError, ServerToClient},
-    connection::handler::{ServerMessageDelegate, delegate::MessageDelegate},
-    dispatch::{DispatchPublisher, DispatchResult},
+    connection::handler::ServerMessageDelegate,
+    dispatch::DispatchResult,
     host_runtime::Connection,
     metrics::InstanceMetrics,
 };
 
 /// The control loop for a single connection to the RC backend.
 #[derive(Debug)]
-pub(crate) struct ConnectionActor<IO, T> {
+pub(crate) struct ConnectionActor<IO, T, D> {
     /// The interface through which I/O events can be communicated via the host
     /// application.
     ///
@@ -42,8 +42,11 @@ pub(crate) struct ConnectionActor<IO, T> {
     /// client stopping.
     stop: CancellationToken,
 
-    /// Application dispatch request / response bridge.
-    dispatcher: DispatchPublisher,
+    /// A stream of [`DispatchResult`] from the host application.
+    ///
+    /// Some when initialised, None after calling [`Self::run()`] (impossible to
+    /// call twice).
+    dispatch_stream: Option<D>,
 
     /// A [`ServerToClient`] message processing delegate.
     delegate: T,
@@ -52,7 +55,7 @@ pub(crate) struct ConnectionActor<IO, T> {
     metrics: Arc<InstanceMetrics>,
 }
 
-impl<IO> ConnectionActor<IO, MessageDelegate>
+impl<IO, T, D> ConnectionActor<IO, T, D>
 where
     IO: Connection,
 {
@@ -64,24 +67,26 @@ where
     pub(crate) fn new(
         io: IO,
         stop: CancellationToken,
-        dispatcher: DispatchPublisher,
+        delegate: T,
+        dispatch_stream: D,
         metrics: Arc<InstanceMetrics>,
     ) -> Self {
         Self {
             io,
             stop: stop.clone(),
-            dispatcher,
-            delegate: MessageDelegate::new(stop, Arc::clone(&metrics)),
+            dispatch_stream: Some(dispatch_stream),
+            delegate,
             metrics,
         }
     }
 }
 
 #[allow(private_bounds)]
-impl<IO, T> ConnectionActor<IO, T>
+impl<IO, T, D> ConnectionActor<IO, T, D>
 where
     IO: Connection,
     T: ServerMessageDelegate<IO>,
+    D: Stream<Item = DispatchResult> + 'static,
 {
     /// Run the connection control loop to completion.
     ///
@@ -99,7 +104,7 @@ where
     }
 
     async fn run_loop(mut self) {
-        let dispatch_ack = self.dispatcher.take_recv_stream().expect("first call");
+        let dispatch_ack = self.dispatch_stream.take().expect("first call");
         let server_messages = self.io.take_recv_stream().expect("first call");
 
         // The first action is to send the connection-opening ClientHello
@@ -163,7 +168,10 @@ mod tests {
     use assert_matches::assert_matches;
 
     use crate::{
-        codec::ClientToServer, dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
+        codec::ClientToServer,
+        connection::handler::delegate::MessageDelegate,
+        dispatch::new_dispatcher_interconnect,
+        mocks::io::new_io_pair,
     };
 
     use super::*;
@@ -172,15 +180,17 @@ mod tests {
     #[tokio::test]
     async fn test_graceful_stop_signal() {
         let (client, _server) = new_io_pair();
-        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+        let (mut dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
+        let metrics = Arc::new(InstanceMetrics::default());
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            dispatch_publish,
-            Arc::new(InstanceMetrics::default()),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
+            dispatch_publish.take_recv_stream().expect("first call"),
+            metrics,
         );
 
         let task = tokio::spawn(actor.run());
@@ -200,15 +210,17 @@ mod tests {
     #[tokio::test]
     async fn test_graceful_stop_io() {
         let (client, server) = new_io_pair();
-        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+        let (mut dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
+        let metrics = Arc::new(InstanceMetrics::default());
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            dispatch_publish,
-            Arc::new(InstanceMetrics::default()),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
+            dispatch_publish.take_recv_stream().expect("first call"),
+            metrics,
         );
 
         let task = tokio::spawn(actor.run());
@@ -228,15 +240,17 @@ mod tests {
     #[tokio::test]
     async fn test_graceful_stop_dispatch_response_stream() {
         let (client, _server) = new_io_pair();
-        let (dispatch_publish, _dispatch_stream, dispatch_responder) =
+        let (mut dispatch_publish, _dispatch_stream, dispatch_responder) =
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
+        let metrics = Arc::new(InstanceMetrics::default());
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            dispatch_publish,
-            Arc::new(InstanceMetrics::default()),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
+            dispatch_publish.take_recv_stream().expect("first call"),
+            metrics,
         );
 
         let task = tokio::spawn(actor.run());
@@ -256,15 +270,17 @@ mod tests {
     #[tokio::test]
     async fn test_race_shutdown_with_server_message() {
         let (client, mut server) = new_io_pair();
-        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+        let (mut dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
+        let metrics = Arc::new(InstanceMetrics::default());
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            dispatch_publish,
-            Arc::new(InstanceMetrics::default()),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
+            dispatch_publish.take_recv_stream().expect("first call"),
+            metrics,
         );
 
         // Before the actor runs for the first time, stage the two inputs to

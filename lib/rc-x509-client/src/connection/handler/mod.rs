@@ -18,4 +18,5 @@ mod hello;
 mod traits;
 
 pub(crate) use actor::*;
+pub(crate) use delegate::MessageDelegate;
 use traits::*;
