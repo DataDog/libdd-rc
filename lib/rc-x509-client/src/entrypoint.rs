@@ -153,7 +153,7 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Connected(io, mut dispatch) => {
                 let stop = shutdown.child_token();
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
-                let delegate = MessageDelegate::new(stop.clone(), Arc::clone(&metrics));
+                let delegate = MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch);
                 let conn = ConnectionActor::new(
                     io,
                     stop.clone(),
