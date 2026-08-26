@@ -12,33 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+use tracing_subscriber::EnvFilter;
 
-// Spurious unused crate lints:
-#[cfg(test)]
-use tracing_subscriber as _;
-
-mod abort_on_drop;
-mod build_version;
-pub mod codec;
-pub mod connection;
-pub mod dispatch;
-pub mod entrypoint;
-pub mod host_runtime;
-mod shutdown_signal;
-
-pub use abort_on_drop::*;
-pub use shutdown_signal::*;
-
-#[cfg(test)]
-mod mocks;
-
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    use tokio_util::bytes::Bytes;
-
-    pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
-        prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
-    }
+/// Install a [`tracing`] subscriber that writes event logs to stdout for the
+/// duration of the test process.
+pub(crate) fn init() {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")))
+        .with_test_writer()
+        .try_init();
 }
