@@ -16,7 +16,9 @@
 
 use rc_x509_proto::{
     encode,
-    protocol::v1::{self, DispatchResponse, client_to_server::Message},
+    protocol::v1::{
+        self, DispatchResponse, client_protocol_error::ProtocolError, client_to_server::Message,
+    },
 };
 use tokio_util::bytes::Bytes;
 
@@ -69,6 +71,16 @@ pub enum ClientToServer {
         /// The response payload from the host application.
         result: v1::dispatch_response::Result,
     },
+
+    /// The client reports a protocol error.
+    ProtocolError {
+        /// The violation code.
+        reason: ProtocolError,
+
+        /// A marker that is true if the connection that reports the violation
+        /// has completed the handshake (from the client perspective).
+        is_handshake_complete: bool,
+    },
 }
 
 /// Serialise this [`ClientToServer`] as a protobuf payload.
@@ -108,6 +120,13 @@ impl From<ClientToServer> for Vec<u8> {
             } => Message::Dispatch(DispatchResponse {
                 correlation_id: correlation_id.get(),
                 result: Some(result),
+            }),
+            ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete,
+            } => Message::ProtocolError(v1::ClientProtocolError {
+                is_handshake_complete,
+                error: reason as _, // Same type
             }),
         };
 
