@@ -622,7 +622,7 @@ mod tests {
                     Bytes::from_static(&[5, 6, 7, 8])
                 ),
             }),
-            arbitrary_bytes()
+            arbitrary_bytes(0..1028)
                 .prop_map(|v| ServerToClient::SetReconnectionData(ReconnectionData::new(v))),
         ]
     }
@@ -630,19 +630,16 @@ mod tests {
     /// Generate a random, but valid, dispatch request.
     fn arbitrary_valid_dispatch_request() -> impl Strategy<Value = ServerToClient> {
         (
-            any::<u64>(),                                                                // ID
-            arbitrary_bytes(),                                                           // payload
-            prop::collection::vec(any::<u8>(), CertId::MIN_LENGTH..=CertId::MAX_LENGTH), // cert ID
-            prop::collection::vec(any::<u8>(), 1..1028).prop_map(Bytes::from), // signature (non-empty)
+            any::<u64>(),                                             // ID
+            arbitrary_bytes(0..1028),                                 // payload
+            arbitrary_bytes(CertId::MIN_LENGTH..=CertId::MAX_LENGTH), // cert ID
+            arbitrary_bytes(1..1028),                                 // signature (non-empty)
         )
             .prop_map(
                 |(id, payload, cert_id, signature)| ServerToClient::Dispatch {
                     correlation_id: CorrelationId::new(id),
                     payload,
-                    detached_signature: Some(DetachedSignature {
-                        cert_id: Bytes::from_owner(cert_id),
-                        signature,
-                    }),
+                    detached_signature: Some(DetachedSignature { cert_id, signature }),
                 },
             )
     }
@@ -666,14 +663,14 @@ mod tests {
             // Cert ID too small / empty:
             (
                 arbitrary_valid_dispatch_request(),
-                prop::collection::vec(any::<u8>(), 0..CertId::MIN_LENGTH)
+                arbitrary_bytes(0..CertId::MIN_LENGTH)
             )
                 .prop_map(|(mut v, id)| {
                     match &mut v {
                         ServerToClient::Dispatch {
                             detached_signature: Some(DetachedSignature { cert_id, .. }),
                             ..
-                        } => *cert_id = Bytes::from_owner(id),
+                        } => *cert_id = id,
                         _ => unreachable!(),
                     };
 
@@ -682,14 +679,14 @@ mod tests {
             // Cert ID too big:
             (
                 arbitrary_valid_dispatch_request(),
-                prop::collection::vec(any::<u8>(), (CertId::MAX_LENGTH + 1)..1028)
+                arbitrary_bytes((CertId::MAX_LENGTH + 1)..1028)
             )
                 .prop_map(|(mut v, id)| {
                     match &mut v {
                         ServerToClient::Dispatch {
                             detached_signature: Some(DetachedSignature { cert_id, .. }),
                             ..
-                        } => *cert_id = Bytes::from_owner(id),
+                        } => *cert_id = id,
                         _ => unreachable!(),
                     };
 

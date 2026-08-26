@@ -168,10 +168,8 @@ mod tests {
     use assert_matches::assert_matches;
 
     use crate::{
-        codec::ClientToServer,
-        connection::handler::delegate::MessageDelegate,
-        dispatch::new_dispatcher_interconnect,
-        mocks::io::new_io_pair,
+        codec::ClientToServer, connection::handler::delegate::MessageDelegate,
+        dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
     };
 
     use super::*;

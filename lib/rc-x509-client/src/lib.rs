@@ -39,7 +39,9 @@ mod tests {
     use proptest::prelude::*;
     use tokio_util::bytes::Bytes;
 
-    pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
-        prop::collection::vec(any::<u8>(), 0..1028).prop_map(Bytes::from)
+    pub(crate) fn arbitrary_bytes(
+        size: impl Into<prop::collection::SizeRange>,
+    ) -> impl Strategy<Value = Bytes> {
+        prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
     }
 }

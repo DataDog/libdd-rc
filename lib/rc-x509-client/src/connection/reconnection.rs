@@ -84,7 +84,7 @@ impl LastConnectedDuration {
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct ReconnectionData(
-    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))] Bytes,
+    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes(0..1028)"))] Bytes,
 );
 
 impl ReconnectionData {
