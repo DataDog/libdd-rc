@@ -9,6 +9,7 @@ import "protocol/certificate.proto";
 import "protocol/dispatch.proto";
 import "protocol/handshake.proto";
 import "protocol/ping.proto";
+import "protocol/protocol_error.proto";
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
@@ -61,5 +62,9 @@ message ClientToServer {
 
     // Respond with the return value from a dispatch call.
     DispatchResponse dispatch = 3;
+
+    // The client is triggering a disconnect because of an unexpected protocol
+    // error.
+    ClientProtocolError protocol_error = 4;
   }
 }
