@@ -70,6 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config
         .bytes(bytes_fields)
         .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
+        .protoc_arg("--experimental_allow_proto3_optional") // Old protoc versions
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
