@@ -52,11 +52,28 @@ message DispatchResponse {
     // This occurs when the dispatch handler is not consuming messages fast
     // enough to keep up with the rate of new requests arriving. The message
     // will not be delivered.
-    DISPATCH_ERROR_QUEUE_FULL = 3;
+    DISPATCH_ERROR_HANDLER_QUEUE_FULL = 3;
 
     // The X509 client library successfully processed this dispatch request, and
     // dispatched it to the host application which returned an "UNKNOWN" error.
     DISPATCH_ERROR_CLIENT_RETURNED_UNKNOWN = 4;
+
+    // The client library's internal dispatch request queue is full.
+    //
+    // This indicates the dispatch processing thread is too slow, or blocked
+    // entirely, to keep up with the rate of incoming requests.
+    DISPATCH_ERROR_DISPATCH_QUEUE_FULL = 5;
+
+    // No messages can be dispatched to the host application because the
+    // client library's dispatch task is not running. This is a fatal state.
+    DISPATCH_ERROR_CLOSED = 6;
+
+    // The client library failed to deserialise the response returned by the
+    // host application.
+    //
+    // This is a bug in outside of the X509 client library, either within the
+    // FFI layer or the host application itself.
+    DISPATCH_ERROR_REPLY_DESERIALISATION = 7;
   }
 
   oneof result {

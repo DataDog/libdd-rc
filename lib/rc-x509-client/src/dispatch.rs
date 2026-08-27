@@ -51,6 +51,7 @@ pub struct Dispatch {
 ///
 /// Exactly one [`DispatchResult`] should be returned for each [`Dispatch`].
 #[derive(Debug)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct DispatchResult {
     /// The [`CorrelationId`] in the original [`Dispatch`].
     pub correlation_id: CorrelationId,
@@ -72,6 +73,7 @@ pub struct DispatchResult {
 
 /// Failures to deliver a message to a handler.
 #[derive(Debug, Error, Clone)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum DispatchError {
     /// The client does not support the payload type being dispatched.
     #[error("unknown payload type")]
@@ -98,17 +100,38 @@ pub enum DispatchError {
     DispatchRequestQueueFull,
 
     /// No messages can be dispatched to the host application because the
-    /// dispatch thread has exited. This is a fatal state.
+    /// dispatch thread has exited. This is a fatal state, but may be triggered
+    /// by a shutdown of the client.
     #[error("dispatch task is not running")]
     DispatchClosed,
 
     /// An error deserialising the response from the host application.
     #[error("deserialisation error processing dispatch result from FFI host: {0}")]
-    ReplyDeserialisation(DecodeError),
+    ReplyDeserialisation(
+        #[cfg_attr(test, proptest(strategy = "tests::arbitrary_decode_error()"))] DecodeError,
+    ),
 
     /// Catch-all if the FFI layer returns an unknown error code.
+    ///
+    /// The FFI layer / host application is required to return a serialised
+    /// [`v1::DispatchResponsePayload`] as a dispatch response, but the data
+    /// they provided could not be deserialised.
     #[error("unknown dispatch error from host app")]
     UnknownHostDispatchError,
+}
+
+impl From<DispatchError> for v1::dispatch_response::DispatchError {
+    fn from(value: DispatchError) -> Self {
+        match value {
+            DispatchError::UnknownPayload => Self::UnknownPayload,
+            DispatchError::NoDispatchHandler => Self::NoDispatchHandler,
+            DispatchError::HandlerQueueFull => Self::HandlerQueueFull,
+            DispatchError::DispatchRequestQueueFull => Self::DispatchQueueFull,
+            DispatchError::DispatchClosed => Self::Closed,
+            DispatchError::ReplyDeserialisation(_) => Self::ReplyDeserialisation,
+            DispatchError::UnknownHostDispatchError => Self::ClientReturnedUnknown,
+        }
+    }
 }
 
 /// A handle to publish [`Dispatch`] requests to the host application and
@@ -272,9 +295,16 @@ pub fn new_dispatcher_interconnect() -> (DispatchPublisher, DispatchStream, Disp
 mod tests {
     use assert_matches::assert_matches;
     use futures::StreamExt;
+    use proptest::prelude::*;
 
     use super::*;
     use crate::host_runtime::CorrelationId;
+
+    /// Generate a static but arbitrary protobuf deserialisation error.
+    pub(super) fn arbitrary_decode_error() -> impl Strategy<Value = DecodeError> {
+        // Deserialise some nonsense to generate a prost error:
+        Just(rc_x509_proto::decode::<v1::Pong>(&[42][..]).expect_err("malformed input"))
+    }
 
     /// A successfully queued [`Dispatch`] request is delivered to the
     /// [`DispatchStream`] consumer.
@@ -407,5 +437,25 @@ mod tests {
         let got = recv.next().await.expect("must have self-reported error");
         assert_eq!(got.correlation_id, correlation_id);
         assert_matches!(got.result, Err(DispatchError::DispatchRequestQueueFull));
+    }
+
+    proptest! {
+        /// Distinct [`DispatchError`] variants must encode to distinct
+        /// [`v1::dispatch_response::DispatchError`] wire values, otherwise the
+        /// backend cannot distinguish between the failure modes reported.
+        #[test]
+        fn prop_dispatch_error_encoding_is_injective(
+            a in any::<DispatchError>(),
+            b in any::<DispatchError>(),
+        ) {
+            let encoded_a = v1::dispatch_response::DispatchError::from(a.clone());
+            let encoded_b = v1::dispatch_response::DispatchError::from(b.clone());
+
+            if std::mem::discriminant(&a) != std::mem::discriminant(&b) {
+                prop_assert_ne!(encoded_a, encoded_b);
+            } else {
+                prop_assert_eq!(encoded_a, encoded_b);
+            }
+        }
     }
 }
