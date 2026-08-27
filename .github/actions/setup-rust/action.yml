@@ -64,6 +64,15 @@ runs:
       shell: bash
       run: cargo clean -p aws-lc-fips-sys -p aws-lc-sys 2>/dev/null || true
 
+    # Add the magic env var so that rc-x509-client can correctly set the git
+    # hash, which is verified as readable during tests.
     - name: Set git ref for build info
       shell: bash
       run: echo "_OVERRIDE_GIT_VERSION_HASH=${{ github.sha }}" >> $GITHUB_ENV
+
+    # Configure proptests to timeout and fail after 10s.
+    #
+    # https://docs.rs/proptest/latest/proptest/test_runner/struct.Config.html#structfield.timeout
+    - name: Configure proptest timeout config
+      shell: bash
+      run: echo "PROPTEST_TIMEOUT=10000" >> $GITHUB_ENV
