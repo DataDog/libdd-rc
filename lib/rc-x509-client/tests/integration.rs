@@ -142,6 +142,7 @@ async fn test_connection_metrics() {
 
     tokio::time::pause();
     tokio::time::advance(DELAY).await;
+    tokio::time::resume();
 
     conn.close().await;
 
