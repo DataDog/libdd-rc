@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use futures::pin_mut;
 use tokio::time::Instant;
@@ -21,12 +21,10 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
 use crate::{
-    codec::{ClientToServer, DecodingError, ServerToClient},
-    connection::handler::{
-        SendToServer, ServerMessageDelegate, delegate::MessageDelegate, hello::build_hello,
-    },
+    codec::{DecodingError, ServerToClient},
+    connection::handler::{ServerMessageDelegate, delegate::MessageDelegate},
     dispatch::{DispatchPublisher, DispatchResult},
-    host_runtime::{Connection, ConnectionErr},
+    host_runtime::Connection,
     metrics::InstanceMetrics,
 };
 
@@ -39,6 +37,10 @@ pub(crate) struct ConnectionActor<IO, T> {
     /// All I/O events are asynchronously delivered / received, but maintain
     /// their order.
     io: IO,
+
+    /// Cancelled when the connection should be gracefully shutdown due to the
+    /// client stopping.
+    stop: CancellationToken,
 
     /// Application dispatch request / response bridge.
     dispatcher: DispatchPublisher,
@@ -61,13 +63,15 @@ where
     /// connection control loop.
     pub(crate) fn new(
         io: IO,
+        stop: CancellationToken,
         dispatcher: DispatchPublisher,
         metrics: Arc<InstanceMetrics>,
     ) -> Self {
         Self {
             io,
+            stop: stop.clone(),
             dispatcher,
-            delegate: MessageDelegate::default(),
+            delegate: MessageDelegate::new(stop, Arc::clone(&metrics)),
             metrics,
         }
     }
@@ -82,30 +86,26 @@ where
     /// Run the connection control loop to completion.
     ///
     /// Use `stop` to request a graceful shutdown of this task.
-    pub(crate) async fn run(self, stop: CancellationToken) {
+    pub(crate) async fn run(self) {
         // Grab the timestamp for connection lifetime reporting later.
         let start = Instant::now();
         let metrics = Arc::clone(&self.metrics);
 
         // Run the main actor loop.
-        self.run_loop(stop).await;
+        self.run_loop().await;
 
         // Record the duration this connection was active.
         metrics.set_last_conn_duration(start.elapsed());
     }
 
-    async fn run_loop(mut self, stop: CancellationToken) {
+    async fn run_loop(mut self) {
         let dispatch_ack = self.dispatcher.take_recv_stream().expect("first call");
         let server_messages = self.io.take_recv_stream().expect("first call");
 
         // The first action is to send the connection-opening ClientHello
         // handshake message to begin the protocol. The ClientHelloAck will be
         // handled via the delegate path below.
-        {
-            // TODO(dom): proper app name.
-            let hello = build_hello("test", &self.metrics);
-            retry_send(&mut self.io, hello, &stop).await
-        }
+        self.delegate.send_hello(&mut self.io).await;
 
         pin_mut!(dispatch_ack);
         pin_mut!(server_messages);
@@ -118,7 +118,7 @@ where
                 // dropped when the connection is shut down; the host
                 // application isn't going to forward any messages for this
                 // client after calling for connection shutdown.
-                _ = stop.cancelled() => {
+                _ = self.stop.cancelled() => {
                     return;
                 }
 
@@ -161,44 +161,15 @@ where
     }
 }
 
-/// Retry sending `value` over `io` until it succeeds, or `stop` is cancelled.
-pub(super) async fn retry_send<IO>(io: &mut IO, value: ClientToServer, stop: &CancellationToken)
-where
-    IO: SendToServer,
-{
-    loop {
-        match io.send(value.clone()).await {
-            Ok(_) => {
-                debug!("message sent");
-                break;
-            }
-            Err(ConnectionErr::Closed) => {
-                debug!("connection closed - aborting message send");
-                return;
-            }
-            Err(e) => warn!(error=%e, "failed to send message to server"),
-        }
-
-        tokio::select! {
-            biased;
-
-            _ = stop.cancelled() => {
-                debug!("send aborted - connection closing");
-                return;
-            }
-
-            _ = tokio::time::sleep(Duration::from_secs(1)) => {}
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use assert_matches::assert_matches;
 
-    use crate::{dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair};
+    use crate::{
+        codec::ClientToServer, dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
+    };
 
     use super::*;
 
@@ -209,10 +180,15 @@ mod tests {
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionActor::new(client, dispatch_publish, Default::default());
-
         let stop = CancellationToken::default();
-        let task = tokio::spawn(actor.run(stop.clone()));
+        let actor = ConnectionActor::new(
+            client,
+            stop.clone(),
+            dispatch_publish,
+            Arc::new(InstanceMetrics::default()),
+        );
+
+        let task = tokio::spawn(actor.run());
 
         // Signal shutdown.
         stop.cancel();
@@ -232,10 +208,15 @@ mod tests {
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionActor::new(client, dispatch_publish, Default::default());
-
         let stop = CancellationToken::default();
-        let task = tokio::spawn(actor.run(stop.clone()));
+        let actor = ConnectionActor::new(
+            client,
+            stop.clone(),
+            dispatch_publish,
+            Arc::new(InstanceMetrics::default()),
+        );
+
+        let task = tokio::spawn(actor.run());
 
         // Drop the IO transport:
         drop(server);
@@ -255,10 +236,15 @@ mod tests {
         let (dispatch_publish, _dispatch_stream, dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionActor::new(client, dispatch_publish, Default::default());
-
         let stop = CancellationToken::default();
-        let task = tokio::spawn(actor.run(stop.clone()));
+        let actor = ConnectionActor::new(
+            client,
+            stop.clone(),
+            dispatch_publish,
+            Arc::new(InstanceMetrics::default()),
+        );
+
+        let task = tokio::spawn(actor.run());
 
         // Drop the dispatch responder, which closes the dispatch result stream:
         drop(dispatch_responder);
@@ -278,9 +264,13 @@ mod tests {
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
 
-        let actor = ConnectionActor::new(client, dispatch_publish, Default::default());
-
         let stop = CancellationToken::default();
+        let actor = ConnectionActor::new(
+            client,
+            stop.clone(),
+            dispatch_publish,
+            Arc::new(InstanceMetrics::default()),
+        );
 
         // Before the actor runs for the first time, stage the two inputs to
         // race:
@@ -291,7 +281,7 @@ mod tests {
             .expect("buffered");
 
         // Run the task:
-        let task = tokio::spawn(actor.run(stop.clone()));
+        let task = tokio::spawn(actor.run());
 
         // Wait for the actor to stop:
         tokio::time::timeout(Duration::from_secs(5), task)
@@ -307,73 +297,5 @@ mod tests {
             None | Some(ClientToServer::ClientHello { .. })
         );
         assert_eq!(server.recv().await, None);
-    }
-
-    /// A successful send does not retry.
-    #[tokio::test]
-    async fn test_retry_send_success() {
-        let (mut client, mut server) = new_io_pair();
-        let stop = CancellationToken::default();
-
-        retry_send(&mut client, ClientToServer::Pong, &stop).await;
-
-        assert_eq!(server.recv().await, Some(ClientToServer::Pong));
-    }
-
-    /// A [`ConnectionErr::Closed`] error aborts the send immediately, without
-    /// retrying.
-    #[tokio::test]
-    async fn test_retry_send_aborts_on_closed_connection() {
-        let (mut client, server) = new_io_pair();
-        let stop = CancellationToken::default();
-
-        // Close the transport by dropping the server-side handle.
-        drop(server);
-
-        // Does not hang despite the stop token never being cancelled - the
-        // closed connection is terminal.
-        tokio::time::timeout(
-            Duration::from_secs(5),
-            retry_send(&mut client, ClientToServer::Pong, &stop),
-        )
-        .await
-        .expect("timeout");
-    }
-
-    /// A send that keeps failing is retried, backing off between attempts,
-    /// until the stop signal is observed.
-    #[tokio::test(start_paused = true)]
-    async fn test_retry_send_retries_until_stopped() {
-        let (mut client, _server) = new_io_pair();
-        let stop = CancellationToken::default();
-
-        // Fill the bounded channel so that all sends fail with
-        // ConnectionErr::QueueFull, forcing retries.
-        while SendToServer::send(&mut client, ClientToServer::Pong)
-            .await
-            .is_ok()
-        {}
-
-        let task_stop = stop.clone();
-        let task = tokio::spawn(async move {
-            retry_send(&mut client, ClientToServer::Pong, &task_stop).await;
-        });
-
-        // Allow a handful of retry attempts to elapse - the queue remains
-        // full throughout, so none of them should succeed and the task
-        // should not have completed.
-        for _ in 0..3 {
-            tokio::time::advance(Duration::from_secs(1)).await;
-        }
-        assert!(!task.is_finished());
-
-        // Request a shutdown - the in-flight retry loop should observe it
-        // and return, even though the send is still failing.
-        stop.cancel();
-
-        tokio::time::timeout(Duration::from_secs(5), task)
-            .await
-            .expect("timeout")
-            .expect("retry_send task panicked");
     }
 }

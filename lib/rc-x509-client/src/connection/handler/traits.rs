@@ -24,6 +24,9 @@ use crate::{
 /// The implementation can dispatch any number of responses to the server via
 /// the `reply` handle.
 pub(super) trait ServerMessageDelegate<IO: SendToServer>: Debug + Send + Sync {
+    /// Send a `ClientHello` handshake message.
+    fn send_hello(&mut self, reply: &mut IO) -> impl Future<Output = ()> + Send + Sync;
+
     /// Process the request in `msg`.
     fn process(
         &mut self,
