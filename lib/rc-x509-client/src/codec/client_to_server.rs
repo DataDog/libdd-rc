@@ -51,7 +51,7 @@ pub enum ClientToServer {
         /// Number of times the connection has been ungracefully broken.
         ungraceful: UngracefulDisconnectionCount,
         /// Duration of time the most recently closed connection was active for.
-        last_closed_connection_duration_seconds: LastConnectedDuration,
+        last_closed_connection_duration: LastConnectedDuration,
         /// Opaque data previously set by the server, if any.
         reconnection_data: Option<ReconnectionData>,
         /// Client build version.
@@ -92,7 +92,7 @@ impl From<ClientToServer> for Vec<u8> {
                 client_nonce,
                 graceful,
                 ungraceful,
-                last_closed_connection_duration_seconds: last_conn_duration,
+                last_closed_connection_duration: last_conn_duration,
                 reconnection_data,
                 version_info,
                 app_name,

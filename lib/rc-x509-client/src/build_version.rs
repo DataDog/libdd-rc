@@ -33,27 +33,27 @@ pub struct BuildVersion {
 
 impl BuildVersion {
     /// Return the major semver value.
-    pub(crate) fn major(&self) -> u32 {
+    pub fn major(&self) -> u32 {
         self.major
     }
 
     /// Return the minor semver value.
-    pub(crate) fn minor(&self) -> u32 {
+    pub fn minor(&self) -> u32 {
         self.minor
     }
 
     /// Return the patch semver value.
-    pub(crate) fn patch(&self) -> u32 {
+    pub fn patch(&self) -> u32 {
         self.patch
     }
 
     /// Return the pre-release string value.
-    pub(crate) fn pre(&self) -> Option<&str> {
+    pub fn pre(&self) -> Option<&str> {
         self.pre
     }
 
     /// Return the Git commit hash of the build.
-    pub(crate) fn commit(&self) -> Option<&'static str> {
+    pub fn commit(&self) -> Option<&'static str> {
         self.commit
     }
 

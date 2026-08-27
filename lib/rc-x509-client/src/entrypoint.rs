@@ -14,7 +14,7 @@
 
 //! The "main" of the client library.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
 use tokio_util::sync::CancellationToken;
@@ -26,6 +26,7 @@ use crate::{
     AbortOnDrop, ShutdownSignal,
     connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate},
     host_runtime::Connection,
+    metrics::InstanceMetrics,
 };
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
@@ -66,8 +67,11 @@ where
         shutdown: ShutdownSignal,
         conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     ) {
+        let metrics = Arc::new(InstanceMetrics::default());
+
         info!(
-            version = env!("CARGO_PKG_VERSION"),
+            version = %env!("CARGO_PKG_VERSION"),
+            commit = %metrics.version().commit().unwrap_or("unknown"),
             "starting rc-x509-client instance"
         );
 
@@ -75,6 +79,7 @@ where
         let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
             shutdown.clone(),
             conn_events,
+            metrics,
         )));
 
         // Wait forever for the shutdown signal.
@@ -105,6 +110,7 @@ where
 async fn handle_connection_events<IO>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
+    metrics: Arc<InstanceMetrics>,
 ) where
     IO: Connection,
 {
@@ -146,7 +152,7 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Init => debug!("new connection registered"),
             ConnectionEvent::Connected(io, dispatch) => {
                 let stop = shutdown.child_token();
-                let conn = ConnectionActor::new(io, dispatch);
+                let conn = ConnectionActor::new(io, dispatch, Arc::clone(&metrics));
                 let task = tokio::spawn(conn.run(stop.clone()));
 
                 let old = active_conn.replace(ActiveConn { task, stop });

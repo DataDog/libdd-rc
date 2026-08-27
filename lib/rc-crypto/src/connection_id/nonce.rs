@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(not(miri))]
 use aws_lc_rs::rand;
 
 /// A "number used once" for ID generation.
@@ -22,6 +23,7 @@ use aws_lc_rs::rand;
 pub struct IdNonce([u8; 16]);
 
 impl Default for IdNonce {
+    #[cfg(not(miri))]
     fn default() -> Self {
         let mut buf = [0u8; 16];
         rand::fill(&mut buf).unwrap();
@@ -29,6 +31,14 @@ impl Default for IdNonce {
         assert_ne!(buf, [0u8; 16]);
 
         Self(buf)
+    }
+
+    /// Miri cannot cross the FFI boundary into the C implementation of AWS-LC.
+    ///
+    /// For the purposes of miri checks only, return a static nonce.
+    #[cfg(miri)]
+    fn default() -> Self {
+        Self([42_u8; 16])
     }
 }
 
