@@ -18,20 +18,10 @@
 
 mod harness;
 
-use std::time::Duration;
-
 use assert_matches::assert_matches;
-use rc_x509_client::{
-    ShutdownSignal,
-    codec::{ClientToServer, ServerToClient},
-    connection::{ConnectionEvent, ConnectionUpdate},
-    dispatch::new_dispatcher_interconnect,
-    entrypoint::{LibraryEntrypoint, Main},
-};
-use tokio::{sync::mpsc, time::timeout};
-use tokio_stream::wrappers::ReceiverStream;
+use rc_x509_client::codec::{ClientToServer, ServerToClient};
 
-use crate::harness::io::new_io_pair;
+use crate::harness::client::TestClient;
 
 /// A simple test of the client lifecycle:
 ///
@@ -46,46 +36,16 @@ use crate::harness::io::new_io_pair;
 async fn test_ping_pong() {
     harness::logging::init();
 
-    let (signal, stop) = ShutdownSignal::new();
-    let (io, mut server) = new_io_pair();
-    let (dispatch_publisher, _dispatch_stream, _dispatch_response) = new_dispatcher_interconnect();
-
-    let client = Main::default();
-
-    let (event_tx, event_rx) = mpsc::channel(1);
-    let handle = tokio::spawn(client.entrypoint(signal, ReceiverStream::from(event_rx)));
-
-    // Initialise the connection:
-    event_tx
-        .send(ConnectionUpdate::new(ConnectionEvent::Init))
-        .await
-        .unwrap();
-
-    // And signal it is ready for I/O to begin:
-    event_tx
-        .send(ConnectionUpdate::new(ConnectionEvent::Connected(
-            io,
-            dispatch_publisher,
-        )))
-        .await
-        .unwrap();
+    let mut client = TestClient::default();
+    let mut conn = client.new_connection().await;
 
     // The server sends a PING:
-    server
-        .send(Ok(ServerToClient::Ping))
-        .await
-        .expect("must deliver");
+    conn.send(Ok(ServerToClient::Ping)).await;
 
     // And the client must respond with PONG.
-    let got = server.recv().await.expect("must recv response");
+    let got = conn.recv().await;
     assert_matches!(got, ClientToServer::Pong);
 
     // Signal the client library shutdown:
-    stop.shutdown_now();
-
-    // And wait for the actor to stop:
-    let _: () = timeout(Duration::from_secs(5), handle)
-        .await
-        .expect("graceful shutdown timeout")
-        .expect("client panic");
+    client.shutdown().await;
 }
