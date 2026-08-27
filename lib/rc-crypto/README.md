@@ -30,3 +30,30 @@ assert!(key.public_key().verify(&data, &sig).is_ok());
 
 Tests exclusively using the public API live in `tests/`. Each component has unit
 tests alongside the implementation.
+
+# Build Problems
+
+Sometimes aws_lc_rs can suffer from flaky builds. Here's a few known causes and
+solutions.
+
+## Missing Symbols
+
+Sometimes aws-lc-rs fails to compile, complaining of undefined symbols. It seems
+the build process for the C file can fail such that it leaves an empty
+intermediate file, and then never regenerates it after causing a persistent
+build error.
+
+Run this:
+
+```shellsession
+% cargo clean -p aws-lc-fips-sys -p aws-lc-sys -p aws-lc-rs
+```
+
+And then run the build again which should succeed.
+
+## Miri Checks
+
+Not really an aws-lc-rs problem as such, but Miri can't execute the C code
+behind the FFI boundary that exists to call the C library for AWS-LC.
+
+Instead, use `#[cfg(miri)]` to sub out AWS-LC calls for miri only.
