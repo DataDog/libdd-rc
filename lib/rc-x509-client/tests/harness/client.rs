@@ -189,7 +189,6 @@ impl TestDispatch {
         self.dispatch.payload.clone()
     }
 
-    #[allow(dead_code)]
     pub(crate) async fn respond(self, result: Result<v1::DispatchResponsePayload, DispatchError>) {
         self.responder
             .send_response(DispatchResult {
