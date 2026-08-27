@@ -119,4 +119,9 @@ impl TestConn {
     pub(crate) async fn recv(&mut self) -> ClientToServer {
         self.io.recv().await.expect("failed to recv from client")
     }
+
+    /// Close this connection.
+    pub(crate) async fn close(self) {
+        drop(self)
+    }
 }

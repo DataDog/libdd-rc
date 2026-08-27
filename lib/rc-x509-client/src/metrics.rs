@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
+};
+
 use crate::{
     build_version::BuildVersion,
     connection::{GracefulDisconnectionCount, LastConnectedDuration, UngracefulDisconnectionCount},
@@ -24,7 +29,9 @@ pub(crate) struct InstanceMetrics {
 
     graceful_disconnect: GracefulDisconnectionCount,
     ungraceful_disconnect: UngracefulDisconnectionCount,
-    last_conn_duration: LastConnectedDuration,
+
+    /// Number of seconds the last connection was connected for.
+    last_conn_duration: AtomicU64,
 }
 
 impl InstanceMetrics {
@@ -42,8 +49,45 @@ impl InstanceMetrics {
     }
 
     pub(crate) fn last_conn_duration(&self) -> LastConnectedDuration {
+        LastConnectedDuration::new(Duration::from_secs(
+            self.last_conn_duration.load(Ordering::Relaxed),
+        ))
+    }
+
+    pub(crate) fn set_last_conn_duration(&self, v: Duration) {
         self.last_conn_duration
+            .store(v.as_secs(), Ordering::Relaxed);
     }
 }
 
-// TODO: record metrics
+// TODO: record disconnection metrics
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_version() {
+        let m = InstanceMetrics::default();
+        let version = BuildVersion::from_build();
+
+        assert_eq!(*m.version(), version);
+    }
+
+    proptest! {
+        /// Storing and reading back last connection duration.
+        #[test]
+        fn prop_last_conn_duration(
+            values in prop::collection::vec(any::<Duration>(), 2..20),
+        ) {
+            let m = InstanceMetrics::default();
+
+            for v in values {
+                m.set_last_conn_duration(v);
+                assert_eq!(m.last_conn_duration().as_seconds(), v.as_secs());
+            }
+        }
+    }
+}
