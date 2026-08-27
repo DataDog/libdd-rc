@@ -16,6 +16,7 @@
 
 #![allow(unused_crate_dependencies)] // Tests have false positives.
 
+mod dispatch;
 mod harness;
 
 use std::time::Duration;
@@ -36,6 +37,8 @@ use crate::harness::client::TestClient;
 ///   4. A PONG is received.
 ///   5. The library is gracefully stopped.
 ///
+/// Note this occurs without completing the handshake, as a PING can be
+/// delivered at any time.
 #[tokio::test]
 async fn test_ping_pong() {
     harness::logging::init();
