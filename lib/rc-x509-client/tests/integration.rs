@@ -185,7 +185,9 @@ async fn test_handshake_invalid_connection_id() {
     // And the client will now no longer respond to our PING, as it refuses to
     // process further messages:
     conn.send(Ok(ServerToClient::Ping)).await;
-    assert_matches!(conn.recv().now_or_never(), None);
+    tokio::time::timeout(Duration::from_millis(50), conn.recv())
+        .await
+        .expect_err("must timeout - client should ignore messages after protocol error");
 
     client.shutdown().await;
 }
