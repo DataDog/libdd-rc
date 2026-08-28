@@ -118,7 +118,7 @@ func goSendCb(data *C.uint8_t, length C.uint32_t, userData unsafe.Pointer) (ret 
 //
 // The client library's contract makes the reachable case here -
 // cgo.Handle.Value() panicking on a handle already released by
-// Disconnected() - impossible, since no callback is invoked after
+// Close() - impossible, since no callback is invoked after
 // rc_conn_free() returns. This is the boundary where being wrong about that
 // costs the host process, so the guard stays.
 func recoverCallback(onPanic func()) {

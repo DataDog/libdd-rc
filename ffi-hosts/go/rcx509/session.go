@@ -50,7 +50,7 @@ type FFIContext interface {
 // session lifecycle depends on.
 type FFIConnection interface {
 	Connected() error
-	Disconnected() error
+	Close() error
 	Recv(data []byte) error
 	Outgoing() <-chan []byte
 }
@@ -127,7 +127,7 @@ func (c *Client) runSession(ctx context.Context) error {
 
 	// Shutdown operations to ensure we clean up
 	defer func() {
-		err = conn.Disconnected()
+		err = conn.Close()
 		if err != nil {
 			// We need to do the other operations, so log this and move on
 			log.Printf("rcx509: error disconnecting connection to rc-x509-client layer: %v", err)
@@ -190,12 +190,12 @@ func (c *Client) establishConnection(ctx context.Context) (FFIConnection, Websoc
 
 	ws, err := c.dialer.Dial(ctx, c.url, defaultDialTimeout)
 	if err != nil {
-		conn.Disconnected()
+		conn.Close()
 		return nil, nil, fmt.Errorf("rcx509: failed to dial %s: %w", c.url, err)
 	}
 
 	if err := conn.Connected(); err != nil {
-		conn.Disconnected()
+		conn.Close()
 		_ = ws.CloseNow()
 		return nil, nil, fmt.Errorf("rcx509: failed to mark FFI connection as connected: %w", err)
 	}

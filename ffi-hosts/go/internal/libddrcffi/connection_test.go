@@ -25,7 +25,7 @@ func newTestConnection(t *testing.T) *Connection {
 	}
 
 	t.Cleanup(func() {
-		_ = conn.Disconnected()
+		_ = conn.Close()
 		_ = ctx.Close()
 	})
 
@@ -62,7 +62,7 @@ func TestConnectionRecvBeforeConnected(t *testing.T) {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = conn.Disconnected()
+		_ = conn.Close()
 		_ = ctx.Close()
 	})
 
@@ -87,7 +87,7 @@ func TestConnectionRecvAfterDisconnected(t *testing.T) {
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
-	if err := conn.Disconnected(); err != nil {
+	if err := conn.Close(); err != nil {
 		t.Fatalf("Disconnected() returned error: %v", err)
 	}
 
@@ -293,7 +293,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 	conn.state.dispatchQueue <- newJob(3, recording)
 
 	disconnected := make(chan error, 1)
-	go func() { disconnected <- conn.Disconnected() }()
+	go func() { disconnected <- conn.Close() }()
 
 	close(release)
 
@@ -393,7 +393,7 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 	}
 
 	close(start)
-	if err := conn.Disconnected(); err != nil {
+	if err := conn.Close(); err != nil {
 		t.Fatalf("Disconnected() returned error: %v", err)
 	}
 	wg.Wait()
@@ -425,7 +425,7 @@ func TestDisconnectedClosesOutgoing(t *testing.T) {
 	default:
 	}
 
-	if err := conn.Disconnected(); err != nil {
+	if err := conn.Close(); err != nil {
 		t.Fatalf("Disconnected() returned error: %v", err)
 	}
 
@@ -464,7 +464,7 @@ func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
 	payload := []byte{0x01, 0x02, 0x03}
 	conn.state.outgoing <- payload
 
-	if err := conn.Disconnected(); err != nil {
+	if err := conn.Close(); err != nil {
 		t.Fatalf("Disconnected() returned error: %v", err)
 	}
 

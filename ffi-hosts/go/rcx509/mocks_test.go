@@ -137,9 +137,9 @@ func (fc *fakeFFIConnection) Connected() error {
 	return fc.connectedErr
 }
 
-// Disconnected mimics libddrcffi.Connection.Disconnected's contract: outgoing
+// Close mimics libddrcffi.Connection.Close's contract: outgoing
 // is closed before returning regardless of whether an error is reported.
-func (fc *fakeFFIConnection) Disconnected() error {
+func (fc *fakeFFIConnection) Close() error {
 	fc.disconnectedCalls++
 	if !fc.outgoingClosed {
 		fc.outgoingClosed = true
