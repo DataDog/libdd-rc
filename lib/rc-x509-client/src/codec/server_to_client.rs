@@ -125,7 +125,7 @@ impl TryFrom<&[u8]> for ServerToClient {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
     use rc_x509_proto::signature::v1::DetachedSignature;
@@ -175,7 +175,7 @@ mod tests {
     ///         02:21:00:c4:d7:63:16:75:1c:f1:81:67:8d:e6:60:46:84:74:
     ///         c4:78:ed:89:50:94:dc:30:2b:ee:37:c9:30:c1:46:07:7b
     /// sha256 Fingerprint=49:EF:BB:E5:7F:3D:FF:9C:6D:B5:6A:15:B7:24:BA:8B:78:76:9C:16:A6:58:75:F9:B7:76:AE:EE:21:53:E5:E5
-    const SAMPLE_CERT_DER: &[u8] = &[
+    pub(crate) const SAMPLE_CERT_DER: &[u8] = &[
         48, 130, 2, 90, 48, 130, 2, 0, 160, 3, 2, 1, 2, 2, 17, 0, 226, 123, 148, 183, 60, 61, 8,
         186, 223, 69, 141, 86, 122, 165, 225, 100, 48, 10, 6, 8, 42, 134, 72, 206, 61, 4, 3, 2, 48,
         86, 49, 33, 48, 31, 6, 3, 85, 4, 10, 12, 24, 76, 97, 32, 70, 195, 161, 98, 114, 105, 99,
