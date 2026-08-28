@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Display;
+
 /// An identifier that uniquely identifies messages and their expected response.
 ///
 /// A [`CorrelationId`] provides no guarantees other than being unique per
@@ -29,5 +31,22 @@ impl CorrelationId {
     /// Return the raw `u64` value.
     pub fn get(self) -> u64 {
         self.0
+    }
+}
+
+impl Display for CorrelationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_display() {
+        let c = CorrelationId::new(42);
+        assert_eq!(c.to_string(), "42");
     }
 }
