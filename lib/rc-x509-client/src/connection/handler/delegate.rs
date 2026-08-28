@@ -866,7 +866,7 @@ mod tests {
         assert_matches!(d.state, ConnState::Active(..));
 
         // And will respond to further requests:
-        d.process(ServerToClient::Ping, &mut client).await;
+        d.process(Ok(ServerToClient::Ping), &mut client).await;
         assert_matches!(server.recv().await, Some(ClientToServer::Pong));
     }
 }

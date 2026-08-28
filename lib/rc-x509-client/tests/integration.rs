@@ -21,7 +21,6 @@ mod harness;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use futures::FutureExt;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::codec::{ClientToServer, ProtocolError, ServerToClient};
 use tokio_util::bytes::Bytes;
