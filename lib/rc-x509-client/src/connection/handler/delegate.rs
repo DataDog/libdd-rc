@@ -581,7 +581,9 @@ mod tests {
             d.send_hello(&mut client).await;
 
             // Which has no effect:
-            assert_matches!(server.recv().now_or_never(), None);
+            tokio::time::timeout(Duration::from_millis(50), server.recv())
+                .await
+                .expect_err("must timeout - no message expected");
         }
 
         // The client MUST now be in the error state, and ignore any further
