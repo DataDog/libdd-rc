@@ -178,6 +178,7 @@ impl MessageDelegate {
         self.state = ConnState::Active(connection_id)
     }
 
+    #[allow(dead_code)] // For now.
     async fn handle_dispatch<IO>(
         &mut self,
         io: &mut IO,
@@ -188,7 +189,7 @@ impl MessageDelegate {
     ) where
         IO: SendToServer,
     {
-        let signing_cert_id = match CertId::try_from(signing_cert_id.to_vec()) {
+        let signing_cert_id = match CertId::try_from(signing_cert_id.as_ref()) {
             Ok(v) => v,
             Err(e) => {
                 error!(error=%e, "received invalid signer cert ID in dispatch request");
