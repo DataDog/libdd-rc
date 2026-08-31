@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 /*
 #include "libdd_rc.h"

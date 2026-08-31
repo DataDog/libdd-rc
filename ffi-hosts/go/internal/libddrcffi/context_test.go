@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 import (
 	"errors"
@@ -62,7 +62,7 @@ func TestConnectionLifecycle(t *testing.T) {
 		t.Fatalf("Recv() returned error: %v", err)
 	}
 
-	if err := conn.Disconnected(); err != nil {
+	if err := conn.Close(); err != nil {
 		t.Fatalf("Disconnected() returned error: %v", err)
 	}
 
@@ -101,18 +101,17 @@ func TestContextCloseForceDisconnectsOpenConnections(t *testing.T) {
 		t.Fatalf("Close() with open connections returned error: %v", err)
 	}
 
-	if err := connected.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+	if err := connected.Close(); !errors.Is(err, ErrConnectionClosed) {
 		t.Fatalf("Disconnected() on force-closed connection = %v, want ErrConnectionClosed", err)
 	}
-	if err := unconnected.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
+	if err := unconnected.Close(); !errors.Is(err, ErrConnectionClosed) {
 		t.Fatalf("Disconnected() on force-closed connection = %v, want ErrConnectionClosed", err)
 	}
 }
 
-// TestConnectionDisconnectedWithoutConnected verifies that calling
-// Disconnected on a Connection that Connected was never called on returns
-// ErrConnectionNotConnected rather than crashing, while still freeing the
-// connection's resources.
+// TestConnectionDisconnectedWithoutConnected verifies that calling Close on a
+// Connection that Connected was never called on succeeds without crashing,
+// while still freeing the connection's resources.
 func TestConnectionDisconnectedWithoutConnected(t *testing.T) {
 	ctx, err := Init()
 	if err != nil {
@@ -125,11 +124,11 @@ func TestConnectionDisconnectedWithoutConnected(t *testing.T) {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
 
-	if err := conn.Disconnected(); !errors.Is(err, ErrConnectionNotConnected) {
-		t.Fatalf("Disconnected() = %v, want ErrConnectionNotConnected", err)
+	if err := conn.Close(); err != nil {
+		t.Fatalf("Close() = %v, want nil", err)
 	}
 
-	if err := conn.Disconnected(); !errors.Is(err, ErrConnectionClosed) {
-		t.Fatalf("second Disconnected() = %v, want ErrConnectionClosed", err)
+	if err := conn.Close(); !errors.Is(err, ErrConnectionClosed) {
+		t.Fatalf("second Close() = %v, want ErrConnectionClosed", err)
 	}
 }

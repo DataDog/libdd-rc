@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 /*
 #include "libdd_rc.h"
@@ -69,8 +69,7 @@ func (c *X509Context) Close() error {
 		// former just means Connected was never called, and the latter means
 		// something else (e.g. the caller) already disconnected it
 		// concurrently. Either way the connection's resources end up freed.
-		if err := conn.Disconnected(); err != nil &&
-			!errors.Is(err, ErrConnectionNotConnected) &&
+		if err := conn.Close(); err != nil &&
 			!errors.Is(err, ErrConnectionClosed) {
 			return fmt.Errorf("ddrc: failed to disconnect connection during Close: %w", err)
 		}

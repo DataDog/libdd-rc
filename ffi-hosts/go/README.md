@@ -1,7 +1,10 @@
-# ddrc — Go bindings for libdd-rc
+# libdd-rc Go host
 
-Go bindings for the libdd-rc C FFI interface (`include/libdd_rc.h`), built
-via cgo against a statically linked `rc-x509-ffi` archive.
+`rcx509` is the public Go API for libdd-rc. It wraps `internal/libddrcffi`,
+the Go bindings for the libdd-rc C FFI interface (`include/libdd_rc.h`),
+built via cgo against a statically linked `rc-x509-ffi` archive.
+`internal/libddrcffi` is not intended to be used directly outside this
+module; callers should use `rcx509`.
 
 ## Building
 

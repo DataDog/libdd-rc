@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 /*
 #include "libdd_rc.h"
@@ -62,10 +62,10 @@ func goDispatchCb(correlationID C.uint64_t, data *C.uint8_t, length C.uint32_t, 
 		request:       mt,
 	}
 
-    // Aquire the lock to check the validity of this connState and enqueue
-    // the job if valid.
-    // 
-    // This lock only contends with the connection close path.
+	// Aquire the lock to check the validity of this connState and enqueue
+	// the job if valid.
+	//
+	// This lock only contends with the connection close path.
 	st.dispatchMu.Lock()
 	defer st.dispatchMu.Unlock()
 	// The connection is being torn down, and the dispatch worker that would
@@ -118,7 +118,7 @@ func goSendCb(data *C.uint8_t, length C.uint32_t, userData unsafe.Pointer) (ret 
 //
 // The client library's contract makes the reachable case here -
 // cgo.Handle.Value() panicking on a handle already released by
-// Disconnected() - impossible, since no callback is invoked after
+// Close() - impossible, since no callback is invoked after
 // rc_conn_free() returns. This is the boundary where being wrong about that
 // costs the host process, so the guard stays.
 func recoverCallback(onPanic func()) {

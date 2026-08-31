@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 /*
 #include "libdd_rc.h"
@@ -60,9 +60,7 @@ var ErrConnectionClosed = errors.New("ddrc: connection is closed")
 //
 // The rc-x509-client backend panics rather than reporting an error when it is
 // driven out of order, which would abort the host process, so these
-// transitions are checked here before crossing the FFI boundary. Disconnected
-// returns this error too: it skips notifying the backend in that case, but
-// still releases the connection's resources.
+// transitions are checked here before crossing the FFI boundary.
 var ErrConnectionNotConnected = errors.New("ddrc: connection was never connected")
 
 // ErrConnectionAlreadyConnected is returned by Connected when the Connection
@@ -107,7 +105,7 @@ type connState struct {
 
 	// dispatchMu guards accepting, and is held over the enqueue onto
 	// dispatchQueue, so that the queue contents become final the moment
-	// Disconnected clears accepting: a goDispatchCb call blocked here wakes to
+	// Close clears accepting: a goDispatchCb call blocked here wakes to
 	// accepting == false and rejects the payload rather than queueing work no
 	// dispatch worker is left to answer.
 	dispatchMu sync.Mutex
@@ -201,7 +199,7 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	var invokeWG sync.WaitGroup
 	invokeWG.Add(invokeWorkerCount)
 
-	// Disconnected() needs to wait for everybody to shut down and only has a handle
+	// Close() needs to wait for everybody to shut down and only has a handle
 	// to the top-level `WaitGroup` store in the `connState`, which is we must increment
 	// this by `invokeWorkerCount + resultWorkerCount`
 	state.wg.Add(invokeWorkerCount + resultWorkerCount)
@@ -246,22 +244,18 @@ func (c *Connection) Connected() error {
 	return nil
 }
 
-// Disconnected singals to the host's rc-x509-client instance that we have
-// lost the connection to the RC backend, either lost or closed.
+// Close shuts down a connection, freeing all supporting resources.
 //
-// Since there is no ability for a connection to be reconnected once
-// it has disconnected, Disconnected also frees the connection
-// resources.
+// If Connected() was never called, the rc-x509-client backend is
+// not notified of a disconnect (doing so is protocol error).
 //
 // It blocks until dispatched payloads that have already been accepted have
 // been handled and answered, which includes waiting for in-flight handler
-// calls to return.
-//
-// If Connected was never called, the rc-x509-client backend is not notified
-// (doing so would panic), but the connection's resources are still freed as we
-// proactively fire up the worker goroutines.
-// ErrConnectionNotConnected is returned in that case.
-func (c *Connection) Disconnected() error {
+// calls to return. Answering those payloads enqueues onto the channel returned
+// by Outgoing, so a caller that wants those responses delivered to the RC
+// backend has to keep draining it concurrently with this call. The channel is
+// closed before Close returns.
+func (c *Connection) Close() error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -293,15 +287,16 @@ func (c *Connection) Disconnected() error {
 	c.state.pinner.Unpin()
 	c.state.handlePtr.Delete()
 
+	// rc_conn_free has returned, so the client library guarantees no further
+	// callbacks. That makes this the first point at which closing outgoing
+	// cannot race a goSendCb send onto it, which would panic.
+	close(c.state.outgoing)
+
 	c.mu.Unlock()
 
 	// Released, so the context is free to shut down. Done outside the
 	// connection lock: nothing else takes the context lock while holding it.
 	c.ctx.forget(c)
-
-	if !wasConnected {
-		return ErrConnectionNotConnected
-	}
 
 	return nil
 }
@@ -313,7 +308,7 @@ func (c *Connection) Disconnected() error {
 // rc_conn_recv asserts the payload pointer is non-null, and panics if the
 // connection is not established, either of which aborts the process.
 //
-// Recv can block while a concurrent Disconnected tears the connection down,
+// Recv can block while a concurrent Close tears the connection down,
 // which includes waiting for in-flight dispatch handlers to return.
 func (c *Connection) Recv(data []byte) error {
 	if len(data) == 0 {
@@ -321,7 +316,7 @@ func (c *Connection) Recv(data []byte) error {
 	}
 
 	// The lock is held across the call into the client library: releasing it
-	// beforehand would let a concurrent Disconnected free the FFIConnection
+	// beforehand would let a concurrent Close free the FFIConnection
 	// that rc_conn_recv is about to be handed.
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -340,6 +335,21 @@ func (c *Connection) Recv(data []byte) error {
 	}
 
 	return nil
+}
+
+// Outgoing returns the channel carrying payloads that rc-x509-client wants
+// written to the RC backend.
+//
+// The caller is expected to keep draining it for the lifetime of the
+// connection, including while Close is running: the dispatch results
+// produced by the shutdown drain are enqueued here, and goSendCb drops
+// payloads rather than blocking once the channel is full.
+//
+// Close closes the channel once the connection has been freed, so a
+// receive reporting the channel as closed means every payload the client
+// library will ever produce has already been delivered.
+func (c *Connection) Outgoing() <-chan []byte {
+	return c.state.outgoing
 }
 
 // invokeWorker is one of invokeWorkerCount goroutines draining dispatchQueue

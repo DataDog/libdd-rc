@@ -1,4 +1,4 @@
-package ddrc
+package libddrcffi
 
 import (
 	"runtime/cgo"
@@ -331,7 +331,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
-	defer func() { _ = conn.Disconnected() }()
+	defer func() { _ = conn.Close() }()
 
 	innerPayload := []byte{0x01}
 	job := dispatchJob{
