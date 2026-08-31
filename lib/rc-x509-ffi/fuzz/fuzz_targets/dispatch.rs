@@ -151,15 +151,8 @@ fuzz_target!(|v: (&[u8], &[u8])| {
         Ok(Some(v1::server_to_client::Message::Dispatch(v1::DispatchRequest {
             correlation_id: server_sent_id,
             encoded_dispatch_request,
-            signature,
-        }))) => 'this: {
-            // Empty signatures cause an error in the codec, meaning the client
-            // never processes the payload, and therefore never emits a dispatch
-            // request.
-            if signature.as_ref().is_none() {
-                break 'this;
-            }
-
+            signature: _,
+        }))) => {
             // The client library will emit a Dispatch callback for this message
             // type.
             let (callback_id, callback_data) = dispatch_rx.recv().expect("sender not dropped");
@@ -259,7 +252,7 @@ where
             Ok(codec::ServerToClient::Dispatch {
                 correlation_id,
                 payload,
-                ..
+                detached_signature: _,
             }) => {
                 // Dispatch to the FFI host.
                 dispatch
