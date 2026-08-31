@@ -17,14 +17,17 @@
 
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
-use tokio_util::sync::CancellationToken;
+use rc_crypto::{
+    certificate::id::CertId,
+    connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
+};
+use tokio_util::{bytes::Bytes, sync::CancellationToken};
 use tracing::{debug, error, warn};
 
 use crate::{
     codec::{ClientToServer, DecodingError, ProtocolError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, hello::build_hello},
-    host_runtime::ConnectionErr,
+    host_runtime::{ConnectionErr, CorrelationId},
     metrics::InstanceMetrics,
 };
 
@@ -173,6 +176,33 @@ impl MessageDelegate {
 
         // Success - the state now changes to reflect the finalised handshake.
         self.state = ConnState::Active(connection_id)
+    }
+
+    #[allow(dead_code)] // For now.
+    async fn handle_dispatch<IO>(
+        &mut self,
+        io: &mut IO,
+        correlation_id: CorrelationId,
+        _payload: Bytes,
+        signature: Bytes,
+        signing_cert_id: Bytes,
+    ) where
+        IO: SendToServer,
+    {
+        let signing_cert_id = match CertId::try_from(signing_cert_id.as_ref()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(error=%e, "received invalid signer cert ID in dispatch request");
+
+                self.protocol_error(io, ProtocolError::CertIdInvalidLength(e.got_len()))
+                    .await;
+                return;
+            }
+        };
+
+        debug!(%correlation_id, %signing_cert_id, ?signature, "received dispatch request");
+
+        // TODO(dom): verify signature
     }
 }
 
