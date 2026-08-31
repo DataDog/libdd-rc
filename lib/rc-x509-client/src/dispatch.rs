@@ -214,17 +214,11 @@ impl DispatchResponder {
     ///
     /// Invariant: exactly one [`DispatchResult`] should be returned per
     /// [`Dispatch`].
-    ///
-    /// # Blocks
-    ///
-    /// This call blocks indefinitely should the reply queue be full. In
-    /// practice this should never occur if the 1-to-1 request to response
-    /// invariant is maintained.
-    pub fn send_response(
+    pub async fn send_response(
         &self,
         payload: DispatchResult,
     ) -> Result<(), DispatchResponseQueueClosed> {
-        match self.tx.blocking_send(payload) {
+        match self.tx.send(payload).await {
             Ok(()) => Ok(()),
             Err(_) => Err(DispatchResponseQueueClosed {}),
         }
@@ -320,19 +314,14 @@ mod tests {
         let mut recv = publisher.take_recv_stream().expect("first call");
 
         let correlation_id = CorrelationId::new(7);
-        // `send_response` blocks the calling thread, so it must be run off
-        // the async executor (it is normally called from a synchronous FFI
-        // context).
-        tokio::task::spawn_blocking(move || {
-            responder
-                .send_response(DispatchResult {
-                    correlation_id,
-                    result: Err(DispatchError::UnknownPayload),
-                })
-                .expect("queue has capacity")
-        })
-        .await
-        .expect("blocking task panicked");
+
+        responder
+            .send_response(DispatchResult {
+                correlation_id,
+                result: Err(DispatchError::UnknownPayload),
+            })
+            .await
+            .expect("queue has capacity");
 
         let got = recv.next().await.expect("must have queued response");
         assert_eq!(got.correlation_id, correlation_id);
@@ -341,17 +330,20 @@ mod tests {
 
     /// [`DispatchResponder::send_response`] fails once the client library has
     /// dropped the response stream.
-    #[test]
-    fn test_send_response_after_recv_dropped() {
+    #[tokio::test]
+    async fn test_send_response_after_recv_dropped() {
         let (mut publisher, _stream, responder) = new_dispatcher_interconnect();
 
         // Take, then drop, the receive stream - closing the response queue.
         drop(publisher.take_recv_stream().expect("first call"));
 
-        let got = responder.send_response(DispatchResult {
-            correlation_id: CorrelationId::new(1),
-            result: Err(DispatchError::UnknownPayload),
-        });
+        let got = responder
+            .send_response(DispatchResult {
+                correlation_id: CorrelationId::new(1),
+                result: Err(DispatchError::UnknownPayload),
+            })
+            .await;
+
         assert_matches!(got, Err(DispatchResponseQueueClosed {}));
     }
 
