@@ -18,7 +18,7 @@ use futures::pin_mut;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use crate::{
     codec::{DecodingError, ServerToClient},
@@ -142,21 +142,16 @@ where
     }
 
     async fn server_message(&mut self, msg: Result<ServerToClient, DecodingError>) {
-        let msg = match msg {
-            Ok(v) => v,
-            Err(e) => {
-                warn!(error=%e, "dropping invalid message from server");
-                return;
-            }
-        };
-
         debug!(?msg, "received message from server");
 
         // Delegate processing of messages to the dedicated handler:
         self.delegate.process(msg, &mut self.io).await;
     }
 
-    async fn dispatch_response(&mut self, _v: DispatchResult) {
+    async fn dispatch_response(&mut self, v: DispatchResult) {
+        debug!(?v, "received dispatch result from application");
+
+        // TODO(dom): implement dispatch responses
         unimplemented!()
     }
 }

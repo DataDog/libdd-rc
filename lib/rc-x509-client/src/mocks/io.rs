@@ -53,6 +53,10 @@ pub(crate) struct MockIOServer {
 }
 
 impl MockIOServer {
+    pub(crate) fn is_connection_closed(&self) -> bool {
+        self.to_client.is_closed() || self.to_server.is_closed()
+    }
+
     pub(crate) async fn recv(&mut self) -> Option<ClientToServer> {
         timeout(Duration::from_secs(5), self.to_server.recv())
             .await

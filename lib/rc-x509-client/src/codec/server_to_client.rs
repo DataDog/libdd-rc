@@ -14,18 +14,22 @@
 
 //! Codec for incoming [`ServerToClient`] messages.
 
-use rc_crypto::{certificate::InvalidDer, connection_id::UntrustedConnectionId};
+use rc_crypto::connection_id::UntrustedConnectionId;
 use rc_x509_proto::{
     decode,
     protocol::v1::{self, server_to_client::Message},
 };
-use rc_x509_trust::cert::UntrustedCert;
+use rc_x509_trust::cert::UntrustedCertBytes;
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 
 use crate::{connection::ReconnectionData, host_runtime::CorrelationId};
 
-/// Errors parsing incoming messages from the RC delivery backend.
+/// Errors deserialising incoming messages from the RC delivery backend.
+///
+/// These are wire-level failures only - any error in the interpretation of a
+/// successfully decoded message (e.g. an invalid certificate, or a missing
+/// detached signature) is left for the application to handle.
 #[derive(Debug, Error)]
 pub enum DecodingError {
     /// The message on the wire cannot be deserialised into a message due to
@@ -39,14 +43,25 @@ pub enum DecodingError {
     /// unaware of a newer message type).
     #[error("no message")]
     NoMessage,
+    //
+    // Only wire deserialisation errors belong here. Converting from a bytes
+    // into an application type should happen in the application.
+    //
+}
 
-    /// A certificate was sent by the server that couldn't be parsed.
-    #[error("invalid certificate DER bytes: {0}")]
-    InvalidCert(#[from] InvalidDer),
+/// A detached signature over the payload of a [`ServerToClient::Dispatch`]
+/// request, as received on the wire.
+///
+/// This is untrusted input - the application is responsible for verifying
+/// `signature` against `cert_id` before trusting the dispatched payload.
+#[derive(Debug, PartialEq)]
+pub struct DetachedSignature {
+    /// The Subject Key Identifier (SKI) of the certificate that produced
+    /// `signature`.
+    pub cert_id: Bytes,
 
-    /// A dispatch request was sent by the server without a detached signature.
-    #[error("dispatch request missing detached signature")]
-    NoDispatchSignature,
+    /// The signature bytes covering the dispatched payload.
+    pub signature: Bytes,
 }
 
 /// All possible messages originating from the RC delivery backend, to an RC
@@ -56,10 +71,12 @@ pub enum ServerToClient {
     /// The server has requested an immediate PONG response.
     Ping,
 
-    /// The server has pushed a new (untrusted) X509 certificate to the client.
+    /// The server has pushed a new certificate to the client, as raw
+    /// (untrusted) DER bytes.
     ///
-    /// This certificate MUST be treated as untrusted input.
-    CertificatePush(Box<UntrustedCert>),
+    /// The application is responsible for parsing and validating these bytes
+    /// before use.
+    CertificatePush(UntrustedCertBytes),
 
     /// A request to dispatch the provided payload to the host application.
     Dispatch {
@@ -69,11 +86,12 @@ pub enum ServerToClient {
         /// The payload to dispatch to the host.
         payload: Bytes,
 
-        /// The signature bytes that cover `payload`.
-        signature: Bytes,
-
-        /// The `CertId` of the leaf certificate used to produce `signature`.
-        signing_cert_id: Bytes,
+        /// The detached signature covering `payload`, if the server provided
+        /// one.
+        ///
+        /// The application is responsible for deciding how to handle a
+        /// missing signature.
+        detached_signature: Option<DetachedSignature>,
     },
 
     /// Connection handshake ACK in response to a `ClientHello`.
@@ -98,18 +116,16 @@ impl TryFrom<&[u8]> for ServerToClient {
         // Construct the application type from this wire type.
         Ok(match got.message.ok_or(DecodingError::NoMessage)? {
             Message::Ping(_) => Self::Ping,
-            Message::Dispatch(v) => {
-                let detached = v.signature.ok_or(DecodingError::NoDispatchSignature)?;
-
-                Self::Dispatch {
-                    correlation_id: CorrelationId::new(v.correlation_id),
-                    payload: v.encoded_dispatch_request,
-                    signature: detached.signature,
-                    signing_cert_id: detached.cert_id,
-                }
-            }
+            Message::Dispatch(v) => Self::Dispatch {
+                correlation_id: CorrelationId::new(v.correlation_id),
+                payload: v.encoded_dispatch_request,
+                detached_signature: v.signature.map(|v| DetachedSignature {
+                    cert_id: v.cert_id,
+                    signature: v.signature,
+                }),
+            },
             Message::CertificatePush(cert) => {
-                Self::CertificatePush(Box::new(UntrustedCert::from_der(cert.der)?))
+                Self::CertificatePush(UntrustedCertBytes::new(cert.der))
             }
             Message::ClientHelloAck(v) => Self::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
@@ -125,11 +141,9 @@ impl TryFrom<&[u8]> for ServerToClient {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
-    use rc_x509_proto::signature::v1::DetachedSignature;
-    use tokio_util::bytes::Bytes;
 
     use super::*;
 
@@ -175,7 +189,7 @@ mod tests {
     ///         02:21:00:c4:d7:63:16:75:1c:f1:81:67:8d:e6:60:46:84:74:
     ///         c4:78:ed:89:50:94:dc:30:2b:ee:37:c9:30:c1:46:07:7b
     /// sha256 Fingerprint=49:EF:BB:E5:7F:3D:FF:9C:6D:B5:6A:15:B7:24:BA:8B:78:76:9C:16:A6:58:75:F9:B7:76:AE:EE:21:53:E5:E5
-    const SAMPLE_CERT_DER: &[u8] = &[
+    pub(crate) const SAMPLE_CERT_DER: &[u8] = &[
         48, 130, 2, 90, 48, 130, 2, 0, 160, 3, 2, 1, 2, 2, 17, 0, 226, 123, 148, 183, 60, 61, 8,
         186, 223, 69, 141, 86, 122, 165, 225, 100, 48, 10, 6, 8, 42, 134, 72, 206, 61, 4, 3, 2, 48,
         86, 49, 33, 48, 31, 6, 3, 85, 4, 10, 12, 24, 76, 97, 32, 70, 195, 161, 98, 114, 105, 99,
@@ -227,22 +241,7 @@ mod tests {
     /// Generate a [`ServerToClient`] messages that should successfully encode &
     /// decode (always including an inner message).
     fn arbitrary_server_to_client() -> impl Strategy<Value = v1::ServerToClient> {
-        any::<v1::server_to_client::Message>()
-            .prop_map(|mut v| {
-                match &mut v {
-                    Message::CertificatePush(certificate) => {
-                        // Always return a valid certificate.
-                        certificate.der = Bytes::from(SAMPLE_CERT_DER);
-                    }
-                    Message::Dispatch(dispatch) if dispatch.signature.is_none() => {
-                        // Always include a signature - None is not a valid wire state.
-                        dispatch.signature = Some(DetachedSignature::default());
-                    }
-                    _ => {}
-                }
-                v
-            })
-            .prop_map(|v| v1::ServerToClient { message: Some(v) })
+        any::<v1::server_to_client::Message>().prop_map(|v| v1::ServerToClient { message: Some(v) })
     }
 
     proptest! {

@@ -16,9 +16,7 @@
 
 use rc_x509_proto::{
     encode,
-    protocol::v1::{
-        self, DispatchResponse, client_protocol_error::ProtocolError, client_to_server::Message,
-    },
+    protocol::v1::{self, DispatchResponse, client_to_server::Message},
 };
 use tokio_util::bytes::Bytes;
 
@@ -30,6 +28,38 @@ use crate::{
     },
     host_runtime::CorrelationId,
 };
+
+/// Reasons the client reports a protocol error to the backend, terminating
+/// the connection.
+///
+/// Each variant is encoded on the wire as its own message, so error-specific
+/// context can be attached to a variant without affecting the others.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub enum ProtocolError {
+    /// The server has sent a ClientHelloAck before the client has sent the
+    /// ClientHello handshake message.
+    HandshakeAckBeforeHello,
+
+    /// The server has sent a ClientHelloAck after the client had previously
+    /// marked the handshake as complete.
+    HandshakeDuplicateAck,
+
+    /// The connection ID proposed by the server cannot be verified to have
+    /// been derived from the client nonce, and therefore cannot be trusted as
+    /// unique for this client.
+    HandshakeConnectionIdRejected,
+
+    /// The protobuf wire representation could not be deserialised.
+    ///
+    /// This either means the wire data was corrupt when it reached the
+    /// client library, or a message type was sent to the client that is not
+    /// aware of a new addition (breaking protobuf change).
+    ///
+    /// The attached `String` is reported to the server as a deserialisation
+    /// error message.
+    DeserialisationFailed(String),
+}
 
 /// All possible messages originating from this client library, sent to the RC
 /// delivery backend.
@@ -124,10 +154,29 @@ impl From<ClientToServer> for Vec<u8> {
             ClientToServer::ProtocolError {
                 reason,
                 is_handshake_complete,
-            } => Message::ProtocolError(v1::ClientProtocolError {
-                is_handshake_complete,
-                error: reason as _, // Same type
-            }),
+            } => {
+                use rc_x509_proto::protocol::v1::client_protocol_error::*;
+
+                let error = match reason {
+                    ProtocolError::HandshakeAckBeforeHello => {
+                        Error::HandshakeAckBeforeHello(HandshakeAckBeforeHello {})
+                    }
+                    ProtocolError::HandshakeDuplicateAck => {
+                        Error::HandshakeDuplicateAck(HandshakeDuplicateAck {})
+                    }
+                    ProtocolError::HandshakeConnectionIdRejected => {
+                        Error::HandshakeConnectionIdRejected(HandshakeConnectionIdRejected {})
+                    }
+                    ProtocolError::DeserialisationFailed(error_msg) => {
+                        Error::DeserialisationFailed(DeserialisationFailed { error_msg })
+                    }
+                };
+
+                Message::ProtocolError(v1::ClientProtocolError {
+                    is_handshake_complete,
+                    error: Some(error),
+                })
+            }
         };
 
         encode(&v1::ClientToServer {
