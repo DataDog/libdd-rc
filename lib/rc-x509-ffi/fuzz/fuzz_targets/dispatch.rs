@@ -260,6 +260,7 @@ where
                         correlation_id,
                         payload,
                     })
+                    .await
                     .expect("FFI host must consume dispatch messages");
 
                 // then fall through
