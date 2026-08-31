@@ -631,7 +631,7 @@ impl FFIConnection {
         match &self.state {
             State::Connected {
                 dispatch_responder, ..
-            } => match dispatch_responder.send_response(payload) {
+            } => match block_on(dispatch_responder.send_response(payload)) {
                 Ok(()) => {}
                 Err(e) => {
                     error!(error=%e, "dropping dispatch result");
@@ -1028,10 +1028,10 @@ fn dispatch_task(
         };
 
         // Return the error to the client library.
-        if let Err(e) = responder.send_response(DispatchResult {
+        if let Err(e) = block_on(responder.send_response(DispatchResult {
             correlation_id: data.correlation_id,
             result: return_value,
-        }) {
+        })) {
             // The client library has dropped the dispatch handle and is not
             // listening, shut down the dispatch task.
             warn!(error=%e, "dispatch task cannot publish response");
