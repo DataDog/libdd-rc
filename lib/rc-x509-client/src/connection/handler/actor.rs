@@ -185,11 +185,12 @@ mod tests {
 
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
+        let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
-            dispatch_publish.take_recv_stream().expect("first call"),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            dispatch_stream,
             metrics,
         );
 
@@ -215,11 +216,12 @@ mod tests {
 
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
+        let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
-            dispatch_publish.take_recv_stream().expect("first call"),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            dispatch_stream,
             metrics,
         );
 
@@ -245,11 +247,12 @@ mod tests {
 
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
+        let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
-            dispatch_publish.take_recv_stream().expect("first call"),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            dispatch_stream,
             metrics,
         );
 
@@ -275,11 +278,12 @@ mod tests {
 
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
+        let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics)),
-            dispatch_publish.take_recv_stream().expect("first call"),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            dispatch_stream,
             metrics,
         );
 

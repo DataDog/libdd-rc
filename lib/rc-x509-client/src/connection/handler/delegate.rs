@@ -27,6 +27,7 @@ use tracing::{debug, error, warn};
 use crate::{
     codec::{ClientToServer, DecodingError, ProtocolError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, hello::build_hello},
+    dispatch::DispatchPublisher,
     host_runtime::{ConnectionErr, CorrelationId},
     metrics::InstanceMetrics,
 };
@@ -81,15 +82,22 @@ impl ConnState {
 pub(crate) struct MessageDelegate {
     metrics: Arc<InstanceMetrics>,
     stop: CancellationToken,
+    #[allow(dead_code)]
+    dispatch: DispatchPublisher,
 
     state: ConnState,
 }
 
 impl MessageDelegate {
-    pub(crate) fn new(stop: CancellationToken, metrics: Arc<InstanceMetrics>) -> Self {
+    pub(crate) fn new(
+        stop: CancellationToken,
+        metrics: Arc<InstanceMetrics>,
+        dispatch: DispatchPublisher,
+    ) -> Self {
         Self {
             metrics,
             stop,
+            dispatch,
             state: ConnState::PreHandshake,
         }
     }
@@ -178,7 +186,10 @@ impl MessageDelegate {
         self.state = ConnState::Active(connection_id)
     }
 
-    #[allow(dead_code)] // For now.
+    /// Process a [`ServerToClient::Dispatch`] request, verifying the attached
+    /// [`DetachedSignature`] before forwarding `payload` to the host
+    /// application via [`DispatchPublisher`].
+    #[allow(dead_code)]
     async fn handle_dispatch<IO>(
         &mut self,
         io: &mut IO,
@@ -307,6 +318,7 @@ mod tests {
         build_version::BuildVersion,
         codec::{DetachedSignature, tests::SAMPLE_CERT_DER},
         connection::ReconnectionData,
+        dispatch::new_dispatcher_interconnect,
         host_runtime::CorrelationId,
         mocks::io::new_io_pair,
         tests::arbitrary_bytes,
@@ -385,9 +397,12 @@ mod tests {
     /// Test handling of a PING server message.
     #[tokio::test]
     async fn test_ping_pong() {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -402,9 +417,12 @@ mod tests {
     /// error, and transitions the connection into the error state.
     #[tokio::test]
     async fn test_decode_error() {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -431,9 +449,12 @@ mod tests {
     /// Happy path test for a successful handshake.
     #[tokio::test]
     async fn test_handshake() {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         // The initial state is "pre-handshake":
@@ -617,9 +638,12 @@ mod tests {
         does_send_hello_after_ack: bool,
         post_ack_msg: ServerToClient,
     ) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -683,9 +707,12 @@ mod tests {
         proposed_id: [u8; 16],
         post_error_msg: ServerToClient,
     ) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         // The initial state is "pre-handshake":
@@ -746,9 +773,12 @@ mod tests {
     }
 
     async fn prop_handshake_duplicate_body(post_ack_msg: ServerToClient) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -827,9 +857,12 @@ mod tests {
         during_handshake: Option<ServerToClient>,
         post_handshake: Option<ServerToClient>,
     ) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
         );
 
         let (mut client, mut server) = new_io_pair();
