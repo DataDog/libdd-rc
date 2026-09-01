@@ -107,6 +107,7 @@ type fakeFFIContext struct {
 	newConnErr   error
 	closeErr     error
 	newConnCalls int
+	closeCalls   int
 }
 
 func (fc *fakeFFIContext) NewConnection() (FFIConnection, error) {
@@ -118,6 +119,7 @@ func (fc *fakeFFIContext) NewConnection() (FFIConnection, error) {
 }
 
 func (fc *fakeFFIContext) Close() error {
+	fc.closeCalls++
 	return fc.closeErr
 }
 
