@@ -74,5 +74,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
+    // `PingRequest` is passed to policy evaluation by callers, which requires
+    // a protobuf-JSON-compliant `Serialize` impl (e.g. `payload`'s `bytes`
+    // must serialize as a base64 string, not a byte array, to match what the
+    // OPA policy expects).
+    let descriptor_bytes = std::fs::read(&descriptor_path)?;
+    pbjson_build::Builder::new()
+        .register_descriptors(&descriptor_bytes)?
+        .build(&[".rc.x509.magic_tunnel.remote_config.v1.PingRequest"])?;
+
     Ok(())
 }

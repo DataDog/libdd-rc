@@ -21,6 +21,7 @@
 // type used in generated code; not referenced by name otherwise.
 use bytes as _;
 
+#[allow(clippy::useless_borrows_in_formatting)]
 pub(crate) mod rc {
     pub(crate) mod x509 {
         pub mod protocol {
@@ -37,6 +38,10 @@ pub(crate) mod rc {
                     include!(concat!(
                         env!("OUT_DIR"),
                         "/rc.x509.magic_tunnel.remote_config.v1.rs"
+                    ));
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_config.v1.serde.rs"
                     ));
                 }
             }
