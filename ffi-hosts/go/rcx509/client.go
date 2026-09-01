@@ -84,25 +84,27 @@ func (c *Client) Start() error {
 		return ErrAlreadyStarted
 	}
 	c.started = true
-	c.mu.Unlock()
 
 	// Create a context that will allow us to stop the background
-	// goroutine on a Close() call.
+	// goroutine on a Close() call. cancel and wg.Add are set up here, still
+	// under c.mu, so that a concurrent Close() can never observe c.started
+	// without also observing a usable c.cancel and a non-zero wg count.
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
+	c.wg.Add(1)
+	c.mu.Unlock()
 
+	defer c.wg.Done()
 	c.run(ctx)
-
-	// We can tear down here actually, this is a lot cleaner.
-	if err := c.ffiCtx.Close(); err != nil {
-		return fmt.Errorf("rcx509: failed to shut down client: %w", err)
-	}
 
 	return nil
 }
 
-// Close sends a signal to the management loop to shutdown operations and waits
-// for the system to terminate.
+// Close sends a signal to the management loop to shutdown operations, waits
+// for the system to terminate, and releases the FFI context.
+//
+// Close is safe to call whether or not Start was ever called, as the FFI context
+// still needs to be cleaned up even if Start() was never invoked.
 func (c *Client) Close() error {
 	c.mu.Lock()
 	if c.closed {
@@ -110,14 +112,19 @@ func (c *Client) Close() error {
 		return ErrClientClosed
 	}
 	c.closed = true
+	cancel := c.cancel
 	c.mu.Unlock()
 
-	if c.cancel != nil {
-		c.cancel()
+	if cancel != nil {
+		cancel()
 	}
 
 	// Wait for done
 	c.wg.Wait()
+
+	if err := c.ffiCtx.Close(); err != nil {
+		return fmt.Errorf("rcx509: failed to shut down client: %w", err)
+	}
 
 	return nil
 }
@@ -135,9 +142,6 @@ func (c *Client) RegisterHandler(namespace magictunnelv1.Namespace, fn libddrcff
 // will only stop when the provided context signals the run loop should terminate
 // either via an error or a done signal.
 func (c *Client) run(ctx context.Context) {
-	c.wg.Add(1)
-	defer c.wg.Done()
-
 	for {
 		err := c.runSession(ctx)
 		if err != nil {
