@@ -62,6 +62,12 @@ pub enum ProtocolError {
 
     /// A `CertId` was received with an invalid / out-of-bounds length.
     CertIdInvalidLength(usize),
+
+    /// A dispatch request arrived before the handshake had completed.
+    DispatchBeforeHandshake(CorrelationId),
+
+    /// A dispatch request did not contain any signature.
+    DispatchMissingSignature(CorrelationId),
 }
 
 /// All possible messages originating from this client library, sent to the RC
@@ -175,6 +181,16 @@ impl From<ClientToServer> for Vec<u8> {
                     }
                     ProtocolError::CertIdInvalidLength(v) => {
                         Error::CertIdInvalidLength(CertIdInvalidLength { got_len: v as u64 })
+                    }
+                    ProtocolError::DispatchBeforeHandshake(id) => {
+                        Error::DispatchBeforeHandshake(DispatchBeforeHandshake {
+                            correlation_id: id.get(),
+                        })
+                    }
+                    ProtocolError::DispatchMissingSignature(id) => {
+                        Error::DispatchMissingSignature(DispatchMissingSignature {
+                            correlation_id: id.get(),
+                        })
                     }
                 };
 

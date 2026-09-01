@@ -3,6 +3,8 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
+import "protocol/connection_id.proto";
+
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // The client is disconnecting due to a protocol error.
@@ -44,6 +46,21 @@ message ClientProtocolError {
     uint64 got_len = 1;
   }
 
+  // A dispatch request arrived to the client before the handshake completed.
+  //
+  // This is suspicious, because the dispatch request requires the connection ID
+  // that is agreed as part of the handshake.
+  message DispatchBeforeHandshake {
+    // The requesting correlation ID that raised the error.
+    uint64 correlation_id = 1;
+  }
+
+  // A dispatch request arrived with no signature attached.
+  message DispatchMissingSignature {
+    // The requesting correlation ID that raised the error.
+    uint64 correlation_id = 1;
+  }
+
   // The reported protocol error, including error-specific context if
   // appropriate.
   oneof error {
@@ -52,6 +69,8 @@ message ClientProtocolError {
     HandshakeConnectionIdRejected handshake_connection_id_rejected = 3;
     DeserialisationFailed deserialisation_failed = 4;
     CertIdInvalidLength cert_id_invalid_length = 6;
+    DispatchBeforeHandshake dispatch_before_handshake = 7;
+    DispatchMissingSignature dispatch_missing_signature = 8;
   }
 
   // True if the client believes the handshake has completed successfully
