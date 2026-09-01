@@ -500,12 +500,22 @@ func TestContextCloseClosesOutgoing(t *testing.T) {
 		t.Fatalf("Close() returned error: %v", err)
 	}
 
-	select {
-	case _, ok := <-conn.Outgoing():
-		if ok {
-			t.Fatal("outgoing yielded a payload, want it to be closed")
+	// Be insensitive of any accumulated backlog of outgoing messages (up to 10)
+	// by draining the queue while waiting for the channel to have closed.
+	for i := 0; i < 10; i++ {
+		select {
+		case _, ok := <-conn.Outgoing():
+			if !ok {
+				// Success condition.
+				//
+				// Exit instead of falling through to the failure case after the
+				// bounded retries.
+				return
+			}
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for outgoing to be closed by ctx.Close")
 		}
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for outgoing to be closed by ctx.Close")
 	}
+
+	t.Fatal("outgoing channel never closed after shutdown")
 }
