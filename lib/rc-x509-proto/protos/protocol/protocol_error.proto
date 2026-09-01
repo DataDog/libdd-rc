@@ -3,8 +3,6 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
-import "protocol/connection_id.proto";
-
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // The client is disconnecting due to a protocol error.
