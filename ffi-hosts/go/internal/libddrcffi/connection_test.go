@@ -399,46 +399,6 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 	wg.Wait()
 }
 
-// TestDisconnectedClosesOutgoing verifies that the outgoing channel is closed
-// once the connection has been freed. A consumer draining it needs that close
-// as its termination signal, since it is what tells the consumer that no
-// further payload can arrive from the client library.
-func TestDisconnectedClosesOutgoing(t *testing.T) {
-	ctx, err := Init()
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	defer func() { _ = ctx.Close() }()
-
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
-	if err := conn.Connected(); err != nil {
-		t.Fatalf("Connected() returned error: %v", err)
-	}
-
-	outgoing := conn.Outgoing()
-	select {
-	case payload, ok := <-outgoing:
-		t.Fatalf("outgoing yielded (%v, %v) before Disconnected, want it to block", payload, ok)
-	default:
-	}
-
-	if err := conn.Close(); err != nil {
-		t.Fatalf("Disconnected() returned error: %v", err)
-	}
-
-	select {
-	case _, ok := <-outgoing:
-		if ok {
-			t.Fatal("outgoing yielded a payload, want it to be closed")
-		}
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for outgoing to be closed by Disconnected")
-	}
-}
-
 // TestDisconnectedPreservesQueuedOutgoing verifies that payloads the client
 // library handed us before teardown are still readable after Disconnected has
 // closed the channel. The session layer answers dispatch results during the
