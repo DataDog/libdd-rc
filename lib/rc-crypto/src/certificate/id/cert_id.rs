@@ -84,10 +84,10 @@ pub struct CertId {
 
 impl CertId {
     /// Minimum bytes CertId MUST be.
-    const MIN_LENGTH: usize = 16;
+    pub const MIN_LENGTH: usize = 16;
 
     /// Maximum bytes CertId MUST be.
-    const MAX_LENGTH: usize = 64;
+    pub const MAX_LENGTH: usize = 64;
 
     /// Render this value following the conventions of OpenSSL's colon-delimited
     /// string representation.

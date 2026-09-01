@@ -25,9 +25,9 @@ use tokio_util::{bytes::Bytes, sync::CancellationToken};
 use tracing::{debug, error, warn};
 
 use crate::{
-    codec::{ClientToServer, DecodingError, ProtocolError, ServerToClient},
+    codec::{ClientToServer, DecodingError, DetachedSignature, ProtocolError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, hello::build_hello},
-    dispatch::DispatchPublisher,
+    dispatch::{Dispatch, DispatchPublisher},
     host_runtime::{ConnectionErr, CorrelationId},
     metrics::InstanceMetrics,
 };
@@ -194,12 +194,47 @@ impl MessageDelegate {
         &mut self,
         io: &mut IO,
         correlation_id: CorrelationId,
-        _payload: Bytes,
-        signature: Bytes,
-        signing_cert_id: Bytes,
+        payload: Bytes,
+        detached_signature: Option<DetachedSignature>,
     ) where
         IO: SendToServer,
     {
+        // First check the state and read the connection ID for later
+        // verification.
+        let connection_id = match &self.state {
+            ConnState::Active(connection_id) => connection_id,
+
+            // No other state is acceptable.
+            //
+            // The connection ID must have been established before a dispatch
+            // request can arrive.
+            ConnState::PreHandshake | ConnState::Handshaking(..) => {
+                return self
+                    .protocol_error(io, ProtocolError::DispatchBeforeHandshake(correlation_id))
+                    .await;
+            }
+
+            // This should not be reachable (it is checked by the caller prior
+            // to this fn call) - the correct response is to ignore the message
+            // in either case:
+            ConnState::Error => return,
+        };
+
+        // Handle the possibility of no signature being sent on the wire - a
+        // protocol violation.
+        let (signing_cert_id, signature) = match detached_signature {
+            Some(DetachedSignature { cert_id, signature }) if !signature.is_empty() => {
+                (cert_id, signature)
+            }
+            _ => {
+                error!(%connection_id, %correlation_id, "no signature in dispatch request");
+                return self
+                    .protocol_error(io, ProtocolError::DispatchMissingSignature(correlation_id))
+                    .await;
+            }
+        };
+
+        // Parse the signing cert ID.
         let signing_cert_id = match CertId::try_from(signing_cert_id.as_ref()) {
             Ok(v) => v,
             Err(e) => {
@@ -211,9 +246,28 @@ impl MessageDelegate {
             }
         };
 
-        debug!(%correlation_id, %signing_cert_id, ?signature, "received dispatch request");
+        debug!(%connection_id, %correlation_id, %signing_cert_id, ?signature, "received dispatch request");
 
-        // TODO(dom): verify signature
+        // TODO(dom): signature verification
+
+        // TODO(dom): connection ID verification
+
+        // And finally dispatch the request to the host application (via the FFI
+        // layer).
+        //
+        // NOTE: this call to dispatch() internally logs and enqueues a response
+        // to the server if this dispatch call fails.
+        match self
+            .dispatch
+            .dispatch(Dispatch {
+                correlation_id,
+                payload,
+            })
+            .await
+        {
+            Ok(()) => debug!(%correlation_id, "payload dispatched"),
+            Err(_) => { /* Logged and handled within the dispatch() call */ }
+        }
     }
 }
 
@@ -241,12 +295,23 @@ where
             }
         };
 
+        // TODO(dom): remove filter_implemented().
+
         match msg {
             ServerToClient::Ping => retry_send(io, ClientToServer::Pong, &self.stop).await,
 
-            ServerToClient::CertificatePush(..) => unimplemented!(), // TODO(dom): update filter_allowed_at_any_time
-            ServerToClient::SetReconnectionData(..) => unimplemented!(), // TODO(dom): update filter_allowed_at_any_time
-            ServerToClient::Dispatch { .. } => unimplemented!(), // TODO(dom): update filter_allowed_at_any_time
+            ServerToClient::CertificatePush(..) => unimplemented!(),
+            ServerToClient::SetReconnectionData(..) => unimplemented!(),
+
+            // A Dispatch can only occur after the handshake is complete.
+            ServerToClient::Dispatch {
+                correlation_id,
+                payload,
+                detached_signature,
+            } => {
+                self.handle_dispatch(io, correlation_id, payload, detached_signature)
+                    .await
+            }
 
             // A client ACK must be received exactly once, when the connection
             // is in the "Handshaking" state.
@@ -325,6 +390,37 @@ mod tests {
     };
 
     use super::*;
+
+    /// Drive `d` through a complete, successful handshake: read the
+    /// [`ClientToServer::ClientHello`] sent by `d`, derive the resulting
+    /// [`ConnectionId`] from the client-provided nonce, and deliver the
+    /// [`ServerToClient::ClientHelloAck`] response back to `d`.
+    async fn do_handshake(
+        d: &mut MessageDelegate,
+        client: &mut crate::mocks::io::MockIO,
+        server: &mut crate::mocks::io::MockIOServer,
+    ) {
+        d.send_hello(client).await;
+
+        let client_nonce = assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ClientHello { client_nonce, .. }) => client_nonce
+        );
+
+        let server_nonce = IdNonce::default();
+        let connection_id = ConnectionId::new(&client_nonce, server_nonce.as_bytes());
+
+        d.process(
+            Ok(ServerToClient::ClientHelloAck {
+                connection_id: UntrustedConnectionId::new(
+                    Bytes::copy_from_slice(server_nonce.as_bytes()),
+                    Bytes::copy_from_slice(connection_id.as_bytes()),
+                ),
+            }),
+            client,
+        )
+        .await;
+    }
 
     /// A successful send does not retry.
     #[tokio::test]
@@ -515,18 +611,11 @@ mod tests {
     /// Generate an arbitrary ServerToClient message.
     fn any_server_to_client() -> impl Strategy<Value = ServerToClient> {
         prop_oneof![
+            arbitrary_valid_dispatch_request(),
             LazyJust::new(|| ServerToClient::Ping),
             LazyJust::new(|| ServerToClient::CertificatePush(UntrustedCertBytes::new(
                 SAMPLE_CERT_DER
             ))),
-            LazyJust::new(|| ServerToClient::Dispatch {
-                correlation_id: CorrelationId::new(42),
-                payload: Bytes::from_static(&[1, 2, 3, 4]),
-                detached_signature: Some(DetachedSignature {
-                    cert_id: Bytes::from_static(&[9, 10, 11, 12]),
-                    signature: Bytes::from_static(&[5, 6, 7, 8]),
-                }),
-            }),
             LazyJust::new(|| ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::from_static(&[1, 2, 3, 4]),
@@ -538,21 +627,120 @@ mod tests {
         ]
     }
 
+    /// Generate a random, but valid, dispatch request.
+    fn arbitrary_valid_dispatch_request() -> impl Strategy<Value = ServerToClient> {
+        (
+            any::<u64>(),                                                                // ID
+            arbitrary_bytes(),                                                           // payload
+            prop::collection::vec(any::<u8>(), CertId::MIN_LENGTH..=CertId::MAX_LENGTH), // cert ID
+            prop::collection::vec(any::<u8>(), 1..1028).prop_map(Bytes::from), // signature (non-empty)
+        )
+            .prop_map(
+                |(id, payload, cert_id, signature)| ServerToClient::Dispatch {
+                    correlation_id: CorrelationId::new(id),
+                    payload,
+                    detached_signature: Some(DetachedSignature {
+                        cert_id: Bytes::from_owner(cert_id),
+                        signature,
+                    }),
+                },
+            )
+    }
+
+    /// Generate an arbitrary [`ServerToClient::Dispatch`] that is logically
+    /// malformed in such a way that it causes the client to raise a protocol
+    /// error.
+    fn arbitrary_invalid_dispatch_request() -> impl Strategy<Value = ServerToClient> {
+        prop_oneof![
+            // No signature:
+            arbitrary_valid_dispatch_request().prop_map(|mut v| {
+                match &mut v {
+                    ServerToClient::Dispatch {
+                        detached_signature, ..
+                    } => *detached_signature = None,
+                    _ => unreachable!(),
+                };
+
+                v
+            }),
+            // Cert ID too small / empty:
+            (
+                arbitrary_valid_dispatch_request(),
+                prop::collection::vec(any::<u8>(), 0..CertId::MIN_LENGTH)
+            )
+                .prop_map(|(mut v, id)| {
+                    match &mut v {
+                        ServerToClient::Dispatch {
+                            detached_signature: Some(DetachedSignature { cert_id, .. }),
+                            ..
+                        } => *cert_id = Bytes::from_owner(id),
+                        _ => unreachable!(),
+                    };
+
+                    v
+                }),
+            // Cert ID too big:
+            (
+                arbitrary_valid_dispatch_request(),
+                prop::collection::vec(any::<u8>(), (CertId::MAX_LENGTH + 1)..1028)
+            )
+                .prop_map(|(mut v, id)| {
+                    match &mut v {
+                        ServerToClient::Dispatch {
+                            detached_signature: Some(DetachedSignature { cert_id, .. }),
+                            ..
+                        } => *cert_id = Bytes::from_owner(id),
+                        _ => unreachable!(),
+                    };
+
+                    v
+                }),
+            // Signature empty
+            arbitrary_valid_dispatch_request().prop_map(|mut v| {
+                match &mut v {
+                    ServerToClient::Dispatch {
+                        detached_signature: Some(DetachedSignature { signature, .. }),
+                        ..
+                    } => *signature = Bytes::default(),
+                    _ => unreachable!(),
+                };
+
+                v
+            }),
+        ]
+    }
+
     /// Returns true if the message yielded by `input` is a message type that
     /// should be accepted by the client at any time.
     fn filter_allowed_at_any_time(
         input: impl Strategy<Value = ServerToClient>,
     ) -> impl Strategy<Value = ServerToClient> {
-        input.prop_filter("allowed at any time filter", |v| match v {
-            // These message types can be delivered to the client at any time
-            // (pre/during/post handshake):
-            ServerToClient::Ping => true,
-
-            // These WILL be accepted, but are not implemented:
-            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => false,
-
+        filter_implemented(input).prop_filter("allowed at any time filter", |v| match v {
             // These message types have ordering restrictions:
             ServerToClient::Dispatch { .. } | ServerToClient::ClientHelloAck { .. } => false,
+            _ => true,
+        })
+    }
+
+    /// Returns true if the message yielded by `input` is a message type that
+    /// should be accepted by the client after the handshake.
+    fn filter_allowed_after_handshake(
+        input: impl Strategy<Value = ServerToClient>,
+    ) -> impl Strategy<Value = ServerToClient> {
+        input.prop_filter("allowed after handshake filter", |v| {
+            !matches!(v, ServerToClient::ClientHelloAck { .. })
+        })
+    }
+
+    // A temporary filter until all handlers are implemented.
+    fn filter_implemented(
+        input: impl Strategy<Value = ServerToClient>,
+    ) -> impl Strategy<Value = ServerToClient> {
+        input.prop_filter("implemented filter", |v| {
+            !matches!(
+                v,
+                ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..)
+            )
         })
     }
 
@@ -586,6 +774,19 @@ mod tests {
                 .build()
                 .unwrap()
                 .block_on(prop_message_types_allowed_during_handshake_body(pre_handshake, during_handshake, post_handshake));
+        }
+
+        /// Any non-handshake message can be delivered after the handshake has
+        /// completed without causing it to transition into the error state.
+        #[test]
+        fn prop_any_message_after_handshake(
+            msg in filter_allowed_after_handshake(filter_implemented(any_server_to_client())),
+        ) {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(prop_any_message_after_handshake_body(msg));
         }
 
         /// Deliver a ClientHelloAck before the client sends the ClientHello,
@@ -631,6 +832,34 @@ mod tests {
                 .build()
                 .unwrap()
                 .block_on(prop_handshake_connection_id_rejected_body(server_nonce, proposed_id, post_error_msg));
+        }
+
+        /// Assert that a message that causes a deserialisation error causes the
+        /// client to report a protocol error and refuse subsequent messages.
+        #[test]
+        fn prop_deserialisation_error_rejects_messages(
+            msg in filter_allowed_after_handshake(filter_implemented(any_server_to_client())),
+        ) {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(prop_deserialisation_error_rejects_messages_body(msg));
+        }
+
+        /// An invalid dispatch request causes the client to transition to the
+        /// error state, raise a protocol error, and refuse subsequent requests
+        /// of any sort.
+        #[test]
+        fn prop_invalid_dispatch_raises_protocol_error(
+            invalid_dispatch in arbitrary_invalid_dispatch_request(),
+            valid_msg in any_server_to_client(),
+        ) {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(prop_invalid_dispatch_raises_protocol_error_body(invalid_dispatch, valid_msg));
         }
     }
 
@@ -783,42 +1012,20 @@ mod tests {
 
         let (mut client, mut server) = new_io_pair();
 
-        // Trigger the delegate to send the initial handshake message.
-        d.send_hello(&mut client).await;
-
-        // Verify the data provided in the handshake, and extract the nonce:
-        let client_nonce = assert_matches!(
-            server.recv().await,
-            Some(ClientToServer::ClientHello {
-                client_nonce,
-                ..
-            }) => client_nonce
-        );
-
-        // Derive the final connection ID:
-        let server_nonce = IdNonce::default();
-        let connection_id = ConnectionId::new(&client_nonce, server_nonce.as_bytes());
-        let proposed_id = UntrustedConnectionId::new(
-            Bytes::copy_from_slice(server_nonce.as_bytes()),
-            Bytes::copy_from_slice(connection_id.as_bytes()),
-        );
-
-        // Deliver the ACK to the delegate:
-        d.process(
-            Ok(ServerToClient::ClientHelloAck {
-                connection_id: proposed_id.clone(),
-            }),
-            &mut client,
-        )
-        .await;
+        // Drive a complete, successful handshake.
+        do_handshake(&mut d, &mut client, &mut server).await;
 
         // Which completes the handshake for the client:
         assert_matches!(d.state, ConnState::Active(..));
 
-        // Attempt a second delivery:
+        // Attempt a second delivery - the content is irrelevant, as an ACK
+        // received in the Active state is rejected regardless:
         d.process(
             Ok(ServerToClient::ClientHelloAck {
-                connection_id: proposed_id.clone(),
+                connection_id: UntrustedConnectionId::new(
+                    Bytes::from_static(&[0; 16]),
+                    Bytes::from_static(&[0; 16]),
+                ),
             }),
             &mut client,
         )
@@ -931,5 +1138,125 @@ mod tests {
         // And will respond to further requests:
         d.process(Ok(ServerToClient::Ping), &mut client).await;
         assert_matches!(server.recv().await, Some(ClientToServer::Pong));
+    }
+
+    async fn prop_any_message_after_handshake_body(msg: ServerToClient) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        // Drive a complete, successful handshake.
+        do_handshake(&mut d, &mut client, &mut server).await;
+
+        // Nothing further from the client:
+        assert_matches!(server.recv().now_or_never(), None);
+
+        // Deliver any message to the client:
+        d.process(Ok(msg), &mut client).await;
+
+        // The message is considered acceptable so long as the client stays in
+        // the active connection state:
+        assert_matches!(d.state, ConnState::Active(..));
+    }
+
+    async fn prop_deserialisation_error_rejects_messages_body(msg: ServerToClient) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        // Drive a complete, successful handshake.
+        do_handshake(&mut d, &mut client, &mut server).await;
+
+        // Nothing further from the client:
+        assert_matches!(server.recv().now_or_never(), None);
+
+        // Deliver a deserialisation error to the client:
+        d.process(Err(DecodingError::NoMessage), &mut client).await;
+
+        // Which should cause it to emit a protocol error:
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete
+            }) => {
+                assert!(is_handshake_complete); // Complete
+                assert_matches!(reason, ProtocolError::DeserialisationFailed(v) => {
+                    assert_eq!(v, DecodingError::NoMessage.to_string());
+                });
+            }
+        );
+
+        // And transition to the error state:
+        assert_matches!(d.state, ConnState::Error);
+
+        // Causing it to reject all subsequent messages:
+        d.process(Ok(msg), &mut client).await;
+
+        assert_matches!(server.recv().now_or_never(), None);
+        assert_matches!(d.state, ConnState::Error);
+    }
+
+    async fn prop_invalid_dispatch_raises_protocol_error_body(
+        invalid_dispatch: ServerToClient,
+        valid_msg: ServerToClient,
+    ) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        // Drive a complete, successful handshake.
+        do_handshake(&mut d, &mut client, &mut server).await;
+
+        assert_matches!(d.state, ConnState::Active(..));
+
+        // Deliver the invalid dispatch message:
+        d.process(Ok(invalid_dispatch), &mut client).await;
+
+        // Which should cause the client to emit a protocol violation error:
+        let err = assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete
+            }) => {
+                assert!(is_handshake_complete); // Complete
+                reason
+            }
+        );
+
+        // The violation can only be one of these variants:
+        assert_matches!(
+            err,
+            ProtocolError::DispatchBeforeHandshake(..)
+                | ProtocolError::DispatchMissingSignature(..)
+                | ProtocolError::CertIdInvalidLength(..)
+        );
+
+        // The client MUST now be in the error state:
+        assert_matches!(d.state, ConnState::Error);
+
+        // Which causes it to refuse any subsequent valid message:
+        d.process(Ok(valid_msg), &mut client).await;
+        assert_matches!(server.recv().now_or_never(), None);
+        assert_matches!(d.state, ConnState::Error);
     }
 }
