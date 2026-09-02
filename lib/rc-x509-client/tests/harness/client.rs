@@ -14,15 +14,23 @@
 
 use std::time::Duration;
 
+use assert_matches::assert_matches;
+use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::{
     AbortOnDrop, ShutdownCtl, ShutdownSignal,
     codec::{ClientToServer, DecodingError, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
-    dispatch::{DispatchResponder, DispatchStream, new_dispatcher_interconnect},
+    dispatch::{
+        Dispatch, DispatchError, DispatchResponder, DispatchResult, DispatchStream,
+        new_dispatcher_interconnect,
+    },
     entrypoint::{LibraryEntrypoint, Main},
+    host_runtime::CorrelationId,
 };
+use rc_x509_proto::protocol::v1;
 use tokio::{sync::mpsc, time::timeout};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_util::bytes::Bytes;
 
 use crate::harness::io::{MockIO, MockIOServer, new_io_pair};
 
@@ -79,8 +87,8 @@ impl TestClient {
 
         TestConn {
             io: server,
-            _dispatch_stream: dispatch_stream,
-            _dispatch_response: dispatch_response,
+            dispatch_stream,
+            dispatch_response,
         }
     }
 
@@ -105,8 +113,8 @@ impl Default for TestClient {
 #[derive(Debug)]
 pub(crate) struct TestConn {
     io: MockIOServer,
-    _dispatch_stream: DispatchStream,
-    _dispatch_response: DispatchResponder,
+    dispatch_stream: DispatchStream,
+    dispatch_response: DispatchResponder,
 }
 
 impl TestConn {
@@ -120,8 +128,81 @@ impl TestConn {
         self.io.recv().await.expect("failed to recv from client")
     }
 
+    pub(crate) async fn perform_handshake(&mut self) -> ConnectionId {
+        // Read the ClientHello and extract the nonce.
+        let got = self.recv().await;
+        let client_nonce = assert_matches!(
+            got,
+            ClientToServer::ClientHello {
+                client_nonce,
+                ..
+            } => client_nonce
+        );
+
+        // Derive the final connection ID:
+        let server_nonce = IdNonce::default();
+        let connection_id = ConnectionId::new(&client_nonce, server_nonce.as_bytes());
+
+        // Deliver the ACK to the client, including the validly derived
+        // connection ID it should accept.
+        self.send(Ok(ServerToClient::ClientHelloAck {
+            connection_id: UntrustedConnectionId::new(
+                Bytes::copy_from_slice(server_nonce.as_bytes()),
+                Bytes::copy_from_slice(connection_id.as_bytes()),
+            ),
+        }))
+        .await;
+
+        connection_id
+    }
+
+    pub(crate) async fn get_application_dispatch(&mut self) -> TestDispatch {
+        let dispatch = tokio::time::timeout(Duration::from_secs(5), self.dispatch_stream.next())
+            .await
+            .expect("timeout waiting for app dispatch")
+            .expect("dispatch stream must be running");
+
+        TestDispatch {
+            dispatch,
+            responder: self.dispatch_response.clone(),
+        }
+    }
+
     /// Close this connection.
     pub(crate) async fn close(self) {
         drop(self)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TestDispatch {
+    dispatch: Dispatch,
+    responder: DispatchResponder,
+}
+
+impl TestDispatch {
+    pub(crate) fn correlation_id(&self) -> CorrelationId {
+        self.dispatch.correlation_id
+    }
+
+    pub(crate) fn payload(&self) -> Bytes {
+        self.dispatch.payload.clone()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) async fn respond(self, result: Result<v1::DispatchResponsePayload, DispatchError>) {
+        self.responder
+            .send_response(DispatchResult {
+                correlation_id: self.correlation_id(),
+                result,
+            })
+            .await
+            .expect("must respond to dispatch")
+    }
+}
+
+pub(crate) fn conn_id_to_proto(c: ConnectionId) -> v1::ConnectionId {
+    v1::ConnectionId {
+        uuid_v8: Bytes::copy_from_slice(c.as_bytes()),
     }
 }

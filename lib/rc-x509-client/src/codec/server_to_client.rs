@@ -84,6 +84,8 @@ pub enum ServerToClient {
         correlation_id: CorrelationId,
 
         /// The payload to dispatch to the host.
+        ///
+        /// This is a serialised [`v1::DispatchRequestPayload`].
         payload: Bytes,
 
         /// The detached signature covering `payload`, if the server provided
