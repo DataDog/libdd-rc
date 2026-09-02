@@ -18,7 +18,9 @@ use tracing_subscriber::EnvFilter;
 /// duration of the test process.
 pub(crate) fn init() {
     let _ = tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")),
+        )
         .with_test_writer()
         .try_init();
 }
