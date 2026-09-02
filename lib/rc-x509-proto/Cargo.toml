@@ -22,7 +22,7 @@ repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
 bytes = { version = "1", features = ["serde"] }
-pbjson = "0.8"
+pbjson = "0.9"
 proptest = "1.11.0"
 proptest-derive = "0.8.0"
 prost = "0.14"
