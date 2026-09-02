@@ -95,7 +95,7 @@ once_cell_polyfill,https://github.com/polyfill-rs/once_cell_polyfill,MIT OR Apac
 parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 pbjson,https://github.com/influxdata/pbjson,MIT,Raphael Taylor-Davies <r.taylordavies@googlemail.com>
-pbjson-build,https://github.com/influxdata/pbjson,MIT,Raphael Taylor-Davies <r.taylordavies@googlemail.com>
+pbjson-build,https://github.com/influxdata/pbjson,MIT,N/A
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 petgraph,https://github.com/petgraph/petgraph,MIT OR Apache-2.0,bluss, mitchmindtree
