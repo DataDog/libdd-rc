@@ -77,7 +77,7 @@ async fn test_dispatch_happy_path() {
     let _dispatch = {
         let dispatch = conn.get_application_dispatch().await;
 
-        // The payload should emitted to the application includes metadata:
+        // The payload emitted to the application includes metadata:
         let got: v1::DispatchRequestPayload = decode(dispatch.payload()).expect("valid message");
 
         // The connection ID must match.
