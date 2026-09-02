@@ -44,6 +44,8 @@ jobs:
             cmd: cargo clippy --workspace --all-features -- -D warnings
           - name: test
             cmd: cargo test --workspace --all-features
+          - name: fmt
+            cmd: cargo fmt --check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
