@@ -61,6 +61,15 @@ impl ConnectionId {
     pub fn as_bytes(&self) -> &[u8; 16] {
         self.0.as_bytes()
     }
+
+    /// Construct a [`ConnectionId`] from unverified ID bytes.
+    ///
+    /// Because this bypasses the [`UntrustedConnectionId::verify()`] check,
+    /// this MUST come from a trusted source (i.e. not malicious) and SHOULD
+    /// only be used by the server / backend.
+    pub fn from_unverified(id: [u8; 16]) -> Self {
+        Self(Uuid::from_bytes(id))
+    }
 }
 
 impl Display for ConnectionId {
@@ -125,6 +134,9 @@ mod tests {
 
         let id = ConnectionId::new(&client_nonce, &server_nonce);
         assert_eq!(id.to_string(), "dca7b886-dd81-8a2b-b3bb-bc3fd24da50e");
+
+        let id2 = ConnectionId::from_unverified(*id.as_bytes());
+        assert_eq!(id, id2);
     }
 
     proptest! {
@@ -142,6 +154,9 @@ mod tests {
 
             let trusted = untrusted.verify(client_nonce).expect("valid inputs");
             assert_eq!(*trusted.as_bytes(), expected);
+
+            let id2 = ConnectionId::from_unverified(*trusted.as_bytes());
+            assert_eq!(trusted, id2);
         }
 
         /// Rejected construction of a [`ConnectionID`] due to the proposed ID
