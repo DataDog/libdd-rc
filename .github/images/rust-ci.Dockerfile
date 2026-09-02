@@ -78,7 +78,7 @@ ENV PATH="${HOME}/go/bin:${PATH}"
 ENV PROTOC_INCLUDE="/usr/include"
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
-RUN rustup component add clippy \
+RUN rustup component add clippy rustfmt \
     && rustup toolchain install nightly \
     && rustup +nightly component add miri
 
