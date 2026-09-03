@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use futures::{Stream, pin_mut};
+use rc_x509_proto::protocol::v1;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
@@ -156,8 +157,23 @@ where
     async fn dispatch_response(&mut self, v: DispatchResult) {
         debug!(?v, "received dispatch result from application");
 
-        // TODO(dom): implement dispatch responses
-        unimplemented!()
+        let result = match v.result {
+            Ok(payload) => v1::dispatch_response::Result::Payload(payload),
+            Err(err) => v1::dispatch_response::Result::Error(
+                v1::dispatch_response::DispatchError::from(err) as i32,
+            ),
+        };
+
+        // Forward this response to the server.
+        super::delegate::retry_send(
+            &mut self.io,
+            crate::codec::ClientToServer::DispatchResponse {
+                correlation_id: v.correlation_id,
+                result,
+            },
+            &self.stop,
+        )
+        .await;
     }
 }
 
@@ -166,6 +182,7 @@ mod tests {
     use std::time::Duration;
 
     use assert_matches::assert_matches;
+    use proptest::prelude::*;
 
     use crate::{
         codec::ClientToServer, connection::handler::delegate::MessageDelegate,
@@ -310,5 +327,64 @@ mod tests {
             None | Some(ClientToServer::ClientHello { .. })
         );
         assert_eq!(server.recv().await, None);
+    }
+
+    proptest! {
+        /// Explore the full space of [`DispatchResult`] values, including
+        /// every [`crate::dispatch::DispatchError`] variant, and assert each
+        /// one is forwarded to the server as the correctly-mapped
+        /// [`ClientToServer::DispatchResponse`].
+        #[test]
+        fn prop_dispatch_response_forwards_any_result(v in any::<DispatchResult>()) {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(prop_dispatch_response_forwards_any_result_body(v));
+        }
+    }
+
+    async fn prop_dispatch_response_forwards_any_result_body(v: DispatchResult) {
+        let (client, mut server) = new_io_pair();
+        let (mut dispatch_publish, _dispatch_stream, dispatch_responder) =
+            new_dispatcher_interconnect();
+
+        let stop = CancellationToken::default();
+        let metrics = Arc::new(InstanceMetrics::default());
+        let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let actor = ConnectionActor::new(
+            client,
+            stop.clone(),
+            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            dispatch_stream,
+            metrics,
+        );
+
+        let _task = tokio::spawn(actor.run());
+
+        // Drain the ClientHello sent at the start of the connection.
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ClientHello { .. })
+        );
+
+        let correlation_id = v.correlation_id;
+        let expect_result = match &v.result {
+            Ok(payload) => v1::dispatch_response::Result::Payload(payload.clone()),
+            Err(err) => v1::dispatch_response::Result::Error(
+                v1::dispatch_response::DispatchError::from(err.clone()) as i32,
+            ),
+        };
+
+        dispatch_responder
+            .send_response(v)
+            .await
+            .expect("dispatch stream still open");
+
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::DispatchResponse { correlation_id: got_id, result })
+                if got_id == correlation_id && result == expect_result
+        );
     }
 }
