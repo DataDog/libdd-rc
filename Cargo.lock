@@ -1522,7 +1522,7 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-proto"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "bytes",
  "glob",
