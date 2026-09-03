@@ -480,6 +480,80 @@ func TestRunSessionHappyPath(t *testing.T) {
 	}
 }
 
+// TestRunSessionSendsKeepalivePings verifies that runSession pings the
+// websocket connection on the pingInterval cadence, independent of any
+// application traffic.
+func TestRunSessionSendsKeepalivePings(t *testing.T) {
+	original := pingInterval
+	pingInterval = 10 * time.Millisecond
+	defer func() { pingInterval = original }()
+
+	ws := newFakeWebsocketConn()
+	ffiConn := newFakeFFIConnection()
+	client := &Client{
+		ffiCtx: &fakeFFIContext{conn: ffiConn},
+		url:    "ws://example.com",
+		dialer: &fakeWebsocketDialer{conn: ws},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- client.runSession(ctx)
+	}()
+
+	select {
+	case <-ws.pingCalls:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for a keepalive ping")
+	}
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected context.Canceled, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for runSession to return")
+	}
+}
+
+// TestRunSessionTerminatesOnPingError verifies that runSession tears down
+// the session when a keepalive ping fails, the same as any other write
+// failure.
+func TestRunSessionTerminatesOnPingError(t *testing.T) {
+	original := pingInterval
+	pingInterval = 10 * time.Millisecond
+	defer func() { pingInterval = original }()
+
+	ws := newFakeWebsocketConn()
+	wantErr := errors.New("ping failed")
+	ws.pingErr = wantErr
+	ffiConn := newFakeFFIConnection()
+	client := &Client{
+		ffiCtx: &fakeFFIContext{conn: ffiConn},
+		url:    "ws://example.com",
+		dialer: &fakeWebsocketDialer{conn: ws},
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- client.runSession(context.Background())
+	}()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, wantErr) {
+			t.Errorf("expected error wrapping %v, got %v", wantErr, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for runSession to return")
+	}
+}
+
 // TestRunSessionTerminatesOnMessageLoopErrors verifies that runSession
 // returns the expected error for each way the message loop can end besides
 // context cancellation, and that it still fully cleans up the FFI connection

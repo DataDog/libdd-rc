@@ -37,6 +37,8 @@ type fakeWebsocketConn struct {
 	lastAttemptedData []byte
 	closeNowCalls     int
 	closed            chan struct{}
+	pingErr           error
+	pingCalls         chan struct{}
 }
 
 func (fc *fakeWebsocketConn) Read(ctx context.Context) (typ websocket.MessageType, data []byte, err error) {
@@ -81,6 +83,14 @@ func (fc *fakeWebsocketConn) Write(ctx context.Context, typ websocket.MessageTyp
 	return nil
 }
 
+func (fc *fakeWebsocketConn) Ping(ctx context.Context) error {
+	select {
+	case fc.pingCalls <- struct{}{}:
+	default:
+	}
+	return fc.pingErr
+}
+
 // CloseNow mimics coder/websocket's behavior of aborting any in-flight Read
 // once the connection is closed, which runSession's cleanup relies on to let
 // the readWorker goroutine exit.
@@ -99,6 +109,7 @@ func newFakeWebsocketConn() *fakeWebsocketConn {
 		incomingMessages: make(chan message, 100),
 		outgoingMessages: make(chan message, 100),
 		closed:           make(chan struct{}),
+		pingCalls:        make(chan struct{}, 100),
 	}
 }
 
