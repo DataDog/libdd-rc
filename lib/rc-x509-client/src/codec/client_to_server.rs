@@ -83,7 +83,7 @@ pub enum ClientToServer {
     /// An opening handshake message sent at the start of a new connection.
     ClientHello {
         /// The client nonce used in the construction of a connection ID.
-        #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes()"))]
+        #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes(0..1028)"))]
         client_nonce: Bytes,
         /// Number of times the server has asked the client to reconnect.
         graceful: GracefulDisconnectionCount,
