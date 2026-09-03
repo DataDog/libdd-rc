@@ -27,7 +27,16 @@ const (
 	// defaultReadLimit overrides coder/websocket's own default of 32 KiB,
 	// which is too small for RC payloads.
 	defaultReadLimit = 52428800 // 50 MiB
+
+	// pingTimeout bounds a single keepalive ping to the RC backend.
+	pingTimeout = 10 * time.Second
 )
+
+// pingInterval controls how often runSession sends an unsolicited ping to
+// the RC backend, to keep the connection from being reaped as idle by any
+// intermediary that enforces its own idle timeout. It's a var, rather than a
+// const, so tests can shrink it instead of waiting out the real interval.
+var pingInterval = 30 * time.Second
 
 type WebsocketDialer interface {
 	Dial(ctx context.Context, url string, dialTimeout time.Duration) (WebsocketConnection, error)
@@ -36,6 +45,7 @@ type WebsocketDialer interface {
 type WebsocketConnection interface {
 	Read(ctx context.Context) (websocket.MessageType, []byte, error)
 	Write(ctx context.Context, typ websocket.MessageType, data []byte) error
+	Ping(ctx context.Context) error
 	CloseNow() error
 }
 
@@ -148,12 +158,25 @@ func (c *Client) runSession(ctx context.Context) error {
 		wg.Wait()
 	}()
 
+	pingTicker := time.NewTicker(pingInterval)
+	defer pingTicker.Stop()
+
 	// The main processing loop managing incoming and outgoing messages.
 	for {
 		select {
 		// We are being instructed to shutdown by the system.
 		case <-ctx.Done():
 			return ctx.Err()
+
+		// Send an unconditional keepalive ping so the connection isn't reaped
+		// as idle by any intermediary that enforces its own idle timeout.
+		case <-pingTicker.C:
+			pingCtx, cancel := context.WithTimeout(ctx, pingTimeout)
+			err := ws.Ping(pingCtx)
+			cancel()
+			if err != nil {
+				return fmt.Errorf("rcx509: websocket keepalive ping failed: %w", err)
+			}
 
 		// There is a messages from the RC backend we need to push to the rc-x509-client layer
 		case msg, ok := <-incoming:
@@ -221,6 +244,11 @@ func readWorker(ctx context.Context, ws WebsocketConnection, messages chan<- []b
 		case messages <- message:
 		case <-ctx.Done():
 			return ctx.Err()
+		default:
+			// Recv() handles websocket level protocol control messages, so we don't want to
+			// block Recv() out from running if the internal queue is somehow full. This probably
+			// needs some more robust protocol level handling that we'll revisit.
+			log.Printf("dropping message due to full incoming message channel")
 		}
 	}
 }
