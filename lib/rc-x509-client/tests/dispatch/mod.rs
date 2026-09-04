@@ -19,15 +19,8 @@
 //! during test compilation, which speeds up the dev change / test cycle.
 
 use assert_matches::assert_matches;
-use rc_x509_client::{
-    codec::{ClientToServer, DetachedSignature, ServerToClient},
-    host_runtime::CorrelationId,
-};
-use rc_x509_proto::{
-    decode, encode,
-    magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, Namespace, magic_tunnel_response},
-    protocol::v1,
-};
+use rc_x509_client::host_runtime::CorrelationId;
+use rc_x509_proto::magic_tunnel::v1::{Namespace, magic_tunnel_response};
 use tokio_util::bytes::Bytes;
 
 use crate::harness::{
@@ -51,50 +44,24 @@ async fn test_dispatch_happy_path() {
     let connection_id = conn_id_to_proto(conn.perform_handshake().await);
 
     // 1. The server sends a dispatch request:
-    {
-        let payload = Bytes::from_owner(encode(&v1::DispatchRequestPayload {
-            connection_id: Some(connection_id.clone()),
-            payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
-                MagicTunnelRequest {
-                    namespace: Namespace::RemoteConfig as _,
-                    payload: APPLICATION_REQUEST_PAYLOAD,
-                },
-            )),
-        }));
-
-        conn.send(Ok(ServerToClient::Dispatch {
-            correlation_id: CorrelationId::new(42),
-            payload,
-            detached_signature: Some(DetachedSignature {
-                cert_id: Bytes::from_static(&[42_u8; 16]),
-                signature: vec![0, 0, 0, 0].into(),
-            }),
-        }))
-        .await;
-    }
+    conn.dispatch_magic_tunnel(
+        CorrelationId::new(42),
+        Namespace::RemoteConfig,
+        APPLICATION_REQUEST_PAYLOAD,
+    )
+    .await;
 
     // 2. The application receives the application payload, tagged with the
     //    correct namespace for routing purposes:
     let dispatch = {
         let dispatch = conn.get_application_dispatch().await;
 
-        // The payload emitted to the application includes metadata:
-        let got: v1::DispatchRequestPayload = decode(dispatch.payload()).expect("valid message");
-
-        // The connection ID must match.
-        assert_matches!(got.connection_id, Some(id) => {
-            assert_eq!(id, connection_id);
-        });
-
-        // The payload is specifically a magic tunnel request:
-        let magic_tunnel_request = assert_matches!(
-            got.payload,
-            Some(v1::dispatch_request_payload::Payload::MagicTunnel(v)) => v
-        );
-
-        // And the namespace tag / payload bytes match:
-        assert_eq!(magic_tunnel_request.namespace(), Namespace::RemoteConfig);
-        assert_eq!(magic_tunnel_request.payload, APPLICATION_REQUEST_PAYLOAD);
+        // The payload must be routed for the correct connection, and be a
+        // magic tunnel request tagged with the correct namespace / payload
+        // bytes for routing purposes:
+        let (namespace, payload) = dispatch.assume_magic_tunnel(&connection_id);
+        assert_eq!(namespace, Namespace::RemoteConfig);
+        assert_eq!(payload, APPLICATION_REQUEST_PAYLOAD);
 
         dispatch
     };
@@ -102,54 +69,24 @@ async fn test_dispatch_happy_path() {
     let correlation_id = dispatch.correlation_id();
 
     // 3. The application generates a response:
-    {
-        dispatch
-            .respond(Ok(v1::DispatchResponsePayload {
-                payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
-                    MagicTunnelResponse {
-                        result: Some(magic_tunnel_response::Result::Response(
-                            APPLICATION_RESPONSE_PAYLOAD.to_vec(),
-                        )),
-                    },
-                )),
-            }))
-            .await;
-    }
+    dispatch
+        .respond_magic_tunnel(magic_tunnel_response::Result::Response(
+            APPLICATION_RESPONSE_PAYLOAD.to_vec(),
+        ))
+        .await;
 
-    // 4. The client responds to the server:
-    {
-        // The client must push the application's dispatch response to the
-        // server.
-        let got = conn.recv().await;
-
-        // Extract the magic tunnel response from the generic dispatch result:
-        let magic_tunnel_response = assert_matches!(
-            got,
-            ClientToServer::DispatchResponse {
-                correlation_id: got_id,
-                result: v1::dispatch_response::Result::Payload(
-                    v1::DispatchResponsePayload {
-                        payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(v))
-                    }
-                ),
-            } => {
-                // The correlation ID must match.
-                assert_eq!(got_id, correlation_id);
-
-                v
-            }
-        );
-
-        // And the final layer of the type onion - extract the actual application
-        // bytes:
-        let application_response = assert_matches!(
-            magic_tunnel_response.result,
-            Some(magic_tunnel_response::Result::Response(v)) => v
-        );
-
-        // Which must match what was returned by the application.
-        assert_eq!(application_response, APPLICATION_RESPONSE_PAYLOAD);
-    }
+    // 4. The client must push the application's dispatch response to the
+    //    server, correlated with the original request and carrying the
+    //    application's response bytes:
+    let result = conn
+        .recv()
+        .await
+        .assume_magic_tunnel_response(correlation_id);
+    let application_response = assert_matches!(
+        result,
+        magic_tunnel_response::Result::Response(v) => v
+    );
+    assert_eq!(application_response, APPLICATION_RESPONSE_PAYLOAD);
 
     // Signal the client library shutdown:
     client.shutdown().await;
