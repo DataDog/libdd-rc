@@ -48,14 +48,14 @@ async fn test_ping_pong() {
 
     // The client always sends a HELLO first.
     let got = conn.recv().await;
-    assert_matches!(got, ClientToServer::ClientHello { .. });
+    assert_matches!(got.into_inner(), ClientToServer::ClientHello { .. });
 
     // The server then sends a PING:
     conn.send(Ok(ServerToClient::Ping)).await;
 
     // And the client must respond with PONG.
     let got = conn.recv().await;
-    assert_matches!(got, ClientToServer::Pong);
+    assert_matches!(got.into_inner(), ClientToServer::Pong);
 
     // Signal the client library shutdown:
     client.shutdown().await;
@@ -72,7 +72,7 @@ async fn test_handshake() {
 
     let got = conn.recv().await;
     let (client_nonce, version) = assert_matches!(
-        got,
+        got.into_inner(),
         ClientToServer::ClientHello {
             client_nonce,
             graceful,
@@ -138,7 +138,7 @@ async fn test_handshake() {
     // And the client will happily respond to our PING, showing the connection
     // is alive:
     conn.send(Ok(ServerToClient::Ping)).await;
-    assert_matches!(conn.recv().await, ClientToServer::Pong);
+    assert_matches!(conn.recv().await.into_inner(), ClientToServer::Pong);
 
     client.shutdown().await;
 }
@@ -162,7 +162,7 @@ async fn test_handshake_invalid_connection_id() {
 
     // Read the HELLO from the client:
     let got = conn.recv().await;
-    assert_matches!(got, ClientToServer::ClientHello { .. });
+    assert_matches!(got.into_inner(), ClientToServer::ClientHello { .. });
 
     // Send the pre-selected connection ID to the client:
     conn.send(Ok(ServerToClient::ClientHelloAck {
@@ -176,7 +176,7 @@ async fn test_handshake_invalid_connection_id() {
     // The client should reject this, informing the backend of a protocol
     // violation:
     assert_matches!(
-        conn.recv().await,
+        conn.recv().await.into_inner(),
         ClientToServer::ProtocolError {
             reason: ProtocolError::HandshakeConnectionIdRejected,
             is_handshake_complete: false
@@ -205,7 +205,7 @@ async fn test_connection_metrics() {
     let mut conn = client.new_connection().await;
     let got = conn.recv().await;
     assert_matches!(
-        got,
+        got.into_inner(),
         ClientToServer::ClientHello {
             graceful,
             ungraceful,
@@ -227,7 +227,7 @@ async fn test_connection_metrics() {
     let mut conn = client.new_connection().await;
     let got = conn.recv().await;
     assert_matches!(
-        got,
+        got.into_inner(),
         ClientToServer::ClientHello {
             graceful,
             ungraceful,
