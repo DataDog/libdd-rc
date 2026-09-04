@@ -25,7 +25,7 @@ func handleDebugService(correlationID uint64, payload []byte) ([]byte, error) {
 	switch subtopic := req.GetSubtopic().(type) {
 	case *remoteconfigv1.DebugServiceRequest_Ping:
 		ping := subtopic.Ping
-		log.Printf("received ping from connection %q: %s", ping.GetConnectionId(), ping.GetReason())
+		log.Printf("received ping (correlation_id=%d) from connection %q: reason=%q", correlationID, ping.GetConnectionId(), ping.GetReason())
 
 		resp := &remoteconfigv1.DebugServiceResponse{
 			Subtopic: &remoteconfigv1.DebugServiceResponse_Ping{
