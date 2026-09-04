@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::time::Duration;
+use std::{ops::Deref, time::Duration};
 
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::{
     AbortOnDrop, ShutdownCtl, ShutdownSignal,
-    codec::{ClientToServer, DecodingError, ServerToClient},
+    codec::{ClientToServer, DecodingError, DetachedSignature, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
         Dispatch, DispatchError, DispatchResponder, DispatchResult, DispatchStream,
@@ -27,7 +27,11 @@ use rc_x509_client::{
     entrypoint::{LibraryEntrypoint, Main},
     host_runtime::CorrelationId,
 };
-use rc_x509_proto::protocol::v1;
+use rc_x509_proto::{
+    decode, encode,
+    magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, Namespace, magic_tunnel_response},
+    protocol::v1,
+};
 use tokio::{sync::mpsc, time::timeout};
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 use tokio_util::bytes::Bytes;
@@ -89,6 +93,7 @@ impl TestClient {
             io: server,
             dispatch_stream,
             dispatch_response,
+            connection_id: None,
         }
     }
 
@@ -115,6 +120,7 @@ pub(crate) struct TestConn {
     io: MockIOServer,
     dispatch_stream: DispatchStream,
     dispatch_response: DispatchResponder,
+    connection_id: Option<v1::ConnectionId>,
 }
 
 impl TestConn {
@@ -124,15 +130,15 @@ impl TestConn {
     }
 
     /// Wait for the client to send a [`ClientToServer`].
-    pub(crate) async fn recv(&mut self) -> ClientToServer {
-        self.io.recv().await.expect("failed to recv from client")
+    pub(crate) async fn recv(&mut self) -> TestClientToServer {
+        TestClientToServer(self.io.recv().await.expect("failed to recv from client"))
     }
 
     pub(crate) async fn perform_handshake(&mut self) -> ConnectionId {
         // Read the ClientHello and extract the nonce.
         let got = self.recv().await;
         let client_nonce = assert_matches!(
-            got,
+            got.into_inner(),
             ClientToServer::ClientHello {
                 client_nonce,
                 ..
@@ -153,7 +159,45 @@ impl TestConn {
         }))
         .await;
 
+        self.connection_id = Some(conn_id_to_proto(connection_id.clone()));
+
         connection_id
+    }
+
+    /// Simulate the server sending a dispatch request for `namespace` with
+    /// `payload`, correlated by `correlation_id`.
+    ///
+    /// The connection handshake must have been performed first.
+    pub(crate) async fn dispatch_magic_tunnel(
+        &mut self,
+        correlation_id: CorrelationId,
+        namespace: Namespace,
+        payload: Bytes,
+    ) {
+        let connection_id = self
+            .connection_id
+            .clone()
+            .expect("handshake must be performed before dispatching");
+
+        let payload = Bytes::from_owner(encode(&v1::DispatchRequestPayload {
+            connection_id: Some(connection_id),
+            payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
+                MagicTunnelRequest {
+                    namespace: namespace as _,
+                    payload,
+                },
+            )),
+        }));
+
+        self.send(Ok(ServerToClient::Dispatch {
+            correlation_id,
+            payload,
+            detached_signature: Some(DetachedSignature {
+                cert_id: Bytes::from_static(&[42_u8; 16]),
+                signature: vec![0, 0, 0, 0].into(),
+            }),
+        }))
+        .await;
     }
 
     pub(crate) async fn get_application_dispatch(&mut self) -> TestDispatch {
@@ -174,6 +218,57 @@ impl TestConn {
     }
 }
 
+/// A [`ClientToServer`] message received from the client, with helper
+/// methods for asserting on common message shapes.
+#[derive(Debug)]
+pub(crate) struct TestClientToServer(ClientToServer);
+
+impl TestClientToServer {
+    /// Unwrap this into the underlying [`ClientToServer`] message, for use
+    /// with pattern matching that must own the message (i.e. extracts
+    /// non-[`Copy`] fields).
+    pub(crate) fn into_inner(self) -> ClientToServer {
+        self.0
+    }
+
+    /// Assert this is a [`ClientToServer::DispatchResponse`] correlated by
+    /// `correlation_id`, carrying a [`MagicTunnel`] response, and return its
+    /// result.
+    ///
+    /// [`MagicTunnel`]: v1::dispatch_response_payload::Payload::MagicTunnel
+    pub(crate) fn assume_magic_tunnel_response(
+        self,
+        correlation_id: CorrelationId,
+    ) -> magic_tunnel_response::Result {
+        let result = assert_matches!(
+            self.into_inner(),
+            ClientToServer::DispatchResponse { correlation_id: got_id, result } => {
+                assert_eq!(got_id, correlation_id);
+                result
+            }
+        );
+
+        let magic_tunnel_response = assert_matches!(
+            result,
+            v1::dispatch_response::Result::Payload(v1::DispatchResponsePayload {
+                payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(v)),
+            }) => v
+        );
+
+        magic_tunnel_response
+            .result
+            .expect("magic tunnel response must carry a result")
+    }
+}
+
+impl Deref for TestClientToServer {
+    type Target = ClientToServer;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct TestDispatch {
     dispatch: Dispatch,
@@ -189,6 +284,32 @@ impl TestDispatch {
         self.dispatch.payload.clone()
     }
 
+    /// Decode this dispatch's payload, asserting it was routed for
+    /// `connection_id` and is a [`MagicTunnel`] request, and return its
+    /// namespace and application payload.
+    ///
+    /// [`MagicTunnel`]: v1::dispatch_request_payload::Payload::MagicTunnel
+    pub(crate) fn assume_magic_tunnel(
+        &self,
+        connection_id: &v1::ConnectionId,
+    ) -> (Namespace, Bytes) {
+        let got: v1::DispatchRequestPayload = decode(self.payload()).expect("valid message");
+
+        assert_matches!(got.connection_id, Some(id) => {
+            assert_eq!(&id, connection_id);
+        });
+
+        let magic_tunnel_request = assert_matches!(
+            got.payload,
+            Some(v1::dispatch_request_payload::Payload::MagicTunnel(v)) => v
+        );
+
+        (
+            magic_tunnel_request.namespace(),
+            magic_tunnel_request.payload,
+        )
+    }
+
     pub(crate) async fn respond(self, result: Result<v1::DispatchResponsePayload, DispatchError>) {
         self.responder
             .send_response(DispatchResult {
@@ -197,6 +318,19 @@ impl TestDispatch {
             })
             .await
             .expect("must respond to dispatch")
+    }
+
+    /// Respond to this dispatch with a magic tunnel response carrying
+    /// `result`.
+    pub(crate) async fn respond_magic_tunnel(self, result: magic_tunnel_response::Result) {
+        self.respond(Ok(v1::DispatchResponsePayload {
+            payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
+                MagicTunnelResponse {
+                    result: Some(result),
+                },
+            )),
+        }))
+        .await
     }
 }
 
