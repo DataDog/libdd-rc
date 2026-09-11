@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -19,7 +20,11 @@ import (
 // holding the connection lock, so a handler calling Recv or Close
 // deadlocks. A handler that returns an error, or panics, has that reported to
 // the client library as a handler error.
-type HandlerFunc func(correlationID uint64, payload []byte) (response []byte, err error)
+//
+// ctx is cancelled once the handler's execution budget expires. A handler
+// that does not observe ctx keeps running after that, but its result is
+// discarded: the caller has already moved on and reported a timeout.
+type HandlerFunc func(ctx context.Context, correlationID uint64, payload []byte) (response []byte, err error)
 
 // ErrHandlerExists is returned by RegisterHandler when a handler is already
 // registered for the given namespace.

@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -147,12 +148,12 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	started := make(chan uint64, 2)
 	release := make(chan struct{})
 
-	slow := func(correlationID uint64, _ []byte) ([]byte, error) {
+	slow := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		<-release
 		return nil, nil
 	}
-	fast := func(correlationID uint64, _ []byte) ([]byte, error) {
+	fast := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		return nil, nil
 	}
@@ -204,7 +205,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	conn := newTestInvokePipeline(t)
 
 	const jobs = 50
-	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
+	noop := func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }
 	for i := uint64(1); i <= jobs; i++ {
 		conn.state.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
 	}
@@ -244,12 +245,12 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 
 	// Blocks the worker inside the first job, so the remaining jobs are still
 	// queued by the time Disconnected runs.
-	blocking := func(correlationID uint64, _ []byte) ([]byte, error) {
+	blocking := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		<-release
 		return nil, nil
 	}
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	recording := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
@@ -330,8 +331,8 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	conn := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
-	panicking := func(uint64, []byte) ([]byte, error) { panic("handler is unwell") }
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	panicking := func(context.Context, uint64, []byte) ([]byte, error) { panic("handler is unwell") }
+	recording := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}

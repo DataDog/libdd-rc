@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestHandleDebugService_Ping(t *testing.T) {
 		t.Fatalf("marshal request: %v", err)
 	}
 
-	respBytes, err := handleDebugService(1, payload)
+	respBytes, err := handleDebugService(context.Background(), 1, payload)
 	if err != nil {
 		t.Fatalf("handleDebugService returned error: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestHandleDebugService_UnsetSubtopic(t *testing.T) {
 		t.Fatalf("marshal request: %v", err)
 	}
 
-	_, err = handleDebugService(1, payload)
+	_, err = handleDebugService(context.Background(), 1, payload)
 	if !errors.Is(err, errUnsupportedSubtopic) {
 		t.Fatalf("expected errUnsupportedSubtopic, got %v", err)
 	}

@@ -13,6 +13,7 @@ extern send_ret_t goSendCb(uint8_t *data, uint32_t length, void *user_data);
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -457,7 +458,7 @@ func invokeHandler(job dispatchJob) (response []byte, err error) {
 		}
 	}()
 
-	return job.handler(job.correlationID, job.request.GetPayload())
+	return job.handler(context.Background(), job.correlationID, job.request.GetPayload())
 }
 
 // marshalDispatchResponse encodes the outcome of a dispatch handler as the
