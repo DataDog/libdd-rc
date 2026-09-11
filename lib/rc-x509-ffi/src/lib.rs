@@ -20,6 +20,8 @@
 mod connection;
 mod ctx;
 mod io_handle;
+mod logging;
 
 pub use connection::*;
 pub use ctx::*;
+pub use logging::*;

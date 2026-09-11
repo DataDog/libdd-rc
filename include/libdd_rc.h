@@ -119,6 +119,41 @@ typedef int32_t send_ret_t;
 #endif // __STDC_VERSION__ >= 202311L
 
 /*
+ The severity of a log event forwarded through [`LogCb`].
+ */
+enum LogLevel
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
+    /*
+     Unrecoverable or unexpected error conditions.
+     */
+    LOG_LEVEL_ERROR = 0,
+    /*
+     Recoverable but noteworthy conditions.
+     */
+    LOG_LEVEL_WARN = 1,
+    /*
+     High level, infrequent operational messages.
+     */
+    LOG_LEVEL_INFO = 2,
+    /*
+     Detailed diagnostic messages, useful when troubleshooting.
+     */
+    LOG_LEVEL_DEBUG = 3,
+    /*
+     Very high frequency, fine-grained tracing messages.
+     */
+    LOG_LEVEL_TRACE = 4,
+};
+#if __STDC_VERSION__ >= 202311L
+typedef enum LogLevel LogLevel;
+#else
+typedef int32_t LogLevel;
+#endif // __STDC_VERSION__ >= 202311L
+
+/*
  A [`Ctx`] is a RAII handle for an instance of a X509 verifier.
 
  The [`Ctx`] owns the event loop / runtime that drives the internal client
@@ -284,6 +319,31 @@ typedef DispatchRet (*DispatchCb)(uint64_t correlation_id,
  may be freed or modified at any time after this function returns.
  */
 typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *user_data);
+
+/*
+ The callback invoked for each log event emitted by this library, once
+ registered via [`rc_set_log_callback()`].
+
+ `target` and `message` point to UTF-8 byte slices of `target_len` and
+ `message_len` bytes respectively, valid only for the duration of this
+ call. `message` carries only the formatted `message` field of the event;
+ any other structured fields attached to the event are not forwarded.
+
+ The callback MUST NOT block, which stalls whichever thread emitted the log
+ event. The callback MUST NOT panic, and MUST be safe to call concurrently
+ from multiple threads: log events may be emitted from any thread in the
+ process, at any time after registration.
+
+   * Called by: `client library`.
+   * Ownership: passes shared references to the `target` and `message`
+     arrays to the host runtime for the duration of the call.
+ */
+typedef void (*LogCb)(LogLevel level,
+                      const uint8_t *target,
+                      uint32_t target_len,
+                      const uint8_t *message,
+                      uint32_t message_len,
+                      const void *user_data);
 
 /*
  Mark the connection as established.
@@ -465,5 +525,32 @@ void rc_free(struct Ctx *ctx);
  This call is always safe.
  */
 struct Ctx *rc_init(void);
+
+/*
+ Register a callback to receive this library's internal log events, for FFI
+ hosts that have no other way to observe them.
+
+ This is entirely opt-in: a host that never calls this function sees no
+ change in behaviour (log events are emitted via [`tracing`] and dropped, as
+ they are today). A Rust host embedding this crate directly does not need
+ this either, and should install its own [`tracing::Subscriber`] instead.
+
+ Returns `true` if `callback` was successfully installed, or `false` if a
+ global [`tracing::Subscriber`] was already installed elsewhere in this
+ process (including by a previous call to this function).
+
+   * Called by: `host runtime`.
+   * Ownership: retains no ownership; `user_data` is passed back to
+     `callback` for the lifetime of the process.
+
+ # Safety
+
+ This call MUST be made at most once per process, before any other call
+ into this library, and MUST provide a `callback` that is valid and safe to
+ call concurrently at all times thereafter, for the lifetime of the
+ process. The `user_data` pointer MAY be null, but MUST be safe to share
+ between threads.
+ */
+bool rc_set_log_callback(LogCb callback, LogLevel min_level, const void *user_data);
 
 #endif  /* LIBDD_RC_H */
