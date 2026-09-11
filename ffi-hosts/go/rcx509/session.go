@@ -114,12 +114,18 @@ func (c *Client) runSession(ctx context.Context) error {
 	// websocket read operations block, and we also need to be managing messages
 	// from the rc-x509-client layer that we need to send to the backend, so run
 	// a worker to queue up incoming messages for us on a channel.
+	//
+	// readWorker gets its own cancelable context, derived from ctx, so that
+	// cleanup can unblock a worker stuck enqueueing into a full incoming
+	// channel even when ctx itself was not canceled (e.g. runSession is
+	// returning because of a local FFI or write error).
+	readCtx, cancelRead := context.WithCancel(ctx)
 	incoming := make(chan []byte, incomingQueueCap)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		err := readWorker(ctx, ws, incoming)
-		if err != nil && ctx.Err() == nil {
+		err := readWorker(readCtx, ws, incoming)
+		if err != nil && readCtx.Err() == nil {
 			log.Printf("rcx509: read worker quit for read error: %v", err)
 		}
 		wg.Done()
@@ -143,8 +149,11 @@ func (c *Client) runSession(ctx context.Context) error {
 		cancel()
 
 		// Finally, force close the websocket connection, which will trigger closing of our
-		// readWorker if this shutdown is due to some unforseen issue from the rc-x509-client layer
+		// readWorker if this shutdown is due to some unforseen issue from the rc-x509-client layer.
+		// cancelRead also unblocks readWorker if it is instead stuck enqueueing into a full
+		// incoming channel, since CloseNow alone would not free that case.
 		ws.CloseNow()
+		cancelRead()
 		wg.Wait()
 	}()
 

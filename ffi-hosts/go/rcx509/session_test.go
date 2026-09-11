@@ -206,6 +206,41 @@ func TestReadWorkerReturnsContextErrorWhenCanceled(t *testing.T) {
 	}
 }
 
+// TestReadWorkerUnblocksOnContextCancelWhileChannelFull verifies that
+// readWorker, blocked trying to enqueue a message onto a full messages
+// channel, returns once its context is canceled instead of blocking
+// forever.
+func TestReadWorkerUnblocksOnContextCancelWhileChannelFull(t *testing.T) {
+	conn := newFakeWebsocketConn()
+	conn.incomingMessages <- message{typ: websocket.MessageBinary, data: []byte("hello")}
+
+	// Unbuffered and never drained, so readWorker blocks trying to deliver
+	// the message it read, standing in for a full incoming channel.
+	readMessages := make(chan []byte)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- readWorker(ctx, conn, readMessages)
+	}()
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected context.Canceled, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("readWorker did not unblock after its context was canceled while enqueueing into a full channel")
+	}
+
+	if _, ok := <-readMessages; ok {
+		t.Error("readWorker should not deliver a message once its context is canceled")
+	}
+}
+
 // TestDrainOutgoingWritesAllMessages verifies that drainOutgoing writes every
 // message it drains from outgoing to the websocket.
 func TestDrainOutgoingWritesAllMessages(t *testing.T) {
