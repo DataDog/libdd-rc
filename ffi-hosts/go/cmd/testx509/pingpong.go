@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -16,7 +17,7 @@ var errUnsupportedSubtopic = errors.New("testx509: unsupported DebugServiceReque
 // handleDebugService implements libddrcffi.HandlerFunc for the
 // NAMESPACE_REMOTE_CONFIG namespace. It answers a Ping subtopic with a Pong
 // carrying the current time.
-func handleDebugService(correlationID uint64, payload []byte) ([]byte, error) {
+func handleDebugService(_ context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	var req remoteconfigv1.DebugServiceRequest
 	if err := proto.Unmarshal(payload, &req); err != nil {
 		return nil, err

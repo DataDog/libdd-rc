@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -111,14 +112,19 @@ func TestConnectionConnectedTwice(t *testing.T) {
 // FFI boundary: invokeJob only ever writes to c.st.resultQueue, so these
 // tests can drive the goroutine pool directly and inspect resultQueue
 // themselves instead of needing a real FFIConnection and resultWorker.
-func newTestInvokePipeline(t *testing.T) *Connection {
+//
+// handlerTimeout is applied to every job driven through the returned
+// Connection; tests unrelated to the handler timeout should pass
+// defaultHandlerTimeout.
+func newTestInvokePipeline(t *testing.T, handlerTimeout time.Duration) *Connection {
 	t.Helper()
 
 	st := &connState{
-		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
-		resultQueue:   make(chan dispatchResult, resultQueueCap),
-		stop:          make(chan struct{}),
-		accepting:     true,
+		dispatchQueue:  make(chan dispatchJob, dispatchQueueCap),
+		resultQueue:    make(chan dispatchResult, resultQueueCap),
+		stop:           make(chan struct{}),
+		accepting:      true,
+		handlerTimeout: handlerTimeout,
 	}
 	conn := &Connection{state: st}
 
@@ -142,17 +148,17 @@ func newTestInvokePipeline(t *testing.T) *Connection {
 // blocked, proving invocation runs across more than one goroutine rather than
 // serializing behind a single worker.
 func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
-	conn := newTestInvokePipeline(t)
+	conn := newTestInvokePipeline(t, defaultHandlerTimeout)
 
 	started := make(chan uint64, 2)
 	release := make(chan struct{})
 
-	slow := func(correlationID uint64, _ []byte) ([]byte, error) {
+	slow := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		<-release
 		return nil, nil
 	}
-	fast := func(correlationID uint64, _ []byte) ([]byte, error) {
+	fast := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		return nil, nil
 	}
@@ -201,10 +207,10 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 // libdd_rc.h requires exactly one rc_conn_dispatch_result call per payload,
 // so the pool must neither drop nor duplicate a job's result.
 func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
-	conn := newTestInvokePipeline(t)
+	conn := newTestInvokePipeline(t, defaultHandlerTimeout)
 
 	const jobs = 50
-	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
+	noop := func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }
 	for i := uint64(1); i <= jobs; i++ {
 		conn.state.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
 	}
@@ -232,6 +238,81 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	}
 }
 
+// TestInvokeHandlerTimesOutOnUnresponsiveHandler verifies that a handler
+// which never returns, and never observes its context, still causes
+// invokeHandler to give up and report an error once handlerTimeout elapses,
+// and that doing so leaves the worker pool able to process the next job
+// rather than exhausted by the abandoned handler goroutine.
+func TestInvokeHandlerTimesOutOnUnresponsiveHandler(t *testing.T) {
+	const shortTimeout = 20 * time.Millisecond
+	conn := newTestInvokePipeline(t, shortTimeout)
+
+	block := make(chan struct{}) // never closed: simulates a handler ignoring ctx.
+	stuck := func(_ context.Context, _ uint64, _ []byte) ([]byte, error) {
+		<-block
+		return nil, nil
+	}
+	conn.state.dispatchQueue <- dispatchJob{correlationID: 1, handler: stuck, request: &magictunnelv1.MagicTunnelRequest{}}
+
+	select {
+	case result := <-conn.state.resultQueue:
+		if result.correlationID != 1 {
+			t.Fatalf("result.correlationID = %d, want 1", result.correlationID)
+		}
+		if result.err == nil {
+			t.Fatal("expected a timeout error, got nil")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the handler timeout to be reported")
+	}
+
+	fast := func(context.Context, uint64, []byte) ([]byte, error) { return []byte{0xaa}, nil }
+	conn.state.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: &magictunnelv1.MagicTunnelRequest{}}
+
+	select {
+	case result := <-conn.state.resultQueue:
+		if result.correlationID != 2 || result.err != nil {
+			t.Fatalf("result = %+v, want correlationID=2 with no error", result)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for a job queued after a handler timeout")
+	}
+}
+
+// TestInvokeHandlerCancelsContextOnTimeout verifies that a handler observing
+// its ctx is actually unblocked once handlerTimeout elapses, even though
+// invokeHandler has already given up and reported the timeout by then: the
+// two selects race on the same context cancellation, and invokeHandler's own
+// select requires no further scheduling to notice it, so it is not this
+// handler's own return value that invokeHandler waits to report.
+func TestInvokeHandlerCancelsContextOnTimeout(t *testing.T) {
+	const shortTimeout = 20 * time.Millisecond
+	conn := newTestInvokePipeline(t, shortTimeout)
+
+	exited := make(chan struct{})
+	cooperative := func(ctx context.Context, _ uint64, _ []byte) ([]byte, error) {
+		<-ctx.Done()
+		close(exited)
+		return nil, ctx.Err()
+	}
+	conn.state.dispatchQueue <- dispatchJob{correlationID: 1, handler: cooperative, request: &magictunnelv1.MagicTunnelRequest{}}
+
+	select {
+	case result := <-conn.state.resultQueue:
+		if result.err == nil {
+			t.Fatal("expected a timeout error, got nil")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the timeout to be reported")
+	}
+
+	select {
+	case <-exited:
+	case <-time.After(time.Second):
+		t.Fatal("handler never observed ctx cancellation")
+	}
+}
+
 // TestDispatchWorkerDrainsQueueOnDisconnect verifies that payloads already
 // queued when the connection is torn down are still handled. libdd_rc.h
 // requires exactly one rc_conn_dispatch_result call per payload delivered
@@ -244,12 +325,12 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 
 	// Blocks the worker inside the first job, so the remaining jobs are still
 	// queued by the time Disconnected runs.
-	blocking := func(correlationID uint64, _ []byte) ([]byte, error) {
+	blocking := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		<-release
 		return nil, nil
 	}
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	recording := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
@@ -330,8 +411,8 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	conn := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
-	panicking := func(uint64, []byte) ([]byte, error) { panic("handler is unwell") }
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	panicking := func(context.Context, uint64, []byte) ([]byte, error) { panic("handler is unwell") }
+	recording := func(_ context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}

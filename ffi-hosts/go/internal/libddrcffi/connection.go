@@ -13,11 +13,13 @@ extern send_ret_t goSendCb(uint8_t *data, uint32_t length, void *user_data);
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
 	"runtime/cgo"
 	"sync"
+	"time"
 	"unsafe"
 
 	"google.golang.org/protobuf/proto"
@@ -48,6 +50,10 @@ const (
 	// results to the FFI layer. We don't intend to make this concurrent
 	// but this variable helps with reading intent later.
 	resultWorkerCount = 1
+
+	// defaultHandlerTimeout bounds how long invokeHandler waits for a
+	// dispatch handler to return before reporting a timeout in its place.
+	defaultHandlerTimeout = 30 * time.Second
 )
 
 // ErrConnectionClosed is returned when an operation is attempted on a
@@ -97,6 +103,11 @@ type connState struct {
 	dispatchQueue chan dispatchJob
 	resultQueue   chan dispatchResult
 	outgoing      chan []byte
+
+	// handlerTimeout bounds how long invokeHandler waits for a dispatch
+	// handler to return. Tests override it to a short duration to avoid
+	// waiting out the production default.
+	handlerTimeout time.Duration
 
 	// Allows for control of internal goroutines to process
 	// incoming/outgoing requests
@@ -162,11 +173,12 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 	}
 
 	state := &connState{
-		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
-		resultQueue:   make(chan dispatchResult, resultQueueCap),
-		outgoing:      make(chan []byte, outgoingQueueCap),
-		stop:          make(chan struct{}),
-		accepting:     true,
+		dispatchQueue:  make(chan dispatchJob, dispatchQueueCap),
+		resultQueue:    make(chan dispatchResult, resultQueueCap),
+		outgoing:       make(chan []byte, outgoingQueueCap),
+		stop:           make(chan struct{}),
+		accepting:      true,
+		handlerTimeout: defaultHandlerTimeout,
 	}
 
 	// The handle is passed across the FFI boundary as st.handlePtr, and is
@@ -394,7 +406,7 @@ func (c *Connection) drainDispatchQueue() {
 // connection is rc-x509-client's responsibility once that part of the
 // protocol is implemented, not the Go host's.
 func (c *Connection) invokeJob(job dispatchJob) {
-	response, err := invokeHandler(job)
+	response, err := invokeHandler(job, c.state.handlerTimeout)
 	c.state.resultQueue <- dispatchResult{correlationID: job.correlationID, response: response, err: err}
 }
 
@@ -444,20 +456,47 @@ func (c *Connection) sendDispatchResult(result dispatchResult) {
 }
 
 // invokeHandler calls the handler registered for the job's namespace,
-// converting a panic in that caller-supplied code into an error.
+// converting a panic in that caller-supplied code into an error and bounding
+// how long it is allowed to run.
+//
+// The handler runs on its own goroutine so that invokeHandler can give up on
+// it once timeout elapses: HandlerFunc's ctx is cancelled at that point as a
+// cooperative signal, but nothing can force a handler that ignores ctx to
+// stop, so that goroutine is simply abandoned and its eventual result
+// discarded. If the handler goroutine and the timeout become ready at the
+// same instant, select's usual random tie-break applies: either outcome is
+// acceptable for a handler finishing right at the deadline.
 //
 // A panic must not escape: it would take down the dispatch worker, leaving
 // this payload and every payload queued behind it for this connection without
 // the rc_conn_dispatch_result call the client library is waiting for.
-func invokeHandler(job dispatchJob) (response []byte, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			response = nil
-			err = fmt.Errorf("ddrc: dispatch handler panicked: %v", r)
-		}
+func invokeHandler(job dispatchJob, timeout time.Duration) (response []byte, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	type outcome struct {
+		response []byte
+		err      error
+	}
+	done := make(chan outcome, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- outcome{err: fmt.Errorf("ddrc: dispatch handler panicked: %v", r)}
+			}
+		}()
+
+		response, err := job.handler(ctx, job.correlationID, job.request.GetPayload())
+		done <- outcome{response: response, err: err}
 	}()
 
-	return job.handler(job.correlationID, job.request.GetPayload())
+	select {
+	case res := <-done:
+		return res.response, res.err
+	case <-ctx.Done():
+		return nil, fmt.Errorf("ddrc: dispatch handler exceeded %s timeout", timeout)
+	}
 }
 
 // marshalDispatchResponse encodes the outcome of a dispatch handler as the
