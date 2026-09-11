@@ -116,10 +116,11 @@ func newTestInvokePipeline(t *testing.T) *Connection {
 	t.Helper()
 
 	st := &connState{
-		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
-		resultQueue:   make(chan dispatchResult, resultQueueCap),
-		stop:          make(chan struct{}),
-		accepting:     true,
+		dispatchQueue:  make(chan dispatchJob, dispatchQueueCap),
+		resultQueue:    make(chan dispatchResult, resultQueueCap),
+		stop:           make(chan struct{}),
+		accepting:      true,
+		handlerTimeout: defaultHandlerTimeout,
 	}
 	conn := &Connection{state: st}
 
