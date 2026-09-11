@@ -108,6 +108,28 @@ func goSendCb(data *C.uint8_t, length C.uint32_t, userData unsafe.Pointer) (ret 
 	}
 }
 
+// goLogCb is the LogCb registered with rc_set_log_callback. It MUST NOT
+// block or panic: it forwards the event to the handler registered via
+// SetLogHandler, if any.
+//
+//export goLogCb
+func goLogCb(level C.LogLevel, target *C.uint8_t, targetLen C.uint32_t, message *C.uint8_t, messageLen C.uint32_t, _ unsafe.Pointer) {
+	defer recoverCallback(func() {})
+
+	logHandlerMu.Lock()
+	handler := logHandler
+	logHandlerMu.Unlock()
+
+	if handler == nil {
+		return
+	}
+
+	targetStr := C.GoStringN((*C.char)(unsafe.Pointer(target)), C.int(targetLen))
+	messageStr := C.GoStringN((*C.char)(unsafe.Pointer(message)), C.int(messageLen))
+
+	handler(LogLevel(level), targetStr, messageStr)
+}
+
 // recoverCallback stops a panic from escaping an exported callback, invoking
 // onPanic to substitute an error return code.
 //
