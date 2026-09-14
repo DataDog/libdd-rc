@@ -4,7 +4,7 @@ syntax = "proto3";
 //
 // Each message sent over the Magic Tunnel is defined by the fully-qualified
 // gRPC method URI that was used to trigger the request.
-// 
+//
 // For example, the example `DebugService` for the Remote Config team has a
 // method called `Ping` which has a fully qualified name of:
 //
@@ -16,33 +16,33 @@ syntax = "proto3";
 // Magic Tunnel, and directs payloads to the appropriate method handler.
 //
 // ```text
-//                                                                            
-//                               Datadog Server                               
-//                                                                            
-//                                      │                                     
-//                                      ▼                                     
-//                           ┌────────────────────┐                           
-//                           │     RC Client      │                           
-//                           └────────────────────┘                           
-//                                      │                                     
-//                                      │                                     
-//                                Magic │ Tunnel                              
-//                                      │                                     
-//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─   
-//   D           rc.x509.               │                                  D  
-//   I      magic_tunnel.               │                                  I  
-//   S   remote_config.v1  ┌────────────┴─────────────┐                    S  
-//   P                     ▼                          ▼                    P  
-//   A          ┌────────────────────┐     ┌────────────────────┐          A  
-//   T          │ DebugService/Ping  │     │OtherService/Bananas│          T  
-//   C          └────────────────────┘     └────────────────────┘          C  
-//   H                     │                          │                    H  
-//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─   
-//                         │                          │                       
-//                         ▼                          ▼                       
-//                   ┌───────────┐              ┌───────────┐                 
-//                   │  Handler  │              │  Handler  │                 
-//                   └───────────┘              └───────────┘                 
+//
+//                               Datadog Server
+//
+//                                      │
+//                                      ▼
+//                           ┌────────────────────┐
+//                           │     RC Client      │
+//                           └────────────────────┘
+//                                      │
+//                                      │
+//                                Magic │ Tunnel
+//                                      │
+//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//   D           rc.x509.               │                                  D
+//   I      magic_tunnel.               │                                  I
+//   S   remote_config.v1  ┌────────────┴─────────────┐                    S
+//   P                     ▼                          ▼                    P
+//   A          ┌────────────────────┐     ┌────────────────────┐          A
+//   T          │ DebugService/Ping  │     │OtherService/Bananas│          T
+//   C          └────────────────────┘     └────────────────────┘          C
+//   H                     │                          │                    H
+//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//                         │                          │
+//                         ▼                          ▼
+//                   ┌───────────┐              ┌───────────┐
+//                   │  Handler  │              │  Handler  │
+//                   └───────────┘              └───────────┘
 // ```
 //
 package rc.x509.magic_tunnel.v1;
