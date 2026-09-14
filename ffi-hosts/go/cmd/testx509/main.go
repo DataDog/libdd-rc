@@ -12,7 +12,7 @@ import (
 const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
 func main() {
-	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws")
+	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws", "testx509-poc", "0.0.1")
 	if err != nil {
 		log.Fatal(err)
 	}

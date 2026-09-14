@@ -204,7 +204,13 @@ mod tests {
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            MessageDelegate::new(
+                stop.clone(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                "test".to_string(),
+                "0.0.0".to_string(),
+            ),
             dispatch_stream,
             metrics,
         );
@@ -235,7 +241,13 @@ mod tests {
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            MessageDelegate::new(
+                stop.clone(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                "test".to_string(),
+                "0.0.0".to_string(),
+            ),
             dispatch_stream,
             metrics,
         );
@@ -266,7 +278,13 @@ mod tests {
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            MessageDelegate::new(
+                stop.clone(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                "test".to_string(),
+                "0.0.0".to_string(),
+            ),
             dispatch_stream,
             metrics,
         );
@@ -297,7 +315,13 @@ mod tests {
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            MessageDelegate::new(
+                stop.clone(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                "test".to_string(),
+                "0.0.0".to_string(),
+            ),
             dispatch_stream,
             metrics,
         );
@@ -355,7 +379,13 @@ mod tests {
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
-            MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch_publish),
+            MessageDelegate::new(
+                stop.clone(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                "test".to_string(),
+                "0.0.0".to_string(),
+            ),
             dispatch_stream,
             metrics,
         );

@@ -85,7 +85,7 @@ libdd-rc/
 The C-compatible FFI surface exposed to host runtimes:
 
 ```text
-rc_init()                    → *mut Ctx       // create new client
+rc_init(app_name, app_name_len, version, version_len) → *mut Ctx  // create new client
 rc_free(ctx)                                  // stop client & release all resources
 
 rc_conn_new(ctx)             → *mut Conn      // create new client connection state

@@ -321,7 +321,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 	}
 	defer func() { _ = UnregisterHandler(uri) }()
 
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}

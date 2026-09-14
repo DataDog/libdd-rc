@@ -457,13 +457,23 @@ void rc_free(struct Ctx *ctx);
  Initialise a new client [`Ctx`], starting a background thread to drive
  internal execution.
 
+ `app_name` and `version` identify the host application, and are reported
+ to the backend as part of the connection handshake.
+
    * Called by: `host runtime`.
-   * Ownership: returns ownership of [`Ctx`] to host runtime.
+   * Ownership: returns ownership of [`Ctx`] to host runtime. `app_name` and
+     `version` are copied into the returned [`Ctx`]; ownership of the
+     buffers backing them is retained by the caller.
 
  # Safety
 
- This call is always safe.
+ `app_name` MUST be valid for a read of `app_name_len` bytes, and `version`
+ MUST be valid for a read of `version_len` bytes, for the duration of this
+ function call. Both MUST reference valid UTF-8.
  */
-struct Ctx *rc_init(void);
+struct Ctx *rc_init(const uint8_t *app_name,
+                    uint32_t app_name_len,
+                    const uint8_t *version,
+                    uint32_t version_len);
 
 #endif  /* LIBDD_RC_H */

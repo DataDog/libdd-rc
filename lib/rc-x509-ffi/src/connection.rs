@@ -1097,7 +1097,16 @@ mod tests {
             DispatchRet::Unknown
         }
 
-        let ctx = unsafe { rc_init() };
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
         assert!(!ctx.is_null());
 
         let conn = unsafe { rc_conn_new(ctx, do_dispatch, ptr::null()) };

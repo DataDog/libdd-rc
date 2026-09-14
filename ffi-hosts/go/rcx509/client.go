@@ -49,12 +49,15 @@ type Client struct {
 // requested by the user.
 //
 // The url must be a ws:// or wss:// URL for a websocket connection.
-func NewClient(rawURL string) (*Client, error) {
+//
+// appName and version identify the host application, and are reported to the
+// backend as part of the connection handshake.
+func NewClient(rawURL, appName, version string) (*Client, error) {
 	if err := validateURL(rawURL); err != nil {
 		return nil, err
 	}
 
-	ctx, err := libddrcffi.Init()
+	ctx, err := libddrcffi.Init(appName, version)
 	if err != nil {
 		return nil, err
 	}

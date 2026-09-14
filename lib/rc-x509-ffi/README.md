@@ -42,7 +42,16 @@ use std::{ptr, ffi::c_void};
 use rc_x509_ffi::*;
 
 // Initialise the library Ctx and obtain a handle to this library instance.
-let ctx = unsafe { rc_init() };
+let app_name = "my-app";
+let version = "1.0.0";
+let ctx = unsafe {
+    rc_init(
+        app_name.as_ptr(),
+        app_name.len() as u32,
+        version.as_ptr(),
+        version.len() as u32,
+    )
+};
 
 // Define a callback that will receive the validated messages for your
 // application on this connection.
