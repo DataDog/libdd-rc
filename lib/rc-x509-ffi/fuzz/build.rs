@@ -143,8 +143,8 @@ fn magic_tunnel() {
                 }),
                 payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                     magic_tunnel::v1::MagicTunnelRequest {
-                        namespace: 1234,
-                        payload: "bananas".into(),
+                        uri: "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping".into(),
+                        request: "bananas".into(),
                     },
                 )),
             })

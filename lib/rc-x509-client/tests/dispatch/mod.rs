@@ -25,7 +25,7 @@ use rc_x509_client::{
 };
 use rc_x509_proto::{
     decode, encode,
-    magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, Namespace, magic_tunnel_response},
+    magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, magic_tunnel_response},
     protocol::v1,
 };
 use tokio_util::bytes::Bytes;
@@ -43,6 +43,7 @@ async fn test_dispatch_happy_path() {
 
     const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
     const APPLICATION_RESPONSE_PAYLOAD: Bytes = Bytes::from_static(&[13, 13, 13, 13]);
+    const URI: &str = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping";
 
     let mut client = TestClient::default();
     let mut conn = client.new_connection().await;
@@ -56,8 +57,8 @@ async fn test_dispatch_happy_path() {
             connection_id: Some(connection_id.clone()),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 MagicTunnelRequest {
-                    namespace: Namespace::RemoteConfig as _,
-                    payload: APPLICATION_REQUEST_PAYLOAD,
+                    uri: URI.to_string(),
+                    request: APPLICATION_REQUEST_PAYLOAD,
                 },
             )),
         }));
@@ -74,7 +75,7 @@ async fn test_dispatch_happy_path() {
     }
 
     // 2. The application receives the application payload, tagged with the
-    //    correct namespace for routing purposes:
+    //    correct uri for routing purposes:
     let dispatch = {
         let dispatch = conn.get_application_dispatch().await;
 
@@ -92,9 +93,9 @@ async fn test_dispatch_happy_path() {
             Some(v1::dispatch_request_payload::Payload::MagicTunnel(v)) => v
         );
 
-        // And the namespace tag / payload bytes match:
-        assert_eq!(magic_tunnel_request.namespace(), Namespace::RemoteConfig);
-        assert_eq!(magic_tunnel_request.payload, APPLICATION_REQUEST_PAYLOAD);
+        // And the uri tag / request bytes match:
+        assert_eq!(magic_tunnel_request.uri, URI);
+        assert_eq!(magic_tunnel_request.request, APPLICATION_REQUEST_PAYLOAD);
 
         dispatch
     };

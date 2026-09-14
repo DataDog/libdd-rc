@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
 	"github.com/DataDog/libdd-rc/ffi-hosts/go/rcx509"
 )
+
+// debugServicePingURI is the fully-qualified gRPC method name for the
+// Remote Config team's example DebugService/Ping RPC.
+const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
 func main() {
 	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws")
@@ -14,7 +17,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := client.RegisterHandler(magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG, handleDebugService); err != nil {
+	// Register a handler for the fully-qualified DebugService/Ping URI:
+	if err := client.RegisterHandler(debugServicePingURI, handlePing); err != nil {
 		log.Fatal(err)
 	}
 

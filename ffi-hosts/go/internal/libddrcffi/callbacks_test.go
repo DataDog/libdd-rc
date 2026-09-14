@@ -48,16 +48,16 @@ func TestConnStateFromUserData_RoundTripsNewConnectionEncoding(t *testing.T) {
 }
 
 // encodeDispatchRequest builds a wire-encoded DispatchRequestPayload
-// wrapping a MagicTunnelRequest for ns/innerPayload, as goDispatchCb expects
+// wrapping a MagicTunnelRequest for uri/innerPayload, as goDispatchCb expects
 // to receive from Rust.
-func encodeDispatchRequest(t *testing.T, ns magictunnelv1.Namespace, innerPayload []byte) []byte {
+func encodeDispatchRequest(t *testing.T, uri string, innerPayload []byte) []byte {
 	t.Helper()
 
 	encoded, err := proto.Marshal(&protocolv1.DispatchRequestPayload{
 		Payload: &protocolv1.DispatchRequestPayload_MagicTunnel{
 			MagicTunnel: &magictunnelv1.MagicTunnelRequest{
-				Namespace: ns,
-				Payload:   innerPayload,
+				Uri:     uri,
+				Request: innerPayload,
 			},
 		},
 	})
@@ -68,19 +68,19 @@ func encodeDispatchRequest(t *testing.T, ns magictunnelv1.Namespace, innerPayloa
 }
 
 func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
-		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
+	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
-	defer func() { _ = UnregisterHandler(ns) }()
+	defer func() { _ = UnregisterHandler(uri) }()
 
 	st := newTestConnState()
 	u := newTestUserData(st)
 	defer u.free()
 
 	innerPayload := []byte{0xde, 0xad, 0xbe, 0xef}
-	payload := encodeDispatchRequest(t, ns, innerPayload)
+	payload := encodeDispatchRequest(t, uri, innerPayload)
 
 	ret := callGoDispatchCb(42, payload, u)
 	if ret != testDispatchRetSuccess {
@@ -92,11 +92,11 @@ func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
 		if job.correlationID != 42 {
 			t.Errorf("job.correlationID = %d, want 42", job.correlationID)
 		}
-		if job.request.GetNamespace() != ns {
-			t.Errorf("job.request.GetNamespace() = %v, want %v", job.request.GetNamespace(), ns)
+		if job.request.GetUri() != uri {
+			t.Errorf("job.request.GetUri() = %v, want %v", job.request.GetUri(), uri)
 		}
-		if string(job.request.GetPayload()) != string(innerPayload) {
-			t.Errorf("job.request.GetPayload() = %v, want %v", job.request.GetPayload(), innerPayload)
+		if string(job.request.GetRequest()) != string(innerPayload) {
+			t.Errorf("job.request.GetRequest() = %v, want %v", job.request.GetRequest(), innerPayload)
 		}
 		if job.handler == nil {
 			t.Error("job.handler = nil, want the registered handler")
@@ -112,12 +112,12 @@ func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
 // calling proto.Unmarshal, so this test unmarshals directly to answer the
 // question about proto's own guarantee, independent of that cgo copy.
 func TestDispatchRequestPayload_UnmarshalCopiesInnerBytes(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
 	innerPayload := []byte{0xde, 0xad, 0xbe, 0xef}
 	want := append([]byte(nil), innerPayload...)
 
-	wire := encodeDispatchRequest(t, ns, innerPayload)
+	wire := encodeDispatchRequest(t, uri, innerPayload)
 
 	var req protocolv1.DispatchRequestPayload
 	if err := proto.Unmarshal(wire, &req); err != nil {
@@ -128,8 +128,8 @@ func TestDispatchRequestPayload_UnmarshalCopiesInnerBytes(t *testing.T) {
 		wire[i] = 0xff
 	}
 
-	if got := req.GetMagicTunnel().GetPayload(); string(got) != string(want) {
-		t.Errorf("req.GetMagicTunnel().GetPayload() = %v after mutating wire buffer, want %v (unchanged)", got, want)
+	if got := req.GetMagicTunnel().GetRequest(); string(got) != string(want) {
+		t.Errorf("req.GetMagicTunnel().GetRequest() = %v after mutating wire buffer, want %v (unchanged)", got, want)
 	}
 }
 
@@ -151,16 +151,16 @@ func TestGoDispatchCb_UnknownPayload(t *testing.T) {
 }
 
 func TestGoDispatchCb_NoDispatchHandler(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	// Ensure no handler is registered for ns.
-	_ = UnregisterHandler(ns)
+	// Ensure no handler is registered for uri.
+	_ = UnregisterHandler(uri)
 
 	st := newTestConnState()
 	u := newTestUserData(st)
 	defer u.free()
 
-	payload := encodeDispatchRequest(t, ns, []byte{0x01})
+	payload := encodeDispatchRequest(t, uri, []byte{0x01})
 
 	ret := callGoDispatchCb(1, payload, u)
 	if ret != testDispatchRetNoDispatchHandler {
@@ -175,12 +175,12 @@ func TestGoDispatchCb_NoDispatchHandler(t *testing.T) {
 }
 
 func TestGoDispatchCb_QueueFull(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
-		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
+	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
-	defer func() { _ = UnregisterHandler(ns) }()
+	defer func() { _ = UnregisterHandler(uri) }()
 
 	st := newTestConnState()
 	u := newTestUserData(st)
@@ -190,7 +190,7 @@ func TestGoDispatchCb_QueueFull(t *testing.T) {
 	// return QUEUE_FULL instead of blocking.
 	st.dispatchQueue <- dispatchJob{correlationID: 1}
 
-	payload := encodeDispatchRequest(t, ns, []byte{0x01})
+	payload := encodeDispatchRequest(t, uri, []byte{0x01})
 
 	ret := callGoDispatchCb(2, payload, u)
 	if ret != testDispatchRetQueueFull {
@@ -203,12 +203,12 @@ func TestGoDispatchCb_QueueFull(t *testing.T) {
 // would otherwise be accepted with DISPATCH_RET_SUCCESS and then abandoned,
 // since no dispatch worker is left to answer it.
 func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(ns, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
-		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
+	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
-	defer func() { _ = UnregisterHandler(ns) }()
+	defer func() { _ = UnregisterHandler(uri) }()
 
 	st := newTestConnState()
 	st.accepting = false
@@ -216,7 +216,7 @@ func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
 	u := newTestUserData(st)
 	defer u.free()
 
-	ret := callGoDispatchCb(1, encodeDispatchRequest(t, ns, []byte{0x01}), u)
+	ret := callGoDispatchCb(1, encodeDispatchRequest(t, uri, []byte{0x01}), u)
 	if ret != testDispatchRetQueueFull {
 		t.Fatalf("goDispatchCb() = %v, want testDispatchRetQueueFull", ret)
 	}
@@ -305,7 +305,7 @@ func TestGoSendCb_QueueFull(t *testing.T) {
 // handler is actually invoked with the expected arguments; it cannot observe
 // rc_conn_dispatch_result's effect on the no-op Main.
 func TestDispatchWorker_RoutesToHandler(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
 	type invocation struct {
 		correlationID uint64
@@ -316,10 +316,10 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		called <- invocation{correlationID: correlationID, payload: payload}
 		return []byte{0xaa, 0xbb}, nil
 	}
-	if err := RegisterHandler(ns, handler); err != nil {
-		t.Fatalf("RegisterHandler(ns) returned error: %v", err)
+	if err := RegisterHandler(uri, handler); err != nil {
+		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
-	defer func() { _ = UnregisterHandler(ns) }()
+	defer func() { _ = UnregisterHandler(uri) }()
 
 	ctx, err := Init()
 	if err != nil {
@@ -337,7 +337,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 	job := dispatchJob{
 		correlationID: 7,
 		handler:       handler,
-		request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns, Payload: innerPayload},
+		request:       &magictunnelv1.MagicTunnelRequest{Uri: uri, Request: innerPayload},
 	}
 	conn.state.dispatchQueue <- job
 
