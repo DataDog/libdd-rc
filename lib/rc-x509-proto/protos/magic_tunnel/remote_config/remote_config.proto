@@ -7,12 +7,14 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunn
 
 // A debug service for the Remote Config team to interact with the platform and
 // connected clients.
+//
+// The fully-qualified handler URI to register for this service 
 service DebugService {
   // Ping the specified client by connection ID.
   rpc Ping(PingRequest) returns (PingResponse);
 }
 
-// "Ping" a specific client.
+// A request to "ping" a specific client.
 message PingRequest {
   // The Connection ID of the client to ping.
   string connection_id = 1;
@@ -29,25 +31,4 @@ message PingRequest {
 message PingResponse {
   // The current timestamp as reported by the client.
   google.protobuf.Timestamp now = 1;
-}
-
-// Magic Tunnel request payloads for the `REMOTE_CONFIG` namespace.
-//
-// This is the encoded type that is emitted by the client library. It must
-// contain one entry per RPC.
-message DebugServiceRequest {
-  oneof subtopic {
-    // "Ping" the host application, through the dispatch interface to verify
-    // end-to-end functionality.
-    PingRequest ping = 1;
-  }
-}
-
-// Response payloads for `DebugServiceRequest` calls.
-//
-// See DebugServiceRequest.
-message DebugServiceResponse {
-  oneof subtopic {
-    PingResponse ping = 1;
-  }
 }
