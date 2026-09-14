@@ -8,7 +8,10 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunn
 // A debug service for the Remote Config team to interact with the platform and
 // connected clients.
 //
-// The fully-qualified handler URI to register for this service 
+// The fully-qualified URI to register a handler for the "Ping" method is:
+//
+//  rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping
+//
 service DebugService {
   // Ping the specified client by connection ID.
   rpc Ping(PingRequest) returns (PingResponse);

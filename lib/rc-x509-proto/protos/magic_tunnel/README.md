@@ -28,11 +28,11 @@ graph TD
     DD[DataDog Server]
     RC[RC Client]
 
-    DH["<b>DebugService/Ping</b><br/>Service Handler<br/><br/><i>deserialises payload, executes and returns a response</i>"]
+    DH["<b>DebugService/Ping</b><br/>Service Handler<br/><br/><i>deserialises request, executes and returns a response</i>"]
 
 
     %% Connections with Labels using <code> for monospacing
-    DD -- "<code>MagicTunnelRequest{<br/>  uri: rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping,<br/><br/>  payload: &lt;PingRequest bytes&gt;<br/>}</code>" --> RC
+    DD -- "<code>MagicTunnelRequest{<br/>  uri: rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping,<br/><br/>  request: &lt;PingRequest bytes&gt;<br/>}</code>" --> RC
 
     RC -- "<code>MagicTunnelResponse{<br/> result:<br />response: &lt;PingResponse bytes&gt;<br/>--OR--<br/>  result: dispatch_error: DISPATCH_ERROR_...<br/>}</code>" --> DD
 

@@ -3,7 +3,7 @@ syntax = "proto3";
 // Magic tunnel protocol message types.
 //
 // Each message sent over the Magic Tunnel is defined by the fully-qualified
-// gRPC service URI that was used to trigger the request.
+// gRPC method URI that was used to trigger the request.
 // 
 // For example, the example `DebugService` for the Remote Config team has a
 // method called `Ping` which has a fully qualified name of:
@@ -13,7 +13,7 @@ syntax = "proto3";
 // ```
 //
 // This both isolates across different teams / products / features supported by
-// Magic Tunnel, and directs payloads to the appropriate service handler.
+// Magic Tunnel, and directs payloads to the appropriate method handler.
 //
 // ```text
 //                                                                            
@@ -41,7 +41,6 @@ syntax = "proto3";
 //                         │                          │                       
 //                         ▼                          ▼                       
 //                   ┌───────────┐              ┌───────────┐                 
-//                   │  Service  │              │  Service  │                 
 //                   │  Handler  │              │  Handler  │                 
 //                   └───────────┘              └───────────┘                 
 // ```
@@ -50,7 +49,7 @@ package rc.x509.magic_tunnel.v1;
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel;magictunnelv1";
 
-// Push a request payload down to a namespace handler.
+// Push a request payload down to a request handler.
 message MagicTunnelRequest {
   // The fully-qualified method name used to trigger this request.
   //
@@ -64,13 +63,14 @@ message MagicTunnelRequest {
 // A response to a MagicTunnelRequest.
 message MagicTunnelResponse {
   oneof result {
-    // The response payload returned by the service handler, which may be an
+    // The response payload returned by the handler, which may be an
     // application-defined structured error.
     //
-    // The serialised protobuf response payload of the correct type for this URI.
+    // The serialised protobuf response payload of the correct type for this
+    // URI.
     bytes response = 1;
 
-    // The namespace handler implementation returned an execution error.
+    // The handler implementation returned an execution error.
     //
     // This is returned to the backend for debugging and logging purposes.
     // Integrations SHOULD NOT parse this string (or any error string) to
