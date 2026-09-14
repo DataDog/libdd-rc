@@ -20,6 +20,8 @@
 mod connection;
 mod ctx;
 mod io_handle;
+mod log_sink;
 
 pub use connection::*;
 pub use ctx::*;
+pub use log_sink::*;
