@@ -2,10 +2,9 @@ package libddrcffi
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
-
-	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
 )
 
 func noopHandler(correlationID uint64, payload []byte) ([]byte, error) {
@@ -13,19 +12,19 @@ func noopHandler(correlationID uint64, payload []byte) ([]byte, error) {
 }
 
 func TestRegisterHandler_Success(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
-	defer func() { _ = UnregisterHandler(ns) }()
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
+	defer func() { _ = UnregisterHandler(uri) }()
 
-	if err := RegisterHandler(ns, noopHandler); err != nil {
+	if err := RegisterHandler(uri, noopHandler); err != nil {
 		t.Fatalf("RegisterHandler() returned error: %v", err)
 	}
 }
 
 func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
-	defer func() { _ = UnregisterHandler(ns) }()
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
+	defer func() { _ = UnregisterHandler(uri) }()
 
-	if err := RegisterHandler(ns, noopHandler); err != nil {
+	if err := RegisterHandler(uri, noopHandler); err != nil {
 		t.Fatalf("first RegisterHandler() returned error: %v", err)
 	}
 
@@ -35,12 +34,12 @@ func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
 		return nil, nil
 	}
 
-	err := RegisterHandler(ns, replacement)
+	err := RegisterHandler(uri, replacement)
 	if !errors.Is(err, ErrHandlerExists) {
 		t.Fatalf("second RegisterHandler() = %v, want ErrHandlerExists", err)
 	}
 
-	h, ok := globalDispatcher.lookup(ns)
+	h, ok := globalDispatcher.lookup(uri)
 	if !ok {
 		t.Fatal("expected original handler to remain registered")
 	}
@@ -50,26 +49,26 @@ func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
 }
 
 func TestUnregisterHandler_Success(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(ns, noopHandler); err != nil {
+	if err := RegisterHandler(uri, noopHandler); err != nil {
 		t.Fatalf("RegisterHandler() returned error: %v", err)
 	}
-	if err := UnregisterHandler(ns); err != nil {
+	if err := UnregisterHandler(uri); err != nil {
 		t.Fatalf("UnregisterHandler() returned error: %v", err)
 	}
 
 	// Re-registering after unregistering must succeed.
-	if err := RegisterHandler(ns, noopHandler); err != nil {
+	if err := RegisterHandler(uri, noopHandler); err != nil {
 		t.Fatalf("RegisterHandler() after unregister returned error: %v", err)
 	}
-	defer func() { _ = UnregisterHandler(ns) }()
+	defer func() { _ = UnregisterHandler(uri) }()
 }
 
 func TestUnregisterHandler_MissingReturnsError(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_UNSPECIFIED
+	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/DoesNotExist"
 
-	if err := UnregisterHandler(ns); !errors.Is(err, ErrHandlerNotFound) {
+	if err := UnregisterHandler(uri); !errors.Is(err, ErrHandlerNotFound) {
 		t.Fatalf("UnregisterHandler() = %v, want ErrHandlerNotFound", err)
 	}
 }
@@ -82,17 +81,17 @@ func TestDispatcher_ConcurrentRegisterAndLookup(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			ns := magictunnelv1.Namespace(i)
+			uri := fmt.Sprintf("rc.x509.magic_tunnel.remote_config.v1.DebugService/Worker%d", i)
 
-			if err := RegisterHandler(ns, noopHandler); err != nil {
-				t.Errorf("RegisterHandler(%v) returned error: %v", ns, err)
+			if err := RegisterHandler(uri, noopHandler); err != nil {
+				t.Errorf("RegisterHandler(%v) returned error: %v", uri, err)
 				return
 			}
-			if _, ok := globalDispatcher.lookup(ns); !ok {
-				t.Errorf("lookup(%v) did not find registered handler", ns)
+			if _, ok := globalDispatcher.lookup(uri); !ok {
+				t.Errorf("lookup(%v) did not find registered handler", uri)
 			}
-			if err := UnregisterHandler(ns); err != nil {
-				t.Errorf("UnregisterHandler(%v) returned error: %v", ns, err)
+			if err := UnregisterHandler(uri); err != nil {
+				t.Errorf("UnregisterHandler(%v) returned error: %v", uri, err)
 			}
 		}(i)
 	}

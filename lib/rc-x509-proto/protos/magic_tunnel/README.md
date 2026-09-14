@@ -1,18 +1,26 @@
-# Magic Tunnel Protocol
+# Magic Tunnel Services
 
-Check out the [`protocol.proto`] file for the core protocol types and
+Here you'll find RPC service definitions for the messages that can be sent over
+the Magic Tunnel.
+
+The `remote_config/` directory shows an example integration for the Remote
+Config team.
+
+## Protocol
+
+Internal protocol details! You can ignore this if you're just looking to use
+Magic Tunnel.
+
+Check out the `protocol.proto` file for the core protocol types and
 implementation suggestions.
 
-The [`remote_config/`] directory shows an example integration, making use of
-subtopics to enable future extensibility.
-
-## Data Flow
+### Data Flow
 
 This flow chart describes the data types and how they flow from the RC delivery
-backend, to the ultimate integration handler that performs an action.
+backend, to the ultimate integration handler that processes the request.
 
-This describes the example use case of requesting an Agent debug "flare", an
-action in the `REMOTE_CONFIG` namespace:
+This shows the data flow when calling the `Ping` method on the Remote Config
+`DebugService`:
 
 ```mermaid
 graph TD
@@ -20,28 +28,23 @@ graph TD
     DD[DataDog Server]
     RC[RC Client]
 
-    DH["<b>NAMESPACE_REMOTE_CONFIG</b><br/>Remote Config Dispatch Handler<br/><br/><i>deserializes payload as<br/><code>RemoteConfigRequest</code> to<br/>route to appropriate<br/>handler & gets handler<br/>response</i>"]
+    DH["<b>DebugService/Ping</b><br/>Service Handler<br/><br/><i>deserialises request, executes and returns a response</i>"]
 
-    FH[Flare Handler]
 
     %% Connections with Labels using <code> for monospacing
-    DD -- "<code>MagicTunnelRequest{<br/>  correlation_id: 24,<br/>  namespace: NAMESPACE_REMOTE_CONFIG,<br/>  payload: &lt;RemoteConfigRequest bytes&gt;<br/>}</code>" --> RC
+    DD -- "<code>MagicTunnelRequest{<br/>  uri: rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping,<br/><br/>  request: &lt;PingRequest bytes&gt;<br/>}</code>" --> RC
 
-    RC -- "<code>MagicTunnelResponse{<br/>  correlation_id: 24,<br/>  result: response: &lt;RemoteConfigResponse bytes&gt;<br/>  OR<br/>  result: dispatch_error: DISPATCH_ERROR_...<br/>}</code>" --> DD
+    RC -- "<code>MagicTunnelResponse{<br/> result:<br />response: &lt;PingResponse bytes&gt;<br/>--OR--<br/>  result: dispatch_error: DISPATCH_ERROR_...<br/>}</code>" --> DD
 
-    RC -- "routes based on namespace<br/>& passes on <code>&lt;RemoteConfigRequest bytes&gt;</code>" --> DH
+    RC -- "routes based on uri<br/>& passes on <code>&lt;PingRequest bytes&gt;</code>" --> DH
 
-    DH -- "wraps <code>FlareResponse</code> in<br/><code>RemoteConfigResponse { subtopic: flare_response }</code>" --> RC
+    DH -- "returns serialised <code>&lt;PingResponse bytes&gt;</code>" --> RC
 
-    DH -- "routes to handler using<br/>subtopic (oneof)<br/><br/><code>FlareRequest {...}</code>" --> FH
-
-    FH -- "<code>FlareResponse{...}</code>" --> DH
 
     %% Styling
     style DH text-align:center
     style RC padding:10px
-    style FH padding:10px
 ```
 
-Integration teams implement and own the dispatch handler for their namespace,
-and any subtopic handlers below it.
+Integration teams implement and own the service handler for each service they
+define.

@@ -3,83 +3,85 @@ package libddrcffi
 import (
 	"errors"
 	"sync"
-
-	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
 )
 
-// HandlerFunc processes a dispatched MagicTunnelRequest payload for a single
-// namespace and returns the response payload to be sent back via
-// rc_conn_dispatch_result. Both payload and response are the namespace's own
-// wire format (e.g. a further protobuf-encoded oneof by subtopic); ddrc does
-// not decode past the namespace boundary.
+// HandlerFunc processes a request for a single service URI (e.g.
+// `rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping`) and returns the
+// response payload to be sent back.
 //
-// A handler runs on the invoke worker goroutine of the Connection that
-// received the payload, and must not call back into that Connection:
-// Connection.Close waits for in-flight handlers to return while
-// holding the connection lock, so a handler calling Recv or Close
-// deadlocks. A handler that returns an error, or panics, has that reported to
-// the client library as a handler error.
+// The handler is responsible for deserialising the protobuf payload to the
+// appropriate type for the RPC method, and serialising the appropriate response
+// type that is returned to the backend.
+//
+// A handler MUST NOT call into the underlying RC client library.
+//
+// A handler that returns an error, or panics, has that reported to the client
+// library as a handler error. Prefer returning a structured error response
+// instead of a unstructured `err`.
 type HandlerFunc func(correlationID uint64, payload []byte) (response []byte, err error)
 
 // ErrHandlerExists is returned by RegisterHandler when a handler is already
-// registered for the given namespace.
-var ErrHandlerExists = errors.New("ddrc: handler already registered for namespace")
+// registered for the given URI.
+var ErrHandlerExists = errors.New("ddrc: handler already registered for uri")
 
 // ErrHandlerNotFound is returned by UnregisterHandler when no handler is
-// registered for the given namespace.
-var ErrHandlerNotFound = errors.New("ddrc: no handler registered for namespace")
+// registered for the given URI.
+var ErrHandlerNotFound = errors.New("ddrc: no handler registered for uri")
 
 // dispatcher routes dispatched MagicTunnelRequest payloads to registered
-// handlers by namespace.
+// handlers by URI.
 //
 // There is exactly one dispatcher per process, shared by all connections.
 type dispatcher struct {
 	mu       sync.RWMutex
-	handlers map[magictunnelv1.Namespace]HandlerFunc
+	handlers map[string]HandlerFunc
 }
 
-var globalDispatcher = &dispatcher{handlers: make(map[magictunnelv1.Namespace]HandlerFunc)}
+var globalDispatcher = &dispatcher{handlers: make(map[string]HandlerFunc)}
 
-func (d *dispatcher) register(ns magictunnelv1.Namespace, h HandlerFunc) error {
+func (d *dispatcher) register(uri string, h HandlerFunc) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if _, exists := d.handlers[ns]; exists {
+	if _, exists := d.handlers[uri]; exists {
 		return ErrHandlerExists
 	}
-	d.handlers[ns] = h
+	d.handlers[uri] = h
 	return nil
 }
 
-func (d *dispatcher) unregister(ns magictunnelv1.Namespace) error {
+func (d *dispatcher) unregister(uri string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if _, exists := d.handlers[ns]; !exists {
+	if _, exists := d.handlers[uri]; !exists {
 		return ErrHandlerNotFound
 	}
-	delete(d.handlers, ns)
+	delete(d.handlers, uri)
 	return nil
 }
 
-func (d *dispatcher) lookup(ns magictunnelv1.Namespace) (HandlerFunc, bool) {
+func (d *dispatcher) lookup(uri string) (HandlerFunc, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	h, ok := d.handlers[ns]
+	h, ok := d.handlers[uri]
 	return h, ok
 }
 
-// RegisterHandler registers h to process dispatched MagicTunnelRequest
-// payloads for ns. Handlers may be registered at any time, including after
-// connections are already active. Registering a namespace that already has a
-// handler returns ErrHandlerExists.
-func RegisterHandler(ns magictunnelv1.Namespace, h HandlerFunc) error {
-	return globalDispatcher.register(ns, h)
+// RegisterHandler registers h to process dispatched MagicTunnelRequest payloads
+// for uri, the fully-qualified gRPC method name (e.g.
+// "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping").
+//
+// Handlers may be registered at any time, including after connections are
+// already active (but this risks missing messages). Registering a uri that
+// already has a handler returns ErrHandlerExists.
+func RegisterHandler(uri string, h HandlerFunc) error {
+	return globalDispatcher.register(uri, h)
 }
 
-// UnregisterHandler removes the handler registered for ns. Unregistering a
-// namespace with no registered handler returns ErrHandlerNotFound.
-func UnregisterHandler(ns magictunnelv1.Namespace) error {
-	return globalDispatcher.unregister(ns)
+// UnregisterHandler removes the handler registered for uri. Unregistering a
+// uri with no registered handler returns ErrHandlerNotFound.
+func UnregisterHandler(uri string) error {
+	return globalDispatcher.unregister(uri)
 }

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // avoid compilation errors caused by derive(Arbitrary) not being
     // implemented for Bytes.
     let bytes_fields = [
-        "rc.x509.magic_tunnel.v1.MagicTunnelRequest.payload",
+        "rc.x509.magic_tunnel.v1.MagicTunnelRequest.request",
         "rc.x509.protocol.v1.Certificate.der",
         "rc.x509.protocol.v1.ClientHello.nonce",
         "rc.x509.protocol.v1.ClientHello.reconnection_data",

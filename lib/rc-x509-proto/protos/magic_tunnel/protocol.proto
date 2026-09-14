@@ -1,107 +1,81 @@
 syntax = "proto3";
 
-// This package contains the wire types for the Magic Tunnel feature.
+// Magic tunnel protocol message types.
+//
+// Each message sent over the Magic Tunnel is defined by the fully-qualified
+// gRPC method URI that was used to trigger the request.
+//
+// For example, the example `DebugService` for the Remote Config team has a
+// method called `Ping` which has a fully qualified name of:
+//
+// ```text
+// rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping
+// ```
+//
+// This both isolates across different teams / products / features supported by
+// Magic Tunnel, and directs payloads to the appropriate method handler.
+//
+// ```text
+//
+//                               Datadog Server
+//
+//                                      │
+//                                      ▼
+//                           ┌────────────────────┐
+//                           │     RC Client      │
+//                           └────────────────────┘
+//                                      │
+//                                      │
+//                                Magic │ Tunnel
+//                                      │
+//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//   D           rc.x509.               │                                  D
+//   I      magic_tunnel.               │                                  I
+//   S   remote_config.v1  ┌────────────┴─────────────┐                    S
+//   P                     ▼                          ▼                    P
+//   A          ┌────────────────────┐     ┌────────────────────┐          A
+//   T          │ DebugService/Ping  │     │OtherService/Bananas│          T
+//   C          └────────────────────┘     └────────────────────┘          C
+//   H                     │                          │                    H
+//    ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+//                         │                          │
+//                         ▼                          ▼
+//                   ┌───────────┐              ┌───────────┐
+//                   │  Handler  │              │  Handler  │
+//                   └───────────┘              └───────────┘
+// ```
+//
 package rc.x509.magic_tunnel.v1;
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel;magictunnelv1";
 
-// A `Namespace` specifies which handler receives the payload being transmitted
-// to the Agent (or other clients of RC).
-//
-// The primary purpose of a `Namespace` is to isolate across different teams /
-// products / features supported by Magic Tunnel or other future features,
-// directing payloads to the appropriate namespace handler.
-//
-// A namespace handler can register to receive messages from multiple
-// namespaces, but a namespace can have at most one handler (consider internal
-// fanout within the handler if necessary).
-//
-// ```text
-//                                Datadog Server
-//
-//                                       │
-//                                       ▼
-//                            ┌────────────────────┐
-//                            │     RC Client      │
-//                            └────────────────────┘
-//                                       │
-//                                 Magic │ Tunnel
-//                                       │
-//     ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-//   D                                   │                                 D
-//   I          Namespace:               │                Namespace:       I
-//   S             Bananas  ┌────────────┴─────────────┐  Platanos         S
-//   P                      ▼                          ▼                   P
-//   A           ┌────────────────────┐     ┌────────────────────┐         A
-//   T           │    Team Bananas    │     │   Team Platanos    │         T
-//   C           └────────────────────┘     └────────────────────┘         C
-//   H                      │                          │                   H
-//     ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─
-//                          │                          │
-//                   ┌──────┴───┐                      │
-//                   │          ▼                      ▼
-//         Subtopic: │   ┌────────────┐         ┌────────────┐
-//        Function A │   │ Function B │         │ Functions  ├┐
-//                   ▼   └────────────┘         └┬───────────┘│
-//            ┌────────────┐                     └────────────┘
-//            │ Function A │
-//            └────────────┘
-// ```
-//
-// Once a payload is routed to the correct namespace handler, it is the
-// responsibility of the namespace handler to discriminate across appropriate
-// subtopics, if any.
-//
-// This enum SHOULD contain an entry for high level, product / team namespaces
-// only; it SHOULD NOT contain an entry for each payload type supported by a
-// team / product (define subtopics instead).
-enum Namespace {
-  NAMESPACE_UNSPECIFIED = 0;
-  NAMESPACE_REMOTE_CONFIG = 1;
-}
-
-// Push a payload down to a namespace handler.
+// Push a request payload down to a request handler.
 message MagicTunnelRequest {
-  // The namespace this payload will be delivered to.
-  Namespace namespace = 2;
+  // The fully-qualified method name used to trigger this request.
+  //
+  // Example: `rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping`
+  string uri = 1;
 
-  // The protobuf-serialised payload bytes to pass to the namespace handler for
-  // this namespace.
-  //
-  // Payloads MUST internally discriminate across subtopics. The recommended way
-  // to implement subtopics is to use a oneof:
-  //
-  // ```protobuf
-  // message TeamBananasRequest {
-  //   oneof subtopic {
-  //     Ping ping_request = 1;
-  //     Exec exec_request = 2;
-  //     // etc...
-  //   }
-  // }
-  // ```
-  //
-  // This provides a well-typed payload structure and allows future extension of
-  // the payload for this namespace in a backwards compatible way.
-  bytes payload = 3;
+  // The serialised protobuf request payload of the correct type for this URI.
+  bytes request = 2;
 }
 
 // A response to a MagicTunnelRequest.
 message MagicTunnelResponse {
   oneof result {
-    // The response payload returned by the namespace handler, which may be a
-    // structured error.
+    // The response payload returned by the handler, which may be an
+    // application-defined structured error.
     //
-    // Like the request payload, this value MUST be internally discriminated by
-    // subtopic.
-    bytes response = 2;
+    // The serialised protobuf response payload of the correct type for this
+    // URI.
+    bytes response = 1;
 
-    // The namespace handler implementation returned an execution error.
+    // The handler implementation returned an execution error.
     //
     // This is returned to the backend for debugging and logging purposes.
     // Integrations SHOULD NOT parse this string (or any error string) to
     // classify failures. Instead prefer returning a response payload that
     // contains a structured error response.
-    string handler_error = 4;
+    string handler_error = 2;
   }
 }

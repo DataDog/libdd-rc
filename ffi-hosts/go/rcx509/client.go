@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/DataDog/libdd-rc/ffi-hosts/go/internal/libddrcffi"
-	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
 )
 
 // ErrAlreadyStarted is returned by Start when called more than once on the
@@ -129,10 +128,11 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// RegisterHandler registers the provided function to be called when dispatch messages matching
-// the given namespace are processed by the backend.
-func (c *Client) RegisterHandler(namespace magictunnelv1.Namespace, fn libddrcffi.HandlerFunc) error {
-	return libddrcffi.RegisterHandler(namespace, fn)
+// RegisterHandler registers the provided function to be called when dispatch
+// messages matching the given uri (the fully-qualified gRPC method name) are
+// processed by the backend.
+func (c *Client) RegisterHandler(uri string, fn libddrcffi.HandlerFunc) error {
+	return libddrcffi.RegisterHandler(uri, fn)
 }
 
 // run is the Client's background connection loop, started by Start.

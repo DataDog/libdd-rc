@@ -443,8 +443,8 @@ func (c *Connection) sendDispatchResult(result dispatchResult) {
 	C.rc_conn_dispatch_result(c.state.conn, C.uint64_t(result.correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
 }
 
-// invokeHandler calls the handler registered for the job's namespace,
-// converting a panic in that caller-supplied code into an error.
+// invokeHandler calls the handler registered for the job's uri, converting a
+// panic in that caller-supplied code into an error.
 //
 // A panic must not escape: it would take down the dispatch worker, leaving
 // this payload and every payload queued behind it for this connection without
@@ -457,7 +457,7 @@ func invokeHandler(job dispatchJob) (response []byte, err error) {
 		}
 	}()
 
-	return job.handler(job.correlationID, job.request.GetPayload())
+	return job.handler(job.correlationID, job.request.GetRequest())
 }
 
 // marshalDispatchResponse encodes the outcome of a dispatch handler as the

@@ -1371,8 +1371,8 @@ mod tests {
             }),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 magic_tunnel::v1::MagicTunnelRequest {
-                    namespace: 13,
-                    payload: vec![1, 2, 3, 4].into(),
+                    uri: "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping".into(),
+                    request: vec![1, 2, 3, 4].into(),
                 },
             )),
         };

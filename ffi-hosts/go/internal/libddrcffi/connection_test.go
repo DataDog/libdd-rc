@@ -237,8 +237,6 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 // requires exactly one rc_conn_dispatch_result call per payload delivered
 // through DispatchCb, so they cannot be discarded once stop is closed.
 func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
-
 	release := make(chan struct{})
 	handled := make(chan uint64, 3)
 
@@ -272,7 +270,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		return dispatchJob{
 			correlationID: correlationID,
 			handler:       h,
-			request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns},
+			request:       &magictunnelv1.MagicTunnelRequest{},
 		}
 	}
 
@@ -325,8 +323,6 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 // handler code does not take the dispatch worker with it, which would leave
 // every payload behind it unanswered.
 func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
-	const ns = magictunnelv1.Namespace_NAMESPACE_REMOTE_CONFIG
-
 	conn := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
@@ -340,7 +336,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 		conn.state.dispatchQueue <- dispatchJob{
 			correlationID: uint64(i + 1),
 			handler:       h,
-			request:       &magictunnelv1.MagicTunnelRequest{Namespace: ns},
+			request:       &magictunnelv1.MagicTunnelRequest{},
 		}
 	}
 

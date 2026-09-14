@@ -50,8 +50,8 @@ func goDispatchCb(correlationID C.uint64_t, data *C.uint8_t, length C.uint32_t, 
 	}
 
 	// It's possible that nothing on this client has registered to handle this
-	// namespace - if so we need to signal this explicitly the FFI library
-	handler, ok := globalDispatcher.lookup(mt.GetNamespace())
+	// uri - if so we need to signal this explicitly the FFI library
+	handler, ok := globalDispatcher.lookup(mt.GetUri())
 	if !ok {
 		return C.DISPATCH_RET_NO_DISPATCH_HANDLER
 	}
