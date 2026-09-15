@@ -41,3 +41,7 @@ proptest = "1.11.0"
 proptest-derive = "0.8.0"
 rc-x509-test-client-harness = { version = "0.2.0", path = "../rc-x509-test-client-harness" }
 tokio = { version = "1.52.3", features = ["test-util"] }
+
+[package.metadata.docs.rs]
+rustc-args = ["--cfg", "tracing_unstable"]
+rustdoc-args = ["--cfg", "tracing_unstable"]
