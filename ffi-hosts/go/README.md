@@ -1,5 +1,5 @@
 > [!TIP]
-> If you just want to see the Go X509 client, go to the [`rcx509`] dir.
+If you just want to see the Go X509 client, go to the [`rcx509`](rcx509/) dir.
 
 # libdd-rc Go host
 
