@@ -17,7 +17,11 @@ use tokio_util::bytes::Bytes;
 
 use crate::{codec::ClientToServer, metrics::InstanceMetrics};
 
-pub(super) fn build_hello(app_name: &str, metrics: &InstanceMetrics) -> (IdNonce, ClientToServer) {
+pub(super) fn build_hello(
+    app_name: &str,
+    _version: &str,
+    metrics: &InstanceMetrics,
+) -> (IdNonce, ClientToServer) {
     let nonce = IdNonce::default();
     let client_nonce = Bytes::copy_from_slice(nonce.as_bytes());
 

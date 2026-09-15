@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"unsafe"
 )
 
 // ErrContextClosed is returned when an operation is attempted on an
@@ -31,9 +32,41 @@ type X509Context struct {
 	conns map[*Connection]struct{}
 }
 
-// Init initializes an instance of the rc-x509-client subsystem
-func Init() (*X509Context, error) {
-	ptr := C.rc_init()
+// maxAppNameOrVersionLen is the maximum permitted length, in bytes, of the
+// appName and version strings passed to Init.
+const maxAppNameOrVersionLen = 255
+
+// Init initializes an instance of the rc-x509-client subsystem.
+//
+// appName and version identify the host application, and are reported to the
+// backend as part of the connection handshake. Both must be non-empty and no
+// longer than 255 bytes.
+func Init(appName, version string) (*X509Context, error) {
+	if appName == "" {
+		return nil, errors.New("libddrc: appName must not be empty")
+	}
+	if len(appName) > maxAppNameOrVersionLen {
+		return nil, fmt.Errorf("libddrc: appName must not be longer than %d bytes", maxAppNameOrVersionLen)
+	}
+	if version == "" {
+		return nil, errors.New("libddrc: version must not be empty")
+	}
+	if len(version) > maxAppNameOrVersionLen {
+		return nil, fmt.Errorf("libddrc: version must not be longer than %d bytes", maxAppNameOrVersionLen)
+	}
+
+	appNameBytes := []byte(appName)
+	versionBytes := []byte(version)
+
+	// rc_init only requires the buffers to be valid for the duration of the
+	// call: it copies both strings before returning, so they can be passed
+	// directly without allocating C memory first.
+	ptr := C.rc_init(
+		(*C.uint8_t)(unsafe.Pointer(&appNameBytes[0])),
+		C.uint32_t(len(appNameBytes)),
+		(*C.uint8_t)(unsafe.Pointer(&versionBytes[0])),
+		C.uint32_t(len(versionBytes)),
+	)
 	if ptr == nil {
 		return nil, errors.New("libddrc: rc_init returned a nil context")
 	}

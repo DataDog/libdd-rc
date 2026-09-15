@@ -14,7 +14,7 @@ import (
 func newTestConnection(t *testing.T) *Connection {
 	t.Helper()
 
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestConnectionRecvEmptyPayload(t *testing.T) {
 // was never marked as connected is reported as an error. rc-x509-client
 // panics in this state, which aborts the process.
 func TestConnectionRecvBeforeConnected(t *testing.T) {
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestConnectionRecvBeforeConnected(t *testing.T) {
 // TestConnectionRecvAfterDisconnected verifies Recv is rejected once the
 // connection has been torn down; the FFIConnection has been freed by then.
 func TestConnectionRecvAfterDisconnected(t *testing.T) {
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		return nil, nil
 	}
 
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 // every call must either be accepted before the FFIConnection is freed or
 // report the connection as closed; it must never reach the freed handle.
 func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -401,7 +401,7 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 // shutdown drain, so closing the channel must not cost us the payloads already
 // queued on it.
 func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}
@@ -439,7 +439,7 @@ func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
 // A session still holding the channel would otherwise spin on a receive that
 // never blocks again.
 func TestContextCloseClosesOutgoing(t *testing.T) {
-	ctx, err := Init()
+	ctx, err := Init("test", "0.0.0")
 	if err != nil {
 		t.Fatalf("Init() returned error: %v", err)
 	}

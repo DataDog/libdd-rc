@@ -51,7 +51,7 @@ impl TestClient {
     pub(crate) fn new() -> Self {
         let (signal, stop) = ShutdownSignal::new();
 
-        let client = Main::default();
+        let client = Main::new("test".to_string(), "0.0.0".to_string());
 
         let (event_tx, event_rx) = mpsc::channel(1);
         let handle = AbortOnDrop::from(tokio::spawn(

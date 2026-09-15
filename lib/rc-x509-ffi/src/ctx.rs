@@ -14,7 +14,7 @@
 
 //! Client library executor handle for FFI callers.
 
-use std::time::Duration;
+use std::{slice, str, time::Duration};
 
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -30,15 +30,40 @@ use crate::{DispatchCb, DispatchCbUserData, FFIConnection, io_handle::IOHandle};
 /// Initialise a new client [`Ctx`], starting a background thread to drive
 /// internal execution.
 ///
+/// `app_name` and `version` identify the host application, and are reported
+/// to the backend as part of the connection handshake.
+///
 ///   * Called by: `host runtime`.
-///   * Ownership: returns ownership of [`Ctx`] to host runtime.
+///   * Ownership: returns ownership of [`Ctx`] to host runtime. `app_name` and
+///     `version` are copied into the returned [`Ctx`]; ownership of the
+///     buffers backing them is retained by the caller.
 ///
 /// # Safety
 ///
-/// This call is always safe.
+/// `app_name` MUST be valid for a read of `app_name_len` bytes, and `version`
+/// MUST be valid for a read of `version_len` bytes, for the duration of this
+/// function call. Both MUST reference valid UTF-8.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_init() -> *mut Ctx {
-    Box::into_raw(Ctx::new(Main::default()))
+pub unsafe extern "C" fn rc_init(
+    app_name: *const u8,
+    app_name_len: u32,
+    version: *const u8,
+    version_len: u32,
+) -> *mut Ctx {
+    assert!(!app_name.is_null());
+    assert!(!version.is_null());
+
+    let app_name = unsafe { slice::from_raw_parts(app_name, app_name_len as usize) };
+    let app_name = str::from_utf8(app_name)
+        .expect("app_name must be valid UTF-8")
+        .to_string();
+
+    let version = unsafe { slice::from_raw_parts(version, version_len as usize) };
+    let version = str::from_utf8(version)
+        .expect("version must be valid UTF-8")
+        .to_string();
+
+    Box::into_raw(Ctx::new(Main::new(app_name, version)))
 }
 
 /// Stop the client running in [`Ctx`], and release all resources held by
@@ -199,7 +224,16 @@ mod tests {
     /// ensuring it is correctly initialised and gracefully stopped.
     #[test]
     fn test_ffi_ctx_lifecycle() {
-        let ctx = unsafe { rc_init() };
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
         assert!(!ctx.is_null());
 
         // Peek into the handle pointer to assert the runtime has been

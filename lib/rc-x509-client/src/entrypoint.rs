@@ -55,8 +55,23 @@ pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
 ///
 /// This struct exists to provide an indirection point / impl of
 /// [`LibraryEntrypoint`] callable from the FFI layer.
-#[derive(Debug, Default)]
-pub struct Main;
+#[derive(Debug)]
+pub struct Main {
+    /// The name of the host application, reported to the backend in the
+    /// [`ClientToServer::ClientHello`](crate::codec::ClientToServer::ClientHello).
+    app_name: String,
+
+    /// The version of the host application.
+    version: String,
+}
+
+impl Main {
+    /// Construct a new [`Main`] entrypoint, reporting `app_name` and
+    /// `version` to the backend as part of the connection handshake.
+    pub fn new(app_name: String, version: String) -> Self {
+        Self { app_name, version }
+    }
+}
 
 impl<IO> LibraryEntrypoint<IO> for Main
 where
@@ -80,6 +95,8 @@ where
             shutdown.clone(),
             conn_events,
             metrics,
+            self.app_name,
+            self.version,
         )));
 
         // Wait forever for the shutdown signal.
@@ -111,6 +128,8 @@ async fn handle_connection_events<IO>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     metrics: Arc<InstanceMetrics>,
+    app_name: String,
+    version: String,
 ) where
     IO: Connection,
 {
@@ -153,7 +172,13 @@ async fn handle_connection_events<IO>(
             ConnectionEvent::Connected(io, mut dispatch) => {
                 let stop = shutdown.child_token();
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
-                let delegate = MessageDelegate::new(stop.clone(), Arc::clone(&metrics), dispatch);
+                let delegate = MessageDelegate::new(
+                    stop.clone(),
+                    Arc::clone(&metrics),
+                    dispatch,
+                    app_name.clone(),
+                    version.clone(),
+                );
                 let conn = ConnectionActor::new(
                     io,
                     stop.clone(),
