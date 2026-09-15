@@ -11,6 +11,7 @@ arbitrary,https://github.com/rust-fuzz/arbitrary/,MIT OR Apache-2.0,The Rust-Fuz
 asn1-rs,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-derive,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 asn1-rs-impl,https://github.com/rusticata/asn1-rs.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+assert_matches,https://github.com/murarth/assert_matches,MIT OR Apache-2.0,Murarth <murarth@gmail.com>
 autocfg,https://github.com/cuviper/autocfg,Apache-2.0 OR MIT,Josh Stone <cuviper@gmail.com>
 aws-lc-fips-sys,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0 OR OpenSSL,AWS-LC
 aws-lc-rs,https://github.com/aws/aws-lc-rs,ISC OR Apache-2.0,AWS-LibCrypto
@@ -81,10 +82,12 @@ libloading,https://github.com/nagisa/rust_libloading/,ISC,Simonas Kazlauskas <li
 linux-raw-sys,https://github.com/sunfishcode/linux-raw-sys,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>
 lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 log,https://github.com/rust-lang/log,MIT OR Apache-2.0,The Rust Project Developers
+matchers,https://github.com/hawkw/matchers,MIT,Eliza Weisman <eliza@buoyant.io>
 memchr,https://github.com/BurntSushi/memchr,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>, bluss
 minimal-lexical,https://github.com/Alexhuszagh/minimal-lexical,MIT OR Apache-2.0,Alex Huszagh <ahuszagh@gmail.com>
 multimap,https://github.com/havarnov/multimap,MIT OR Apache-2.0,Håvar Nøvik <havar.novik@gmail.com>
 nom,https://github.com/Geal/nom,MIT,contact@geoffroycouprie.com
+nu-ansi-term,https://github.com/nushell/nu-ansi-term,MIT,ogham@bsago.me, Ryan Scheel (Havvy) <ryan.havvy@gmail.com>, Josh Triplett <josh@joshtriplett.org>, The Nushell Project Developers
 num-bigint,https://github.com/rust-num/num-bigint,MIT OR Apache-2.0,The Rust Project Developers
 num-conv,https://github.com/jhpratt/num-conv,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
 num-integer,https://github.com/rust-num/num-integer,MIT OR Apache-2.0,The Rust Project Developers
@@ -130,6 +133,7 @@ rc-x509-ffi,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-ffi-fuzz,N/A,Apache-2.0,N/A
 rc-x509-proto,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-roots,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
+rc-x509-test-client-harness,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-test-helpers,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-trust,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rcgen,https://github.com/rustls/rcgen,MIT OR Apache-2.0,N/A
@@ -148,6 +152,7 @@ serde_core,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <
 serde_derive,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
 serde_json,https://github.com/serde-rs/json,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
 serde_spanned,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
+sharded-slab,https://github.com/hawkw/sharded-slab,MIT,Eliza Weisman <eliza@buoyant.io>
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
 shlex,https://github.com/comex/rust-shlex,MIT OR Apache-2.0,comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com>
 slab,https://github.com/tokio-rs/slab,MIT,Carl Lerche <me@carllerche.com>
@@ -159,6 +164,7 @@ synstructure,https://github.com/mystor/synstructure,MIT,Nika Layzell <nika@thela
 tempfile,https://github.com/Stebalien/tempfile,MIT OR Apache-2.0,Steven Allen <steven@stebalien.com>, The Rust Project Developers, Ashley Mannix <ashleymannix@live.com.au>, Jason White <me@jasonwhite.io>
 thiserror,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 thiserror-impl,https://github.com/dtolnay/thiserror,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
+thread_local,https://github.com/Amanieu/thread_local-rs,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 time,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 time-core,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 time-macros,https://github.com/time-rs/time,MIT OR Apache-2.0,Jacob Pratt <open-source@jhpratt.dev>, Time contributors
@@ -172,6 +178,8 @@ toml_parser,https://github.com/toml-rs/toml,MIT OR Apache-2.0,N/A
 tracing,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>
 tracing-attributes,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>, Eliza Weisman <eliza@buoyant.io>, David Barsky <dbarsky@amazon.com>
 tracing-core,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
+tracing-log,https://github.com/tokio-rs/tracing,MIT,Tokio Contributors <team@tokio.rs>
+tracing-subscriber,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@buoyant.io>, David Barsky <me@davidbarsky.com>, Tokio Contributors <team@tokio.rs>
 twox-hash,https://github.com/shepmaster/twox-hash,MIT,Jake Goulding <jake.goulding@gmail.com>
 unarray,https://github.com/cameron1024/unarray,MIT OR Apache-2.0,N/A
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>

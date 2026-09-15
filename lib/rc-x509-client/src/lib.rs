@@ -16,7 +16,7 @@
 
 // Spurious unused crate lints:
 #[cfg(test)]
-use tracing_subscriber as _;
+use rc_x509_test_client_harness as _;
 
 mod abort_on_drop;
 mod build_version;

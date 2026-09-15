@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub(crate) mod client;
-pub(crate) mod io;
-pub(crate) mod logging;
+#![doc = include_str!("../README.md")]
+
+/// A mock client driving the [`rc_x509_client`] entrypoint end-to-end.
+pub mod client;
+/// A mocked [`rc_x509_client::host_runtime::Connection`] transport.
+pub mod io;
+/// Test process logging setup.
+pub mod logging;
