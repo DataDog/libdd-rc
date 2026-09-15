@@ -16,7 +16,10 @@ use tracing_subscriber::EnvFilter;
 
 /// Install a [`tracing`] subscriber that writes event logs to stdout for the
 /// duration of the test process.
-pub(crate) fn init() {
+///
+/// Set the `RUST_LOG` env var when running tests to change the log level /
+/// filter.
+pub fn init() {
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")),

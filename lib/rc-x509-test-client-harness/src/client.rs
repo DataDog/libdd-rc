@@ -36,10 +36,11 @@ use tokio::{sync::mpsc, time::timeout};
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 use tokio_util::bytes::Bytes;
 
-use crate::harness::io::{MockIO, MockIOServer, new_io_pair};
+use crate::io::{MockIO, MockIOServer, new_io_pair};
 
+/// A running instance of the client library, driven over a mocked transport.
 #[derive(Debug)]
-pub(crate) struct TestClient {
+pub struct TestClient {
     handle: AbortOnDrop<()>,
     stop: ShutdownCtl,
 
@@ -48,7 +49,7 @@ pub(crate) struct TestClient {
 
 impl TestClient {
     /// Construct a new test client.
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         let (signal, stop) = ShutdownSignal::new();
 
         let client = Main::new("test".to_string(), "0.0.0".to_string());
@@ -69,7 +70,7 @@ impl TestClient {
     /// Register a new connection with the client, returning a handle to the
     /// connection.
     #[must_use]
-    pub(crate) async fn new_connection(&mut self) -> TestConn {
+    pub async fn new_connection(&mut self) -> TestConn {
         let (io, server) = new_io_pair();
         let (dispatch_publisher, dispatch_stream, dispatch_response) =
             new_dispatcher_interconnect();
@@ -98,7 +99,7 @@ impl TestClient {
     }
 
     /// Gracefully stop the client and wait for it to return.
-    pub(crate) async fn shutdown(self) {
+    pub async fn shutdown(self) {
         self.stop.shutdown_now();
 
         let _: () = timeout(Duration::from_secs(5), self.handle.into_inner())
@@ -116,7 +117,7 @@ impl Default for TestClient {
 
 /// A connection to the client library.
 #[derive(Debug)]
-pub(crate) struct TestConn {
+pub struct TestConn {
     io: MockIOServer,
     dispatch_stream: DispatchStream,
     dispatch_response: DispatchResponder,
@@ -125,16 +126,21 @@ pub(crate) struct TestConn {
 
 impl TestConn {
     /// Push `v` to the client over the mocked transport.
-    pub(crate) async fn send(&mut self, v: Result<ServerToClient, DecodingError>) {
+    pub async fn send(&mut self, v: Result<ServerToClient, DecodingError>) {
         self.io.send(v).await.expect("failed to send to client")
     }
 
     /// Wait for the client to send a [`ClientToServer`].
-    pub(crate) async fn recv(&mut self) -> TestClientToServer {
+    pub async fn recv(&mut self) -> TestClientToServer {
         TestClientToServer(self.io.recv().await.expect("failed to recv from client"))
     }
 
-    pub(crate) async fn perform_handshake(&mut self) -> ConnectionId {
+    /// Drive the [`ClientHello`]/[`ClientHelloAck`] handshake to completion,
+    /// returning the derived connection ID.
+    ///
+    /// [`ClientHello`]: ClientToServer::ClientHello
+    /// [`ClientHelloAck`]: ServerToClient::ClientHelloAck
+    pub async fn perform_handshake(&mut self) -> ConnectionId {
         // Read the ClientHello and extract the nonce.
         let got = self.recv().await;
         let client_nonce = assert_matches!(
@@ -168,7 +174,7 @@ impl TestConn {
     /// `request`, correlated by `correlation_id`.
     ///
     /// The connection handshake must have been performed first.
-    pub(crate) async fn dispatch_magic_tunnel(
+    pub async fn dispatch_magic_tunnel(
         &mut self,
         correlation_id: CorrelationId,
         uri: &str,
@@ -200,7 +206,8 @@ impl TestConn {
         .await;
     }
 
-    pub(crate) async fn get_application_dispatch(&mut self) -> TestDispatch {
+    /// Wait for the client to route a dispatch request to the application.
+    pub async fn get_application_dispatch(&mut self) -> TestDispatch {
         let dispatch = tokio::time::timeout(Duration::from_secs(5), self.dispatch_stream.next())
             .await
             .expect("timeout waiting for app dispatch")
@@ -213,7 +220,7 @@ impl TestConn {
     }
 
     /// Close this connection.
-    pub(crate) async fn close(self) {
+    pub async fn close(self) {
         drop(self)
     }
 }
@@ -221,13 +228,13 @@ impl TestConn {
 /// A [`ClientToServer`] message received from the client, with helper
 /// methods for asserting on common message shapes.
 #[derive(Debug)]
-pub(crate) struct TestClientToServer(ClientToServer);
+pub struct TestClientToServer(ClientToServer);
 
 impl TestClientToServer {
     /// Unwrap this into the underlying [`ClientToServer`] message, for use
     /// with pattern matching that must own the message (i.e. extracts
     /// non-[`Copy`] fields).
-    pub(crate) fn into_inner(self) -> ClientToServer {
+    pub fn into_inner(self) -> ClientToServer {
         self.0
     }
 
@@ -236,7 +243,7 @@ impl TestClientToServer {
     /// result.
     ///
     /// [`MagicTunnel`]: v1::dispatch_response_payload::Payload::MagicTunnel
-    pub(crate) fn assume_magic_tunnel_response(
+    pub fn assume_magic_tunnel_response(
         self,
         correlation_id: CorrelationId,
     ) -> magic_tunnel_response::Result {
@@ -269,18 +276,22 @@ impl Deref for TestClientToServer {
     }
 }
 
+/// A [`Dispatch`] request routed to the application, with helper methods for
+/// asserting on and responding to it.
 #[derive(Debug)]
-pub(crate) struct TestDispatch {
+pub struct TestDispatch {
     dispatch: Dispatch,
     responder: DispatchResponder,
 }
 
 impl TestDispatch {
-    pub(crate) fn correlation_id(&self) -> CorrelationId {
+    /// The correlation ID this dispatch request must be responded with.
+    pub fn correlation_id(&self) -> CorrelationId {
         self.dispatch.correlation_id
     }
 
-    pub(crate) fn payload(&self) -> Bytes {
+    /// The raw application payload carried by this dispatch request.
+    pub fn payload(&self) -> Bytes {
         self.dispatch.payload.clone()
     }
 
@@ -289,7 +300,7 @@ impl TestDispatch {
     /// uri and application payload.
     ///
     /// [`MagicTunnel`]: v1::dispatch_request_payload::Payload::MagicTunnel
-    pub(crate) fn assume_magic_tunnel(&self, connection_id: &v1::ConnectionId) -> (String, Bytes) {
+    pub fn assume_magic_tunnel(&self, connection_id: &v1::ConnectionId) -> (String, Bytes) {
         let got: v1::DispatchRequestPayload = decode(self.payload()).expect("valid message");
 
         assert_matches!(got.connection_id, Some(id) => {
@@ -304,7 +315,8 @@ impl TestDispatch {
         (magic_tunnel_request.uri, magic_tunnel_request.request)
     }
 
-    pub(crate) async fn respond(self, result: Result<v1::DispatchResponsePayload, DispatchError>) {
+    /// Respond to this dispatch request with `result`.
+    pub async fn respond(self, result: Result<v1::DispatchResponsePayload, DispatchError>) {
         self.responder
             .send_response(DispatchResult {
                 correlation_id: self.correlation_id(),
@@ -316,7 +328,7 @@ impl TestDispatch {
 
     /// Respond to this dispatch with a magic tunnel response carrying
     /// `result`.
-    pub(crate) async fn respond_magic_tunnel(self, result: magic_tunnel_response::Result) {
+    pub async fn respond_magic_tunnel(self, result: magic_tunnel_response::Result) {
         self.respond(Ok(v1::DispatchResponsePayload {
             payload: Some(v1::dispatch_response_payload::Payload::MagicTunnel(
                 MagicTunnelResponse {
@@ -328,7 +340,8 @@ impl TestDispatch {
     }
 }
 
-pub(crate) fn conn_id_to_proto(c: ConnectionId) -> v1::ConnectionId {
+/// Convert `c` into its protocol wire representation.
+pub fn conn_id_to_proto(c: ConnectionId) -> v1::ConnectionId {
     v1::ConnectionId {
         uuid_v8: Bytes::copy_from_slice(c.as_bytes()),
     }

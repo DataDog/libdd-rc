@@ -13,31 +13,30 @@
 # limitations under the License.
 
 [package]
-name = "rc-x509-client"
+name = "rc-x509-test-client-harness"
+
+# Match the rc-x509-client version below!
+#
+# Keeping them in-sync will let us target specific client versions when
+# importing this library in other systems.
 version = "0.2.0"
+
 edition.workspace = true
-license = "Apache-2.0"
-description = "Rust client for the RC X509 platform"
+license.workspace = true
+description = "Test harness for exercising the RC X509 client library"
 repository = "https://github.com/DataDog/libdd-rc"
 
 [lints]
 workspace = true
 
 [dependencies]
-futures = "0.3.32"
-rc-x509-proto = { version = "0.2.0", path = "../rc-x509-proto" }
-rc-x509-trust = { version = "0.2.0", path = "../rc-x509-trust" }
+# Keep the '=' prefix in the version, pinning to an exact version.
+rc-x509-client = { version = "=0.2.0", path = "../rc-x509-client" }
+
+assert_matches = "1.5.0"
 rc-crypto = { version = "0.1.1", path = "../rc-crypto" }
-thiserror = "2.0.18"
-tokio = { version = "1.52.3", features = ["macros", "parking_lot", "rt", "sync", "time"] }
+rc-x509-proto = { version = "0.2.0", path = "../rc-x509-proto" }
+tokio = { version = "1.52.3", features = ["rt", "sync", "time"] }
 tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
-tracing = "0.1.44"
-pin-project = "1.1.13"
-
-[dev-dependencies]
-assert_matches = "1.5.0"
-proptest = "1.11.0"
-proptest-derive = "0.8.0"
-rc-x509-test-client-harness = { version = "0.2.0", path = "../rc-x509-test-client-harness" }
-tokio = { version = "1.52.3", features = ["test-util"] }
+tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
