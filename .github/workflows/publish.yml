@@ -58,6 +58,7 @@ jobs:
           - rc-x509-roots
           - rc-x509-trust
           - rc-x509-client
+          - rc-x509-test-client-harness
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
