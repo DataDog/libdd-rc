@@ -17,6 +17,10 @@
 use std::process::Command;
 
 fn main() {
+    if let Some(v) = option_env!("_OVERRIDE_GIT_VERSION_HASH") {
+        println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={v}");
+        return;
+    }
     let output = Command::new("git")
         .args(["rev-parse", "HEAD"])
         .output()
