@@ -1544,6 +1544,7 @@ mod tests {
         ctx.shutdown();
     }
 
+    #[cfg(not(miri))]
     proptest! {
         /// Every generated [`DispatchHostError`] maps to a corresponding
         /// [`DispatchError`] variant.
