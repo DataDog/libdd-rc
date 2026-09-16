@@ -118,6 +118,11 @@ pub enum DispatchError {
     /// they provided could not be deserialised.
     #[error("unknown dispatch error from host app")]
     UnknownHostDispatchError,
+
+    /// The dispatch handler in the FFI host exceeded the allowed maximum
+    /// execution duration.
+    #[error("dispatch handler exceeded the maximum execution duration")]
+    HandlerExecTimeout,
 }
 
 impl From<DispatchError> for v1::dispatch_response::DispatchError {
@@ -130,6 +135,7 @@ impl From<DispatchError> for v1::dispatch_response::DispatchError {
             DispatchError::DispatchClosed => Self::Closed,
             DispatchError::ReplyDeserialisation(_) => Self::ReplyDeserialisation,
             DispatchError::UnknownHostDispatchError => Self::ClientReturnedUnknown,
+            DispatchError::HandlerExecTimeout => Self::HandlerExecTimeout,
         }
     }
 }

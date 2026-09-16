@@ -31,6 +31,27 @@
 #include <stdlib.h>
 
 /*
+ Errors an FFI host can report for a dispatched message via
+ [`rc_conn_dispatch_error()`], in place of a call to
+ [`rc_conn_dispatch_result()`].
+ */
+enum DispatchHostError
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
+    /*
+     The dispatch handler exceeded the allowed maximum execution duration.
+     */
+    DISPATCH_HOST_ERROR_HANDLER_EXEC_TIMEOUT = 0,
+};
+#if __STDC_VERSION__ >= 202311L
+typedef enum DispatchHostError DispatchHostError;
+#else
+typedef int32_t DispatchHostError;
+#endif // __STDC_VERSION__ >= 202311L
+
+/*
  The return value from a [`DispatchCb`] call.
  */
 enum DispatchRet
@@ -238,8 +259,8 @@ typedef struct FFIConnection FFIConnection;
  SHOULD enqueue work into a channel for deferred processing.
 
  For each payload delivered through this callback, exactly one call to
- [`rc_conn_dispatch_result()`] MUST be made to return the call result after
- processing.
+ either [`rc_conn_dispatch_result()`] or [`rc_conn_dispatch_error()`] MUST
+ be made to return the call result after processing.
 
  The correlation ID is an opaque identifier with no guarantees the callee can
  rely on.
@@ -326,14 +347,35 @@ void rc_conn_connected(struct FFIConnection *conn);
 void rc_conn_disconnected(struct FFIConnection *conn);
 
 /*
+ Report an error for a previously dispatched message, in place of a
+ successful [`rc_conn_dispatch_result()`] call.
+
+ Exactly one call to either [`rc_conn_dispatch_result()`] or this function
+ per message delivered through [`DispatchCb`] MUST be made, referencing the
+ same `correlation_id`.
+
+   * Called by: `host runtime`.
+   * Ownership: passes shared reference of [`FFIConnection`] to client
+     library for the duration of the call.
+
+ # Safety
+
+ This call is safe iff `conn` points to a valid [`FFIConnection`].
+ */
+void rc_conn_dispatch_error(struct FFIConnection *conn,
+                            uint64_t correlation_id,
+                            DispatchHostError error);
+
+/*
  Return the result of asynchronously processing a previously dispatched
  message.
 
  The data provided to this call MUST be a protobuf serialised
  [`rc_x509_proto::protocol::v1::DispatchResponsePayload`] message.
 
- Exactly one call per message delivered through [`DispatchCb`] MUST be made,
- referencing the same `correlation_id`.
+ Exactly one call to either this function or [`rc_conn_dispatch_error()`]
+ per message delivered through [`DispatchCb`] MUST be made, referencing
+ the same `correlation_id`.
 
    * Called by: `host runtime`.
    * Ownership: passes shared reference of [`FFIConnection`] and `data` to
