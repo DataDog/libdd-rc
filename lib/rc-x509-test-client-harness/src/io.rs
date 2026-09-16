@@ -24,7 +24,7 @@ use rc_x509_client::{
 
 /// A mock [`Connection`] implementation for the client library to use.
 #[derive(Debug)]
-pub(crate) struct MockIO {
+pub struct MockIO {
     from_server: Option<ReceiverStream<Result<ServerToClient, DecodingError>>>,
     to_server: mpsc::Sender<ClientToServer>,
 }
@@ -48,19 +48,21 @@ impl Connection for MockIO {
 /// A handle to transmit messages "from the server" over the mocked transport,
 /// to the client library.
 #[derive(Debug)]
-pub(crate) struct MockIOServer {
+pub struct MockIOServer {
     to_client: mpsc::Sender<Result<ServerToClient, DecodingError>>,
     to_server: mpsc::Receiver<ClientToServer>,
 }
 
 impl MockIOServer {
-    pub(crate) async fn recv(&mut self) -> Option<ClientToServer> {
+    /// Wait for the next message sent by the client.
+    pub async fn recv(&mut self) -> Option<ClientToServer> {
         timeout(Duration::from_secs(5), self.to_server.recv())
             .await
             .expect("mock transport timeout: recv from client")
     }
 
-    pub(crate) async fn send(
+    /// Push `v` to the client over the mocked transport.
+    pub async fn send(
         &mut self,
         v: Result<ServerToClient, DecodingError>,
     ) -> Result<(), ConnectionErr> {
@@ -76,7 +78,7 @@ impl MockIOServer {
 /// The client library uses the [`MockIO`] as the [`Connection`] impl, while the
 /// test code retains the [`MockIOServer`] to "send" messages from the delivery
 /// backend over the mocked transport.
-pub(crate) fn new_io_pair() -> (MockIO, MockIOServer) {
+pub fn new_io_pair() -> (MockIO, MockIOServer) {
     let (tx1, rx1) = mpsc::channel(10);
     let (tx2, rx2) = mpsc::channel(10);
 

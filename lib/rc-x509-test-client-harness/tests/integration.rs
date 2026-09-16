@@ -17,16 +17,15 @@
 #![allow(unused_crate_dependencies)] // Tests have false positives.
 
 mod dispatch;
-mod harness;
 
 use std::time::Duration;
 
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::codec::{ClientToServer, ProtocolError, ServerToClient};
+use rc_x509_test_client_harness::client::TestClient;
+use rc_x509_test_client_harness::logging;
 use tokio_util::bytes::Bytes;
-
-use crate::harness::client::TestClient;
 
 /// A simple test of the client lifecycle:
 ///
@@ -41,7 +40,7 @@ use crate::harness::client::TestClient;
 /// delivered at any time.
 #[tokio::test]
 async fn test_ping_pong() {
-    harness::logging::init();
+    logging::init();
 
     let mut client = TestClient::default();
     let mut conn = client.new_connection().await;
@@ -65,7 +64,7 @@ async fn test_ping_pong() {
 /// values it sends.
 #[tokio::test]
 async fn test_handshake() {
-    harness::logging::init();
+    logging::init();
 
     let mut client = TestClient::default();
     let mut conn = client.new_connection().await;
@@ -150,7 +149,7 @@ async fn test_handshake() {
 /// the server, and stop responding to further messages.
 #[tokio::test]
 async fn test_handshake_invalid_connection_id() {
-    harness::logging::init();
+    logging::init();
 
     /// The ID we have previously captured signed messages for, that we want to
     /// trick the client into accepting for this connection in order to replay
@@ -196,7 +195,7 @@ async fn test_handshake_invalid_connection_id() {
 /// Ensure instance statistics accumulate / are reported across connections.
 #[tokio::test]
 async fn test_connection_metrics() {
-    harness::logging::init();
+    logging::init();
 
     const DELAY: Duration = Duration::from_secs(60);
 

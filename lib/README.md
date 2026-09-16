@@ -1,10 +1,12 @@
 # X509 Libraries
 
-| Name           | Description                                                |
-| -------------- | ---------------------------------------------------------- |
-| rc-crypto      | Unified API for all cryptographic operations.              |
-| rc-x509-client | RC protocol client as a rust library.                      |
-| rc-x509-ffi    | FFI (C API) interface to `rc-x509-client`.                 |
-| rc-x509-proto  | Communication protocol types & protobuf definitions.       |
-| rc-x509-roots  | A rust crate that contains our root platform keys.         |
-| rc-x509-trust  | Certificate processing and payload signature verification. |
+| Name                        | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| rc-crypto                   | Unified API for all cryptographic operations.              |
+| rc-x509-client              | RC protocol client as a rust library.                      |
+| rc-x509-ffi                 | FFI (C API) interface to `rc-x509-client`.                 |
+| rc-x509-proto               | Communication protocol types & protobuf definitions.       |
+| rc-x509-roots               | A rust crate that contains our root platform keys.         |
+| rc-x509-test-client-harness | An integration test harness for `rc-x509-client`.          |
+| rc-x509-test-helpers        | Helpers for writing tests for crates in this repo.         |
+| rc-x509-trust               | Certificate processing and payload signature verification. |

@@ -24,6 +24,7 @@ members = [
 	"lib/rc-x509-ffi/fuzz",
 	"lib/rc-x509-proto",
 	"lib/rc-x509-roots",
+	"lib/rc-x509-test-client-harness",
 	"lib/rc-x509-test-helpers",
 	"lib/rc-x509-trust",
 ]

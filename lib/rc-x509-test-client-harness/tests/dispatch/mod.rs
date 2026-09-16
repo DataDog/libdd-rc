@@ -21,18 +21,17 @@
 use assert_matches::assert_matches;
 use rc_x509_client::host_runtime::CorrelationId;
 use rc_x509_proto::magic_tunnel::v1::magic_tunnel_response;
-use tokio_util::bytes::Bytes;
-
-use crate::harness::{
-    self,
+use rc_x509_test_client_harness::{
     client::{TestClient, conn_id_to_proto},
+    logging,
 };
+use tokio_util::bytes::Bytes;
 
 /// A test that exercises the client dispatch path and dispatch response path,
 /// through a mocked host application.
 #[tokio::test]
 async fn test_dispatch_happy_path() {
-    harness::logging::init();
+    logging::init();
 
     const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
     const APPLICATION_RESPONSE_PAYLOAD: Bytes = Bytes::from_static(&[13, 13, 13, 13]);

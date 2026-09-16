@@ -1480,7 +1480,6 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -1532,6 +1531,20 @@ name = "rc-x509-roots"
 version = "1.0.0"
 dependencies = [
  "rc-crypto",
+]
+
+[[package]]
+name = "rc-x509-test-client-harness"
+version = "0.2.0"
+dependencies = [
+ "assert_matches",
+ "rc-crypto",
+ "rc-x509-client",
+ "rc-x509-proto",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing-subscriber",
 ]
 
 [[package]]
