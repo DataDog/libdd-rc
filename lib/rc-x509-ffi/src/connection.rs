@@ -87,8 +87,8 @@ pub unsafe extern "C" fn rc_conn_new(
 /// SHOULD enqueue work into a channel for deferred processing.
 ///
 /// For each payload delivered through this callback, exactly one call to
-/// [`rc_conn_dispatch_result()`] MUST be made to return the call result after
-/// processing.
+/// either [`rc_conn_dispatch_result()`] or [`rc_conn_dispatch_error()`] MUST
+/// be made to return the call result after processing.
 ///
 /// The correlation ID is an opaque identifier with no guarantees the callee can
 /// rely on.
@@ -141,6 +141,25 @@ pub enum DispatchRet {
     Unknown = i32::MAX,
 }
 
+/// Errors an FFI host can report for a dispatched message via
+/// [`rc_conn_dispatch_error()`], in place of a call to
+/// [`rc_conn_dispatch_result()`].
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[repr(i32)]
+pub enum DispatchHostError {
+    /// The dispatch handler exceeded the allowed maximum execution duration.
+    HandlerExecTimeout = 0,
+}
+
+impl From<DispatchHostError> for DispatchError {
+    fn from(value: DispatchHostError) -> Self {
+        match value {
+            DispatchHostError::HandlerExecTimeout => Self::HandlerExecTimeout,
+        }
+    }
+}
+
 /// A container to hold the callback context pointer for a [`DispatchCb`] call.
 ///
 /// NOTE: the pointer MAY be null and MUST never be dereferenced or modified.
@@ -157,8 +176,9 @@ unsafe impl Send for DispatchCbUserData {}
 /// The data provided to this call MUST be a protobuf serialised
 /// [`rc_x509_proto::protocol::v1::DispatchResponsePayload`] message.
 ///
-/// Exactly one call per message delivered through [`DispatchCb`] MUST be made,
-/// referencing the same `correlation_id`.
+/// Exactly one call to either this function or [`rc_conn_dispatch_error()`]
+/// per message delivered through [`DispatchCb`] MUST be made, referencing
+/// the same `correlation_id`.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes shared reference of [`FFIConnection`] and `data` to
@@ -202,6 +222,39 @@ pub unsafe extern "C" fn rc_conn_dispatch_result(
 
     // Call into the connection to enqueue the deserialised message (or
     // deserialisation error).
+    let conn = unsafe { &*conn };
+    conn.handle_dispatch_result(DispatchResult {
+        correlation_id,
+        result,
+    });
+}
+
+/// Report an error for a previously dispatched message, in place of a
+/// successful [`rc_conn_dispatch_result()`] call.
+///
+/// Exactly one call to either [`rc_conn_dispatch_result()`] or this function
+/// per message delivered through [`DispatchCb`] MUST be made, referencing the
+/// same `correlation_id`.
+///
+///   * Called by: `host runtime`.
+///   * Ownership: passes shared reference of [`FFIConnection`] to client
+///     library for the duration of the call.
+///
+/// # Safety
+///
+/// This call is safe iff `conn` points to a valid [`FFIConnection`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rc_conn_dispatch_error(
+    conn: *mut FFIConnection,
+    correlation_id: u64,
+    error: DispatchHostError,
+) {
+    assert!(!conn.is_null());
+
+    let correlation_id = CorrelationId::new(correlation_id);
+
+    let result = Err(DispatchError::from(error));
+
     let conn = unsafe { &*conn };
     conn.handle_dispatch_result(DispatchResult {
         correlation_id,
@@ -1048,6 +1101,7 @@ mod tests {
 
     use assert_matches::assert_matches;
     use futures::{Stream, StreamExt, pin_mut};
+    use proptest::prelude::*;
     use rc_x509_proto::{magic_tunnel, protocol::v1};
     use tokio::pin;
 
@@ -1418,6 +1472,87 @@ mod tests {
             drop(Box::from_raw(tx_ptr));
 
             rc_free(ctx);
+        }
+    }
+
+    /// [`rc_conn_dispatch_error()`] delivers a [`DispatchError::HandlerExecTimeout`]
+    /// on the [`DispatchPublisher`]'s recv stream, in place of a payload
+    /// delivered via [`rc_conn_dispatch_result()`].
+    #[tokio::test]
+    async fn test_dispatch_error() {
+        const CORRELATION_ID: u64 = 42;
+
+        unsafe extern "C" fn do_dispatch(
+            _correlation_id: u64,
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> DispatchRet {
+            DispatchRet::Unknown
+        }
+
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
+            SendRet::Success
+        }
+
+        let (tx, mut conn_events) = mpsc::channel(100);
+        let mut ctx = Ctx::new(Entrypoint { events: tx });
+
+        let conn = unsafe { rc_conn_new(&raw mut *ctx, do_dispatch, ptr::null()) };
+        assert!(!conn.is_null());
+
+        // Discard the Init event.
+        conn_events.recv().await.unwrap();
+
+        unsafe {
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            rc_conn_connected(conn);
+        }
+
+        let got = conn_events.recv().await.unwrap();
+        let (_io, mut dispatch) = assert_matches!(
+            got.into_event(),
+            ConnectionEvent::Connected(io, dispatch) => (io, dispatch)
+        );
+        let mut recv = dispatch
+            .take_recv_stream()
+            .expect("first call yields stream");
+
+        unsafe {
+            rc_conn_dispatch_error(conn, CORRELATION_ID, DispatchHostError::HandlerExecTimeout);
+        }
+
+        let got = recv.next().await.expect("must have queued response");
+        assert_eq!(got.correlation_id, CorrelationId::new(CORRELATION_ID));
+        assert_matches!(got.result, Err(DispatchError::HandlerExecTimeout));
+
+        unsafe {
+            rc_conn_disconnected(conn);
+            rc_conn_free(conn);
+        }
+
+        // Assert lifecycle events were received (disconnected + released).
+        let got = conn_events.recv().await.unwrap();
+        assert_matches!(got.event(), ConnectionEvent::Disconnected);
+        let got = conn_events.recv().await.unwrap();
+        assert_matches!(got.event(), ConnectionEvent::Release);
+
+        ctx.shutdown();
+    }
+
+    #[cfg(not(miri))]
+    proptest! {
+        /// Every generated [`DispatchHostError`] maps to a corresponding
+        /// [`DispatchError`] variant.
+        #[test]
+        fn prop_dispatch_host_error_conversion(host_error in any::<DispatchHostError>()) {
+            let converted = DispatchError::from(host_error);
+
+            prop_assert!(matches!(converted, DispatchError::HandlerExecTimeout));
         }
     }
 }
