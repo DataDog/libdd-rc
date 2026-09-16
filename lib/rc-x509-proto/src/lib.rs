@@ -45,6 +45,14 @@ pub(crate) mod rc {
                     ));
                 }
             }
+            pub mod remote_queries {
+                pub mod v1 {
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_queries.v1.rs"
+                    ));
+                }
+            }
         }
         pub mod signature {
             pub mod v1 {

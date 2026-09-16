@@ -46,6 +46,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.magic_tunnel.remote_config.v1.PingResponse.now",
         r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
+    config.field_attribute(
+        "rc.x509.magic_tunnel.remote_queries.v1.PingResponse.now",
+        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
+    );
 
     config.type_attribute(
         "rc.x509.signature.v1.DetachedSignature",
