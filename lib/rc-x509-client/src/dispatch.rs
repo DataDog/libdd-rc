@@ -306,10 +306,50 @@ mod tests {
     use super::*;
     use crate::host_runtime::CorrelationId;
 
+    // Reciprocal impl for testing - this mimics the mapping performed on the
+    // server side.
+    //
+    // This impl lets us use the Arbitrary impl on the proto types to write a
+    // proptest that fails when new proto errors are added that the code doesn't
+    // propagate into a DispatchError.
+    impl From<v1::dispatch_response::DispatchError> for DispatchError {
+        fn from(value: v1::dispatch_response::DispatchError) -> Self {
+            match value {
+                // `Unspecified` is the proto3 default / zero-value for this enum,
+                // not a value the host is expected to send deliberately; treated
+                // the same as any other unrecognised error from the host.
+                v1::dispatch_response::DispatchError::Unspecified => Self::UnknownHostDispatchError,
+                v1::dispatch_response::DispatchError::UnknownPayload => Self::UnknownPayload,
+                v1::dispatch_response::DispatchError::NoDispatchHandler => Self::NoDispatchHandler,
+                v1::dispatch_response::DispatchError::HandlerQueueFull => Self::HandlerQueueFull,
+                v1::dispatch_response::DispatchError::DispatchQueueFull => {
+                    Self::DispatchRequestQueueFull
+                }
+                v1::dispatch_response::DispatchError::Closed => Self::DispatchClosed,
+                v1::dispatch_response::DispatchError::ReplyDeserialisation => {
+                    Self::ReplyDeserialisation(malformed_decode_error())
+                }
+                v1::dispatch_response::DispatchError::ClientReturnedUnknown => {
+                    Self::UnknownHostDispatchError
+                }
+                v1::dispatch_response::DispatchError::HandlerExecTimeout => {
+                    Self::HandlerExecTimeout
+                }
+            }
+        }
+    }
+
+    /// Produce a real [`DecodeError`] by decoding a malformed buffer.
+    ///
+    /// `DecodeError` has no public, non-deprecated constructor.
+    fn malformed_decode_error() -> DecodeError {
+        rc_x509_proto::decode::<v1::Pong>(&[42][..])
+            .expect_err("malformed input must fail to decode")
+    }
+
     /// Generate a static but arbitrary protobuf deserialisation error.
     pub(super) fn arbitrary_decode_error() -> impl Strategy<Value = DecodeError> {
-        // Deserialise some nonsense to generate a prost error:
-        Just(rc_x509_proto::decode::<v1::Pong>(&[42][..]).expect_err("malformed input"))
+        Just(malformed_decode_error())
     }
 
     /// A successfully queued [`Dispatch`] request is delivered to the
@@ -462,6 +502,26 @@ mod tests {
             } else {
                 prop_assert_eq!(encoded_a, encoded_b);
             }
+        }
+
+        /// Generate an arbitrary protobuf dispatch error code, and ensure it
+        /// mapped one-to-one with DispatchError. This goes through the
+        /// testing-only conversion from proto -> DispatchError so that it can
+        /// be used to check there's a mapping from DispatchError -> proto for
+        /// all proto values.
+        ///
+        /// `DISPATCH_ERROR_UNSPECIFIED` is excluded as it is the unused
+        /// protobuf zero-value.
+        #[test]
+        fn prop_dispatch_error_decode_encode_round_trips(
+            wire in any::<v1::dispatch_response::DispatchError>(),
+        ) {
+            prop_assume!(wire != v1::dispatch_response::DispatchError::Unspecified);
+
+            let decoded = DispatchError::from(wire);
+            let re_encoded = v1::dispatch_response::DispatchError::from(decoded);
+
+            prop_assert_eq!(wire, re_encoded);
         }
     }
 }
