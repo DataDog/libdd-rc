@@ -12,32 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+//! Compile-time build steps.
 
-mod abort_on_drop;
-mod build_version;
-pub mod codec;
-pub mod connection;
-pub mod dispatch;
-pub mod entrypoint;
-pub mod host_runtime;
-mod metrics;
-mod shutdown_signal;
+use std::process::Command;
 
-pub use abort_on_drop::*;
-pub use shutdown_signal::*;
+fn main() {
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .expect("failed to exec git");
 
-#[cfg(test)]
-mod mocks;
+    assert!(
+        output.status.success(),
+        "git commit lookup failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    use tokio_util::bytes::Bytes;
-
-    pub(crate) fn arbitrary_bytes(
-        size: impl Into<prop::collection::SizeRange>,
-    ) -> impl Strategy<Value = Bytes> {
-        prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
-    }
+    let hash = String::from_utf8_lossy(&output.stdout);
+    println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={hash}");
 }
