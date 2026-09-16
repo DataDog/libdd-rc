@@ -7,8 +7,6 @@ package libddrcffi
 import "C"
 
 import (
-	"runtime"
-	"runtime/cgo"
 	"unsafe"
 )
 
@@ -31,33 +29,23 @@ const (
 
 // testUserData mirrors the user_data value NewConnection registers with the
 // client library, without going through rc_conn_new.
-//
-// handlePtr is a standalone allocation, not a field sitting next to pinner,
-// for the same reason connState.handlePtr is: the cgo pointer-passing rules
-// forbid passing a Go pointer into memory that itself contains other Go
-// pointers, which pinner's own internal bookkeeping counts as.
 type testUserData struct {
-	handlePtr *cgo.Handle
-	pinner    runtime.Pinner
+	handle *pinnedHandle
 }
 
 func newTestUserData(st *connState) *testUserData {
-	u := &testUserData{handlePtr: new(cgo.Handle)}
-	*u.handlePtr = cgo.NewHandle(st)
-	u.pinner.Pin(u.handlePtr)
-	return u
+	return &testUserData{handle: newPinnedHandle(st)}
 }
 
 func (u *testUserData) free() {
-	u.pinner.Unpin()
-	u.handlePtr.Delete()
+	u.handle.release()
 }
 
-// value is the user_data pointer the callbacks receive: u.handlePtr,
-// mirroring how NewConnection passes st.handlePtr. It stays valid after
-// free() so tests can exercise the stale-handle path.
+// value is the user_data pointer the callbacks receive, mirroring how
+// NewConnection passes state.handle.userData(). It stays valid after free()
+// so tests can exercise the stale-handle path.
 func (u *testUserData) value() unsafe.Pointer {
-	return unsafe.Pointer(u.handlePtr)
+	return u.handle.userData()
 }
 
 func callGoDispatchCb(correlationID uint64, data []byte, u *testUserData) int32 {

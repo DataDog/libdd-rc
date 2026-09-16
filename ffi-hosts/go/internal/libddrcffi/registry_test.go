@@ -39,7 +39,7 @@ func TestRegisterHandler_DuplicateReturnsError(t *testing.T) {
 		t.Fatalf("second RegisterHandler() = %v, want ErrHandlerExists", err)
 	}
 
-	h, ok := globalDispatcher.lookup(uri)
+	h, ok := globalHandlerRegistry.lookup(uri)
 	if !ok {
 		t.Fatal("expected original handler to remain registered")
 	}
@@ -73,7 +73,7 @@ func TestUnregisterHandler_MissingReturnsError(t *testing.T) {
 	}
 }
 
-func TestDispatcher_ConcurrentRegisterAndLookup(t *testing.T) {
+func TestHandlerRegistry_ConcurrentRegisterAndLookup(t *testing.T) {
 	const workers = 16
 
 	var wg sync.WaitGroup
@@ -87,7 +87,7 @@ func TestDispatcher_ConcurrentRegisterAndLookup(t *testing.T) {
 				t.Errorf("RegisterHandler(%v) returned error: %v", uri, err)
 				return
 			}
-			if _, ok := globalDispatcher.lookup(uri); !ok {
+			if _, ok := globalHandlerRegistry.lookup(uri); !ok {
 				t.Errorf("lookup(%v) did not find registered handler", uri)
 			}
 			if err := UnregisterHandler(uri); err != nil {

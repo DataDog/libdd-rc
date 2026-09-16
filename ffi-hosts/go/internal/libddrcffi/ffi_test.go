@@ -1,10 +1,8 @@
 package libddrcffi
 
 import (
-	"runtime/cgo"
 	"testing"
 	"time"
-	"unsafe"
 
 	"google.golang.org/protobuf/proto"
 
@@ -12,33 +10,33 @@ import (
 	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
 )
 
+// discardResultSink is a resultSink that drops every result, for tests that
+// only need a connState wired up enough for goDispatchCb/goSendCb to run,
+// without a running invokePool behind it.
+type discardResultSink struct{}
+
+func (discardResultSink) sendDispatchResult(dispatchResult) {}
+
 func newTestConnState() *connState {
 	return &connState{
-		dispatchQueue: make(chan dispatchJob, 1),
-		outgoing:      make(chan []byte, 1),
-		stop:          make(chan struct{}),
-		accepting:     true,
+		pool:     newInvokePool(discardResultSink{}),
+		outgoing: make(chan []byte, 1),
 	}
 }
 
 // TestConnStateFromUserData_RoundTripsNewConnectionEncoding verifies that
 // connStateFromUserData can decode the user_data value exactly as
-// NewConnection constructs it: a standalone, pinned cgo.Handle allocation.
-// The two must agree on how a cgo.Handle is packed into a void*, since
-// NewConnection is the only place in production code that performs the
-// encode side of that contract.
+// NewConnection constructs it: a pinnedHandle's userData(). The two must
+// agree on how a cgo.Handle is packed into a void*, since NewConnection is
+// the only place in production code that performs the encode side of that
+// contract.
 func TestConnStateFromUserData_RoundTripsNewConnectionEncoding(t *testing.T) {
 	st := newTestConnState()
 
-	st.handlePtr = new(cgo.Handle)
-	*st.handlePtr = cgo.NewHandle(st)
-	st.pinner.Pin(st.handlePtr)
-	defer st.pinner.Unpin()
-	defer st.handlePtr.Delete()
+	handle := newPinnedHandle(st)
+	defer handle.release()
 
-	userData := unsafe.Pointer(st.handlePtr)
-
-	got, ok := connStateFromUserData(userData)
+	got, ok := connStateFromUserData(handle.userData())
 	if !ok {
 		t.Fatal("connStateFromUserData() ok = false, want true")
 	}
@@ -88,7 +86,7 @@ func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
 	}
 
 	select {
-	case job := <-st.dispatchQueue:
+	case job := <-st.pool.dispatchQueue:
 		if job.correlationID != 42 {
 			t.Errorf("job.correlationID = %d, want 42", job.correlationID)
 		}
@@ -144,7 +142,7 @@ func TestGoDispatchCb_UnknownPayload(t *testing.T) {
 	}
 
 	select {
-	case job := <-st.dispatchQueue:
+	case job := <-st.pool.dispatchQueue:
 		t.Fatalf("expected no job to be enqueued, got %+v", job)
 	default:
 	}
@@ -168,7 +166,7 @@ func TestGoDispatchCb_NoDispatchHandler(t *testing.T) {
 	}
 
 	select {
-	case job := <-st.dispatchQueue:
+	case job := <-st.pool.dispatchQueue:
 		t.Fatalf("expected no job to be enqueued, got %+v", job)
 	default:
 	}
@@ -186,9 +184,11 @@ func TestGoDispatchCb_QueueFull(t *testing.T) {
 	u := newTestUserData(st)
 	defer u.free()
 
-	// dispatchQueue has capacity 1; fill it directly, then the callback must
-	// return QUEUE_FULL instead of blocking.
-	st.dispatchQueue <- dispatchJob{correlationID: 1}
+	// Fill dispatchQueue to capacity directly, then the callback must return
+	// QUEUE_FULL instead of blocking.
+	for i := 0; i < cap(st.pool.dispatchQueue); i++ {
+		st.pool.dispatchQueue <- dispatchJob{correlationID: uint64(i)}
+	}
 
 	payload := encodeDispatchRequest(t, uri, []byte{0x01})
 
@@ -211,7 +211,7 @@ func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
 	defer func() { _ = UnregisterHandler(uri) }()
 
 	st := newTestConnState()
-	st.accepting = false
+	st.pool.accepting = false
 
 	u := newTestUserData(st)
 	defer u.free()
@@ -222,7 +222,7 @@ func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
 	}
 
 	select {
-	case job := <-st.dispatchQueue:
+	case job := <-st.pool.dispatchQueue:
 		t.Fatalf("expected no job to be enqueued, got %+v", job)
 	default:
 	}
@@ -339,7 +339,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		handler:       handler,
 		request:       &magictunnelv1.MagicTunnelRequest{Uri: uri, Request: innerPayload},
 	}
-	conn.state.dispatchQueue <- job
+	conn.state.pool.dispatchQueue <- job
 
 	select {
 	case got := <-called:

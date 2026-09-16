@@ -28,18 +28,18 @@ var ErrHandlerExists = errors.New("ddrc: handler already registered for uri")
 // registered for the given URI.
 var ErrHandlerNotFound = errors.New("ddrc: no handler registered for uri")
 
-// dispatcher routes dispatched MagicTunnelRequest payloads to registered
-// handlers by URI.
+// handlerRegistry stores a mapping of `HandlerFunc` to the request `uri` that the
+// `HandlerFunc` is responsible for.
 //
-// There is exactly one dispatcher per process, shared by all connections.
-type dispatcher struct {
+// There is exactly one handlerRegistry per process, shared by all connections.
+type handlerRegistry struct {
 	mu       sync.RWMutex
 	handlers map[string]HandlerFunc
 }
 
-var globalDispatcher = &dispatcher{handlers: make(map[string]HandlerFunc)}
+var globalHandlerRegistry = &handlerRegistry{handlers: make(map[string]HandlerFunc)}
 
-func (d *dispatcher) register(uri string, h HandlerFunc) error {
+func (d *handlerRegistry) register(uri string, h HandlerFunc) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -50,7 +50,7 @@ func (d *dispatcher) register(uri string, h HandlerFunc) error {
 	return nil
 }
 
-func (d *dispatcher) unregister(uri string) error {
+func (d *handlerRegistry) unregister(uri string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -61,7 +61,7 @@ func (d *dispatcher) unregister(uri string) error {
 	return nil
 }
 
-func (d *dispatcher) lookup(uri string) (HandlerFunc, bool) {
+func (d *handlerRegistry) lookup(uri string) (HandlerFunc, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -77,11 +77,11 @@ func (d *dispatcher) lookup(uri string) (HandlerFunc, bool) {
 // already active (but this risks missing messages). Registering a uri that
 // already has a handler returns ErrHandlerExists.
 func RegisterHandler(uri string, h HandlerFunc) error {
-	return globalDispatcher.register(uri, h)
+	return globalHandlerRegistry.register(uri, h)
 }
 
 // UnregisterHandler removes the handler registered for uri. Unregistering a
 // uri with no registered handler returns ErrHandlerNotFound.
 func UnregisterHandler(uri string) error {
-	return globalDispatcher.unregister(uri)
+	return globalHandlerRegistry.unregister(uri)
 }
