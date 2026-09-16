@@ -51,6 +51,10 @@ pub(crate) mod rc {
                         env!("OUT_DIR"),
                         "/rc.x509.magic_tunnel.remote_queries.v1.rs"
                     ));
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_queries.v1.serde.rs"
+                    ));
                 }
             }
         }
@@ -122,6 +126,16 @@ mod tests {
 
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
+
+    /// `remote_queries.v1.PingRequest` is evaluated through a Rego policy
+    /// engine by callers, so it must keep the generated protobuf-JSON
+    /// `Serialize` implementation; if the `pbjson` codegen is accidentally
+    /// removed, this fails to compile.
+    #[test]
+    fn test_remote_query_ping_request_serializable() {
+        fn assert_serializable<T: serde::Serialize>() {}
+        assert_serializable::<magic_tunnel::remote_queries::v1::PingRequest>();
+    }
 
     /// Ensure the encoding of a sample payload does not change (e.g.
     /// serialisation configuration changes).
