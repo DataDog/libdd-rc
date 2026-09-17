@@ -10,21 +10,9 @@ import (
 const (
 	dispatchQueueCap = 100
 
-	// resultQueueCap must be able to absorb the full shutdown drain without
-	// forcing invoke workers to block on enqueue if the result worker or the
-	// FFI dispatch path is temporarily backpressured. In the worst case, that
-	// means one result for every queued dispatch plus one result for every
-	// invoke worker currently processing a job.
-	resultQueueCap = dispatchQueueCap + invokeWorkerCount
-
 	// invokeWorkerCount is the size of the goroutine pool that invokes
 	// handlers concurrently.
 	invokeWorkerCount = 8
-
-	// resultWorkerCount is the size of the goroutine pool that writes
-	// results to the FFI layer. We don't intend to make this concurrent
-	// but this variable helps with reading intent later.
-	resultWorkerCount = 1
 )
 
 // dispatchJob is a single DispatchCb invocation, already decoded and routed
@@ -36,8 +24,8 @@ type dispatchJob struct {
 	request       *magictunnelv1.MagicTunnelRequest
 }
 
-// dispatchResult is the outcome of invoking a dispatchJob's handler, queued
-// for the result worker goroutine to deliver back to a resultSink.
+// dispatchResult is the outcome of invoking a dispatchJob's handler,
+// delivered back to a resultSink by the invoke worker that produced it.
 type dispatchResult struct {
 	correlationID uint64
 	response      []byte
@@ -59,7 +47,6 @@ type resultSink interface {
 // job is answered exactly once.
 type invokePool struct {
 	dispatchQueue chan dispatchJob
-	resultQueue   chan dispatchResult
 	stop          chan struct{}
 	wg            sync.WaitGroup
 
@@ -79,40 +66,18 @@ type invokePool struct {
 func newInvokePool(sink resultSink) *invokePool {
 	return &invokePool{
 		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
-		resultQueue:   make(chan dispatchResult, resultQueueCap),
 		stop:          make(chan struct{}),
 		accepting:     true,
 		sink:          sink,
 	}
 }
 
-// start spins up invokeWorkerCount invoke workers and resultWorkerCount
-// result workers, and arranges for resultQueue to close once every invoke
-// worker has exited: invoke workers are the pool's only writers to
-// resultQueue, so closing it any earlier would race an in-flight job's
-// result against the close.
+// start spins up invokeWorkerCount invoke workers.
 func (p *invokePool) start() {
-	var invokeWG sync.WaitGroup
-	invokeWG.Add(invokeWorkerCount)
-
-	// shutdown waits for every worker via p.wg, so it must be sized for both
-	// pools up front.
-	p.wg.Add(invokeWorkerCount + resultWorkerCount)
-
+	p.wg.Add(invokeWorkerCount)
 	for range invokeWorkerCount {
-		go p.invokeWorker(&invokeWG)
+		go p.invokeWorker()
 	}
-	for range resultWorkerCount {
-		go p.resultWorker()
-	}
-
-	// This goroutine is the pool's "orchestrator": resultQueue is
-	// effectively owned here, since the invoke workers only borrow it, so it
-	// cannot be closed until all of them have stopped.
-	go func() {
-		invokeWG.Wait()
-		close(p.resultQueue)
-	}()
 }
 
 // enqueue offers job onto dispatchQueue, reporting false if the pool is no
@@ -145,11 +110,10 @@ func (p *invokePool) shutdown() {
 }
 
 // invokeWorker is one of invokeWorkerCount goroutines draining dispatchQueue
-// concurrently, invoking each job's handler and passing the outcome to
-// resultWorker via resultQueue, until stop is closed.
-func (p *invokePool) invokeWorker(poolWG *sync.WaitGroup) {
+// concurrently, invoking each job's handler and delivering the outcome to
+// sink, until stop is closed.
+func (p *invokePool) invokeWorker() {
 	defer p.wg.Done()
-	defer poolWG.Done()
 	for {
 		select {
 		case job := <-p.dispatchQueue:
@@ -179,7 +143,7 @@ func (p *invokePool) drainDispatchQueue() {
 }
 
 // invokeJob invokes job.handler with the request payload decoded and routed
-// by goDispatchCb, and hands the outcome to resultWorker via resultQueue.
+// by goDispatchCb, and delivers the outcome to sink.
 //
 // DispatchRequestPayload.connection_id is intentionally not inspected here
 // (nor by goDispatchCb): validating it against the server-assigned
@@ -187,16 +151,7 @@ func (p *invokePool) drainDispatchQueue() {
 // protocol is implemented, not the Go host's.
 func (p *invokePool) invokeJob(job dispatchJob) {
 	response, err := invokeHandler(job)
-	p.resultQueue <- dispatchResult{correlationID: job.correlationID, response: response, err: err}
-}
-
-// resultWorker ranges over resultQueue, handing each result to sink, until
-// resultQueue is closed by invokeWorker and drained.
-func (p *invokePool) resultWorker() {
-	defer p.wg.Done()
-	for result := range p.resultQueue {
-		p.sink.sendDispatchResult(result)
-	}
+	p.sink.sendDispatchResult(dispatchResult{correlationID: job.correlationID, response: response, err: err})
 }
 
 // invokeHandler calls the handler registered for the job's uri, converting a

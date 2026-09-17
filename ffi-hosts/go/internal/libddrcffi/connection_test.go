@@ -100,38 +100,37 @@ func TestConnectionConnectedTwice(t *testing.T) {
 	}
 }
 
-// newTestInvokePipeline wires up a connState's invokePool and starts
-// invokeWorkerCount invoke workers against it, without starting a result
-// worker: invokeJob only ever writes to pool.resultQueue, so these tests can
-// drive the goroutine pool directly and inspect pool.resultQueue themselves
-// instead of needing a real FFIConnection and resultWorker.
-func newTestInvokePipeline(t *testing.T) *Connection {
+// chanResultSink is a resultSink that delivers each result onto itself, for
+// tests that drive an invokePool directly and want to observe its results
+// without a real FFIConnection.
+type chanResultSink chan dispatchResult
+
+func (s chanResultSink) sendDispatchResult(result dispatchResult) {
+	s <- result
+}
+
+// newTestInvokePipeline wires up a connState's invokePool and starts it,
+// returning the sink its invoke workers deliver results to so tests can
+// observe them directly.
+func newTestInvokePipeline(t *testing.T) (*Connection, chanResultSink) {
 	t.Helper()
 
-	pool := newInvokePool(discardResultSink{})
+	sink := make(chanResultSink, invokeWorkerCount)
+	pool := newInvokePool(sink)
 	conn := &Connection{state: &connState{pool: pool}}
 
-	var poolWG sync.WaitGroup
-	poolWG.Add(invokeWorkerCount)
-	pool.wg.Add(invokeWorkerCount)
-	for range invokeWorkerCount {
-		go pool.invokeWorker(&poolWG)
-	}
+	pool.start()
+	t.Cleanup(pool.shutdown)
 
-	t.Cleanup(func() {
-		close(pool.stop)
-		poolWG.Wait()
-	})
-
-	return conn
+	return conn, sink
 }
 
 // TestInvokeWorkersOverlapSlowAndFastHandlers verifies that a fast handler's
-// result reaches resultQueue while a slow handler queued ahead of it is still
+// result is delivered while a slow handler queued ahead of it is still
 // blocked, proving invocation runs across more than one goroutine rather than
 // serializing behind a single worker.
 func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
-	conn := newTestInvokePipeline(t)
+	conn, sink := newTestInvokePipeline(t)
 
 	started := make(chan uint64, 2)
 	release := make(chan struct{})
@@ -164,7 +163,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	select {
-	case result := <-conn.state.pool.resultQueue:
+	case result := <-sink:
 		if result.correlationID != 2 {
 			t.Fatalf("first result correlationID = %d, want 2 (fast handler must finish before the slow handler is released)", result.correlationID)
 		}
@@ -175,7 +174,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	close(release)
 
 	select {
-	case result := <-conn.state.pool.resultQueue:
+	case result := <-sink:
 		if result.correlationID != 1 {
 			t.Fatalf("second result correlationID = %d, want 1", result.correlationID)
 		}
@@ -190,7 +189,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 // libdd_rc.h requires exactly one rc_conn_dispatch_result call per payload,
 // so the pool must neither drop nor duplicate a job's result.
 func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
-	conn := newTestInvokePipeline(t)
+	conn, sink := newTestInvokePipeline(t)
 
 	const jobs = 50
 	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
@@ -201,7 +200,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	seen := map[uint64]int{}
 	for range jobs {
 		select {
-		case result := <-conn.state.pool.resultQueue:
+		case result := <-sink:
 			seen[result.correlationID]++
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for results, got %d of %d", len(seen), jobs)
@@ -215,7 +214,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	}
 
 	select {
-	case extra := <-conn.state.pool.resultQueue:
+	case extra := <-sink:
 		t.Fatalf("unexpected extra result: %+v", extra)
 	default:
 	}
