@@ -112,11 +112,9 @@ pub struct Certificate {
     validity: Validity,
 
     /// The Subject Key Identity value in the certificate.
-    #[valuable(skip)] // Untrusted, used only for chain building.
     cert_id: CertId,
 
     /// The Authority Key Identity value in the certificate.
-    #[valuable(skip)] // Untrusted, used only for chain building.
     issuer_cert_id: IssuerCertId,
 }
 
@@ -367,6 +365,10 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             49:ef:bb:e5:7f:3d:ff:9c:6d:b5:6a:15:b7:24:ba:8b:78:76:9c:16:a6:58:75:f9:b7:76:ae:ee:21:53:e5:e5
         - validity:
             2025-08-13T14:58:40Z..2035-08-11T14:59:40Z
+        - cert_id:
+            dc:8d:b6:27:52:78:58:4c:fd:a2:43:db:cb:2b:e0:57:68:6e:2b:8e
+        - issuer_cert_id:
+            20:6c:8e:cf:e4:21:a7:ff:ed:23:c8:3d:37:0f:77:81:84:71:0e:15
 ",
         );
     }
