@@ -7,40 +7,53 @@ import (
 	"time"
 
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
+	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
+	"google.golang.org/protobuf/proto"
 )
 
-// newTestConnection returns a connected Connection, and registers cleanup
-// that tears it down in the order the client library requires.
-func newTestConnection(t *testing.T) *Connection {
+// newFakeConnection builds a Connection backed by conn instead of a real
+// FFIConnection, standing in for X509Context.NewConnection for tests that
+// only need to exercise Connection's own state machine and worker plumbing,
+// not the native library's behavior.
+func newFakeConnection(conn nativeConn) *Connection {
+	ctx := &X509Context{conns: make(map[*Connection]struct{})}
+
+	state := &connState{
+		conn:     conn,
+		outgoing: make(chan []byte, outgoingQueueCap),
+	}
+	state.handle = newPinnedHandle(state)
+	c := &Connection{ctx: ctx, state: state}
+	state.pool = newInvokePool(c)
+	ctx.conns[c] = struct{}{}
+
+	state.pool.start()
+
+	return c
+}
+
+// newTestConnection returns a connected Connection backed by a fakeConn, and
+// registers cleanup that closes it.
+func newTestConnection(t *testing.T) (*Connection, *fakeConn) {
 	t.Helper()
 
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
+	fake := &fakeConn{}
+	conn := newFakeConnection(fake)
 
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
-
-	t.Cleanup(func() {
-		_ = conn.Close()
-		_ = ctx.Close()
-	})
+	t.Cleanup(func() { _ = conn.Close() })
 
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
-	return conn
+	return conn, fake
 }
 
 // TestConnectionRecvEmptyPayload verifies that an empty payload is rejected
 // rather than passed on as a null pointer, which rc_conn_recv asserts
 // against before it checks the length, aborting the process.
 func TestConnectionRecvEmptyPayload(t *testing.T) {
-	conn := newTestConnection(t)
+	conn, _ := newTestConnection(t)
 
 	for _, data := range [][]byte{nil, {}} {
 		if err := conn.Recv(data); !errors.Is(err, ErrEmptyPayload) {
@@ -53,18 +66,8 @@ func TestConnectionRecvEmptyPayload(t *testing.T) {
 // was never marked as connected is reported as an error. rc-x509-client
 // panics in this state, which aborts the process.
 func TestConnectionRecvBeforeConnected(t *testing.T) {
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = conn.Close()
-		_ = ctx.Close()
-	})
+	conn := newFakeConnection(&fakeConn{})
+	t.Cleanup(func() { _ = conn.Close() })
 
 	if err := conn.Recv([]byte{0x01}); !errors.Is(err, ErrConnectionNotConnected) {
 		t.Fatalf("Recv() = %v, want ErrConnectionNotConnected", err)
@@ -74,16 +77,7 @@ func TestConnectionRecvBeforeConnected(t *testing.T) {
 // TestConnectionRecvAfterDisconnected verifies Recv is rejected once the
 // connection has been torn down; the FFIConnection has been freed by then.
 func TestConnectionRecvAfterDisconnected(t *testing.T) {
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	defer func() { _ = ctx.Close() }()
-
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
+	conn := newFakeConnection(&fakeConn{})
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
@@ -99,38 +93,33 @@ func TestConnectionRecvAfterDisconnected(t *testing.T) {
 // TestConnectionConnectedTwice verifies the second call is rejected;
 // rc-x509-client panics unless the connection is in the configured state.
 func TestConnectionConnectedTwice(t *testing.T) {
-	conn := newTestConnection(t)
+	conn, _ := newTestConnection(t)
 
 	if err := conn.Connected(); !errors.Is(err, ErrConnectionAlreadyConnected) {
 		t.Fatalf("second Connected() = %v, want ErrConnectionAlreadyConnected", err)
 	}
 }
 
-// newTestInvokePipeline wires up a connState's dispatchQueue/resultQueue and
-// starts invokeWorkerCount invoke workers against it, without touching the
-// FFI boundary: invokeJob only ever writes to c.st.resultQueue, so these
-// tests can drive the goroutine pool directly and inspect resultQueue
-// themselves instead of needing a real FFIConnection and resultWorker.
+// newTestInvokePipeline wires up a connState's invokePool and starts
+// invokeWorkerCount invoke workers against it, without starting a result
+// worker: invokeJob only ever writes to pool.resultQueue, so these tests can
+// drive the goroutine pool directly and inspect pool.resultQueue themselves
+// instead of needing a real FFIConnection and resultWorker.
 func newTestInvokePipeline(t *testing.T) *Connection {
 	t.Helper()
 
-	st := &connState{
-		dispatchQueue: make(chan dispatchJob, dispatchQueueCap),
-		resultQueue:   make(chan dispatchResult, resultQueueCap),
-		stop:          make(chan struct{}),
-		accepting:     true,
-	}
-	conn := &Connection{state: st}
+	pool := newInvokePool(discardResultSink{})
+	conn := &Connection{state: &connState{pool: pool}}
 
 	var poolWG sync.WaitGroup
 	poolWG.Add(invokeWorkerCount)
-	st.wg.Add(invokeWorkerCount)
+	pool.wg.Add(invokeWorkerCount)
 	for range invokeWorkerCount {
-		go conn.invokeWorker(&poolWG)
+		go pool.invokeWorker(&poolWG)
 	}
 
 	t.Cleanup(func() {
-		close(st.stop)
+		close(pool.stop)
 		poolWG.Wait()
 	})
 
@@ -158,8 +147,8 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	req := &magictunnelv1.MagicTunnelRequest{}
-	conn.state.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
-	conn.state.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
+	conn.state.pool.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
+	conn.state.pool.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
 
 	seen := map[uint64]bool{}
 	for range 2 {
@@ -175,7 +164,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	select {
-	case result := <-conn.state.resultQueue:
+	case result := <-conn.state.pool.resultQueue:
 		if result.correlationID != 2 {
 			t.Fatalf("first result correlationID = %d, want 2 (fast handler must finish before the slow handler is released)", result.correlationID)
 		}
@@ -186,7 +175,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	close(release)
 
 	select {
-	case result := <-conn.state.resultQueue:
+	case result := <-conn.state.pool.resultQueue:
 		if result.correlationID != 1 {
 			t.Fatalf("second result correlationID = %d, want 1", result.correlationID)
 		}
@@ -206,13 +195,13 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	const jobs = 50
 	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
 	for i := uint64(1); i <= jobs; i++ {
-		conn.state.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
+		conn.state.pool.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
 	}
 
 	seen := map[uint64]int{}
 	for range jobs {
 		select {
-		case result := <-conn.state.resultQueue:
+		case result := <-conn.state.pool.resultQueue:
 			seen[result.correlationID]++
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for results, got %d of %d", len(seen), jobs)
@@ -226,7 +215,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	}
 
 	select {
-	case extra := <-conn.state.resultQueue:
+	case extra := <-conn.state.pool.resultQueue:
 		t.Fatalf("unexpected extra result: %+v", extra)
 	default:
 	}
@@ -252,16 +241,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		return nil, nil
 	}
 
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	defer func() { _ = ctx.Close() }()
-
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
+	conn := newFakeConnection(&fakeConn{})
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
@@ -274,7 +254,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		}
 	}
 
-	conn.state.dispatchQueue <- newJob(1, blocking)
+	conn.state.pool.dispatchQueue <- newJob(1, blocking)
 
 	// Wait until the worker is inside the blocking handler before queueing
 	// the jobs that must survive teardown.
@@ -287,8 +267,8 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		t.Fatal("timed out waiting for the dispatch worker to pick up the first job")
 	}
 
-	conn.state.dispatchQueue <- newJob(2, recording)
-	conn.state.dispatchQueue <- newJob(3, recording)
+	conn.state.pool.dispatchQueue <- newJob(2, recording)
+	conn.state.pool.dispatchQueue <- newJob(3, recording)
 
 	disconnected := make(chan error, 1)
 	go func() { disconnected <- conn.Close() }()
@@ -323,7 +303,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 // handler code does not take the dispatch worker with it, which would leave
 // every payload behind it unanswered.
 func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
-	conn := newTestConnection(t)
+	conn, _ := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
 	panicking := func(uint64, []byte) ([]byte, error) { panic("handler is unwell") }
@@ -333,7 +313,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	}
 
 	for i, h := range []HandlerFunc{panicking, recording} {
-		conn.state.dispatchQueue <- dispatchJob{
+		conn.state.pool.dispatchQueue <- dispatchJob{
 			correlationID: uint64(i + 1),
 			handler:       h,
 			request:       &magictunnelv1.MagicTunnelRequest{},
@@ -355,16 +335,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 // every call must either be accepted before the FFIConnection is freed or
 // report the connection as closed; it must never reach the freed handle.
 func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	defer func() { _ = ctx.Close() }()
-
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
+	conn := newFakeConnection(&fakeConn{})
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
@@ -401,22 +372,12 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 // shutdown drain, so closing the channel must not cost us the payloads already
 // queued on it.
 func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
-	ctx, err := Init("test", "0.0.0")
-	if err != nil {
-		t.Fatalf("Init() returned error: %v", err)
-	}
-	defer func() { _ = ctx.Close() }()
-
-	conn, err := ctx.NewConnection()
-	if err != nil {
-		t.Fatalf("NewConnection() returned error: %v", err)
-	}
+	conn := newFakeConnection(&fakeConn{})
 	if err := conn.Connected(); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
-	// Stands in for goSendCb enqueueing a dispatch result: rc-x509-client's
-	// Main is a no-op today, so no organic send reaches the channel.
+	// Stands in for goSendCb enqueueing a dispatch result.
 	payload := []byte{0x01, 0x02, 0x03}
 	conn.state.outgoing <- payload
 
@@ -474,4 +435,74 @@ func TestContextCloseClosesOutgoing(t *testing.T) {
 	}
 
 	t.Fatal("outgoing channel never closed after shutdown")
+}
+
+func decodeDispatchResponse(t *testing.T, encoded []byte) *magictunnelv1.MagicTunnelResponse {
+	t.Helper()
+
+	var payload protocolv1.DispatchResponsePayload
+	if err := proto.Unmarshal(encoded, &payload); err != nil {
+		t.Fatalf("proto.Unmarshal() returned error: %v", err)
+	}
+
+	mt := payload.GetMagicTunnel()
+	if mt == nil {
+		t.Fatalf("payload.GetMagicTunnel() = nil, want a MagicTunnelResponse")
+	}
+	return mt
+}
+
+func TestMarshalDispatchResponseSuccess(t *testing.T) {
+	response := []byte{0x01, 0x02, 0x03}
+
+	encoded, err := marshalDispatchResponse(response, nil)
+	if err != nil {
+		t.Fatalf("marshalDispatchResponse() returned error: %v", err)
+	}
+
+	mt := decodeDispatchResponse(t, encoded)
+	if got := mt.GetResponse(); string(got) != string(response) {
+		t.Errorf("GetResponse() = %v, want %v", got, response)
+	}
+	if mt.GetHandlerError() != "" {
+		t.Errorf("GetHandlerError() = %q, want empty", mt.GetHandlerError())
+	}
+}
+
+func TestMarshalDispatchResponseHandlerError(t *testing.T) {
+	handlerErr := errors.New("handler exploded")
+
+	// A non-nil handlerErr must be reported in place of the response, even
+	// when the caller also passed a response payload: the two are mutually
+	// exclusive on the wire.
+	encoded, err := marshalDispatchResponse([]byte{0xFF}, handlerErr)
+	if err != nil {
+		t.Fatalf("marshalDispatchResponse() returned error: %v", err)
+	}
+
+	mt := decodeDispatchResponse(t, encoded)
+	if mt.GetHandlerError() != handlerErr.Error() {
+		t.Errorf("GetHandlerError() = %q, want %q", mt.GetHandlerError(), handlerErr.Error())
+	}
+	if len(mt.GetResponse()) != 0 {
+		t.Errorf("GetResponse() = %v, want empty", mt.GetResponse())
+	}
+}
+
+func TestMarshalDispatchResponseEmptyResponseIsNonEmptyOnWire(t *testing.T) {
+	// rc_conn_dispatch_result asserts its payload pointer is non-null, so a
+	// zero-length response from the handler must still produce a non-empty
+	// encoded message.
+	encoded, err := marshalDispatchResponse(nil, nil)
+	if err != nil {
+		t.Fatalf("marshalDispatchResponse() returned error: %v", err)
+	}
+	if len(encoded) == 0 {
+		t.Fatal("marshalDispatchResponse(nil, nil) produced an empty encoding")
+	}
+
+	mt := decodeDispatchResponse(t, encoded)
+	if len(mt.GetResponse()) != 0 {
+		t.Errorf("GetResponse() = %v, want empty", mt.GetResponse())
+	}
 }
