@@ -512,15 +512,7 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
 void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *user_data);
 
 /*
- Install `fd` as a sink for `tracing` events emitted by the client library,
- at the given verbosity `level`:
-
-   * `0`: off (no events).
-   * `1`: error.
-   * `2`: warn.
-   * `3`: info.
-   * `4`: debug.
-   * `5`: trace.
+ Install `fd` as a sink for `tracing` events emitted by the client library.
 
  Every matching `tracing` event is formatted and written to `fd` with
  a blocking write, so a slow or non-draining reader on the other end of
@@ -541,7 +533,7 @@ void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *us
  `fd` MUST be a valid, open, writable file descriptor that the caller does
  not use or close after a [`LogSinkRet::Success`] return.
  */
-log_sink_ret_t rc_enable_log_sink(int fd, int level);
+log_sink_ret_t rc_enable_log_sink(int fd);
 
 /*
  Stop the client running in [`Ctx`], and release all resources held by

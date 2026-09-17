@@ -18,8 +18,6 @@
 use std::ffi::c_int;
 use std::sync::OnceLock;
 
-use tracing::level_filters::LevelFilter;
-
 /// Result of a [`rc_enable_log_sink()`] call.
 #[derive(Debug, PartialEq, Eq)]
 #[repr(i32)]
@@ -49,15 +47,7 @@ pub enum LogSinkRet {
 /// subscriber per process).
 static LOG_SINK_INSTALLED: OnceLock<()> = OnceLock::new();
 
-/// Install `fd` as a sink for `tracing` events emitted by the client library,
-/// at the given verbosity `level`:
-///
-///   * `0`: off (no events).
-///   * `1`: error.
-///   * `2`: warn.
-///   * `3`: info.
-///   * `4`: debug.
-///   * `5`: trace.
+/// Install `fd` as a sink for `tracing` events emitted by the client library.
 ///
 /// Every matching `tracing` event is formatted and written to `fd` with
 /// a blocking write, so a slow or non-draining reader on the other end of
@@ -78,32 +68,12 @@ static LOG_SINK_INSTALLED: OnceLock<()> = OnceLock::new();
 /// `fd` MUST be a valid, open, writable file descriptor that the caller does
 /// not use or close after a [`LogSinkRet::Success`] return.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_enable_log_sink(fd: c_int, level: c_int) -> LogSinkRet {
-    let Some(max_level) = level_filter_from_raw(level) else {
-        return LogSinkRet::InvalidLevel;
-    };
-
-    unsafe { imp::enable_log_sink(fd, max_level) }
+pub unsafe extern "C" fn rc_enable_log_sink(fd: c_int) -> LogSinkRet {
+    unsafe { imp::enable_log_sink(fd) }
 }
 
-fn level_filter_from_raw(level: c_int) -> Option<LevelFilter> {
-    match level {
-        0 => Some(LevelFilter::OFF),
-        1 => Some(LevelFilter::ERROR),
-        2 => Some(LevelFilter::WARN),
-        3 => Some(LevelFilter::INFO),
-        4 => Some(LevelFilter::DEBUG),
-        5 => Some(LevelFilter::TRACE),
-        _ => None,
-    }
-}
-
-#[cfg(unix)]
 mod imp {
     use std::fs::File;
-    use std::os::fd::FromRawFd;
-
-    use tracing::level_filters::LevelFilter;
 
     use super::{LOG_SINK_INSTALLED, LogSinkRet};
 
@@ -112,7 +82,6 @@ mod imp {
     /// See [`super::rc_enable_log_sink()`].
     pub(super) unsafe fn enable_log_sink(
         fd: std::ffi::c_int,
-        max_level: LevelFilter,
     ) -> LogSinkRet {
         if LOG_SINK_INSTALLED.set(()).is_err() {
             return LogSinkRet::AlreadySet;
@@ -121,11 +90,11 @@ mod imp {
         // SAFETY: the caller contract requires `fd` to be a valid, open,
         // writable descriptor whose ownership is transferred to us on the
         // success path we're now committed to.
-        let file = unsafe { File::from_raw_fd(fd) };
+        let file = unsafe { raw_to_file(fd)};
+        let file = std::sync::Mutex::new(std::io::LineWriter::new(file));
 
         let subscriber = tracing_subscriber::fmt()
-            .with_max_level(max_level)
-            .with_writer(move || file.try_clone().expect("duplicate log sink fd"))
+            .with_writer(file)
             .finish();
 
         tracing::subscriber::set_global_default(subscriber)
@@ -133,23 +102,21 @@ mod imp {
 
         LogSinkRet::Success
     }
-}
+    #[cfg(unix)]
+    unsafe fn raw_to_file(fd: std::ffi::c_int) -> File {
+        use std::os::fd::FromRawFd;
+        unsafe { File::from_raw_fd(fd) }
+    }
 
-#[cfg(not(unix))]
-mod imp {
-    use tracing::level_filters::LevelFilter;
-
-    use super::LogSinkRet;
-
-    pub(super) unsafe fn enable_log_sink(
-        _fd: std::ffi::c_int,
-        _max_level: LevelFilter,
-    ) -> LogSinkRet {
-        LogSinkRet::Unsupported
+    #[cfg(windows)]
+    unsafe fn raw_to_file(fd: std::ffi::c_int) -> File {
+        use std::os::windows::io::{FromRawHandle, RawHandle};
+        let raw_handle: RawHandle = (fd as isize) as RawHandle;
+        unsafe { File::from_raw_handle(raw_handle) }
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
     use std::io::Read;
     use std::os::fd::IntoRawFd;
@@ -162,12 +129,8 @@ mod tests {
     /// and a repeat install is rejected.
     #[test]
     fn test_log_sink_lifecycle() {
-        let (_reader, writer) = std::io::pipe().expect("create pipe");
-        let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd(), 42) };
-        assert_eq!(ret, LogSinkRet::InvalidLevel);
-
         let (mut reader, writer) = std::io::pipe().expect("create pipe");
-        let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd(), 5) };
+        let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
         assert_eq!(ret, LogSinkRet::Success);
 
         tracing::error!("hello from the log sink test");
@@ -178,7 +141,7 @@ mod tests {
         assert!(line.contains("hello from the log sink test"), "{line}");
 
         let (_reader, writer) = std::io::pipe().expect("create pipe");
-        let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd(), 5) };
+        let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
         assert_eq!(ret, LogSinkRet::AlreadySet);
     }
 }

@@ -15,7 +15,7 @@ const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/
 func main() {
 	// Surface the client library's own tracing output on stderr, interleaved
 	// with this example's own logging, for local debugging.
-	if err := rcx509.EnableLogSink(rcx509.LogLevelDebug, os.Stderr); err != nil {
+	if err := rcx509.EnableLogSink(os.Stderr); err != nil {
 		log.Fatal(err)
 	}
 

@@ -17,7 +17,7 @@ func TestEnableLogSink(t *testing.T) {
 	}
 	defer reader.Close()
 
-	if err := EnableLogSink(writer.Fd(), LogLevelDebug); err != nil {
+	if err := EnableLogSink(writer); err != nil {
 		t.Fatalf("EnableLogSink() returned error: %v", err)
 	}
 
@@ -27,7 +27,7 @@ func TestEnableLogSink(t *testing.T) {
 	}
 	defer secondWriter.Close()
 
-	if err := EnableLogSink(secondWriter.Fd(), LogLevelDebug); !errors.Is(err, ErrLogSinkAlreadySet) {
+	if err := EnableLogSink(secondWriter); !errors.Is(err, ErrLogSinkAlreadySet) {
 		t.Fatalf("second EnableLogSink() = %v, want ErrLogSinkAlreadySet", err)
 	}
 
