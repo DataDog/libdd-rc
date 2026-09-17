@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	remoteconfigv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config"
@@ -17,7 +18,7 @@ func TestHandlePing(t *testing.T) {
 		t.Fatalf("marshal request: %v", err)
 	}
 
-	respBytes, err := handlePing(1, payload)
+	respBytes, err := handlePing(context.Background(), 1, payload)
 	if err != nil {
 		t.Fatalf("handlePing returned error: %v", err)
 	}

@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"errors"
 	"sync"
 )
@@ -15,10 +16,17 @@ import (
 //
 // A handler MUST NOT call into the underlying RC client library.
 //
+// A handler MUST NOT execute a long running task directly in the function, as this
+// function is invoked within an rcx509 owned goroutine. The magic tunnel protocol is
+// not designed for this use case. Handlers may export the payload onto their own
+// worker queue or goroutine, but the response to the backend must be quick. Failure to
+// do so within 30 seconds will trigger and error report to the backend that could
+// lead to requests for this URI to be throttled.
+//
 // A handler that returns an error, or panics, has that reported to the client
 // library as a handler error. Prefer returning a structured error response
 // instead of a unstructured `err`.
-type HandlerFunc func(correlationID uint64, payload []byte) (response []byte, err error)
+type HandlerFunc func(ctx context.Context, correlationID uint64, payload []byte) (response []byte, err error)
 
 // ErrHandlerExists is returned by RegisterHandler when a handler is already
 // registered for the given URI.

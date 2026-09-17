@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"google.golang.org/protobuf/proto"
@@ -12,7 +13,7 @@ import (
 // handlePing implements libddrcffi.HandlerFunc for the
 // DebugService/Ping uri. It answers a PingRequest with a PingResponse
 // carrying the current time.
-func handlePing(correlationID uint64, payload []byte) ([]byte, error) {
+func handlePing(_ context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	var req remoteconfigv1.PingRequest
 	if err := proto.Unmarshal(payload, &req); err != nil {
 		return nil, err

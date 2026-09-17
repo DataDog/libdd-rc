@@ -10,6 +10,12 @@ type recordedDispatchResult struct {
 	encoded       []byte
 }
 
+// recordedDispatchError is a dispatchError call recorded by fakeConn
+type recordedDispatchError struct {
+	correlationID uint64
+	errorCode     int
+}
+
 // fakeConn is a hand-written nativeConn test double, standing in for the
 // real cgo-backed connection so Connection's own state machine and worker
 // plumbing can be exercised without linking or driving the native library.
@@ -25,6 +31,7 @@ type fakeConn struct {
 	recvCalls         [][]byte
 	disconnectedCalls int
 	dispatchResults   []recordedDispatchResult
+	dispatchErrors    []recordedDispatchError
 	freeCalls         int
 
 	// recvErr, if set, is returned by every recv call instead of nil.
@@ -54,6 +61,12 @@ func (f *fakeConn) dispatchResult(correlationID uint64, encoded []byte) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.dispatchResults = append(f.dispatchResults, recordedDispatchResult{correlationID: correlationID, encoded: encoded})
+}
+
+func (f *fakeConn) dispatchError(correlationID uint64, errorCode int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.dispatchErrors = append(f.dispatchErrors, recordedDispatchError{correlationID: correlationID, errorCode: errorCode})
 }
 
 func (f *fakeConn) free() {
