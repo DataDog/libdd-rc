@@ -508,23 +508,21 @@ void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *us
 /*
  Install `fd` as a sink for `tracing` events emitted by the client library.
 
- Every matching `tracing` event is formatted and written to `fd` with
- a blocking write, so a slow or non-draining reader on the other end of
- `fd` (e.g. an unread pipe) stalls whichever thread produced the event.
-  It is important for callers to keep this in mind when installing log
-  sinks.
+ Callers MUST NOT cause writes to this `fd` to block (e.g. by not reading a
+ fixed size pipe).
 
  Only the first call to this function during the lifetime of the process
- takes effect; see [`LogSinkRet`] for how repeat or invalid calls are reported.
+ takes effect; see [`LogSinkRet`] for how repeat or invalid calls are
+ reported.
 
    * Called by: `host runtime`.
-   * Ownership: passes ownership of `fd` to the client library if and only
-     if [`LogSinkRet::Success`] is returned; the caller retains ownership
-     of `fd` for every other return value.
+   * Ownership: passes ownership of `fd` to the client library if and only if
+     [`LogSinkRet::Success`] is returned; the caller retains ownership of
+     `fd` for every other return value.
 
  # Safety
 
- `fd` MUST be a valid, open, writable file descriptor that the caller does
+ `fd` MUST be a valid, open, writeable file descriptor that the caller does
  not use or close after a [`LogSinkRet::Success`] return.
  */
 log_sink_ret_t rc_enable_log_sink(int fd);

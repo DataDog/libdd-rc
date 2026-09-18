@@ -15,8 +15,7 @@
 //! FFI function allowing a host to capture [`tracing`] output emitted by the
 //! client library, for local debugging.
 
-use std::ffi::c_int;
-use std::sync::OnceLock;
+use std::{ffi::c_int, sync::atomic::AtomicBool};
 
 /// Result of a [`rc_enable_log_sink()`] call.
 #[derive(Debug, PartialEq, Eq)]
@@ -40,27 +39,25 @@ pub enum LogSinkRet {
 /// a prior call to [`rc_enable_log_sink()`], so repeat calls can be rejected
 /// rather than panicking (the `tracing` crate only supports one global
 /// subscriber per process).
-static LOG_SINK_INSTALLED: OnceLock<()> = OnceLock::new();
+static LOG_SINK_INSTALLED: AtomicBool = AtomicBool::new(false);
 
 /// Install `fd` as a sink for `tracing` events emitted by the client library.
 ///
-/// Every matching `tracing` event is formatted and written to `fd` with
-/// a blocking write, so a slow or non-draining reader on the other end of
-/// `fd` (e.g. an unread pipe) stalls whichever thread produced the event.
-///  It is important for callers to keep this in mind when installing log
-///  sinks.
+/// Callers MUST NOT cause writes to this `fd` to block (e.g. by not reading a
+/// fixed size pipe).
 ///
 /// Only the first call to this function during the lifetime of the process
-/// takes effect; see [`LogSinkRet`] for how repeat or invalid calls are reported.
+/// takes effect; see [`LogSinkRet`] for how repeat or invalid calls are
+/// reported.
 ///
 ///   * Called by: `host runtime`.
-///   * Ownership: passes ownership of `fd` to the client library if and only
-///     if [`LogSinkRet::Success`] is returned; the caller retains ownership
-///     of `fd` for every other return value.
+///   * Ownership: passes ownership of `fd` to the client library if and only if
+///     [`LogSinkRet::Success`] is returned; the caller retains ownership of
+///     `fd` for every other return value.
 ///
 /// # Safety
 ///
-/// `fd` MUST be a valid, open, writable file descriptor that the caller does
+/// `fd` MUST be a valid, open, writeable file descriptor that the caller does
 /// not use or close after a [`LogSinkRet::Success`] return.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rc_enable_log_sink(fd: c_int) -> LogSinkRet {
@@ -68,7 +65,7 @@ pub unsafe extern "C" fn rc_enable_log_sink(fd: c_int) -> LogSinkRet {
 }
 
 mod imp {
-    use std::fs::File;
+    use std::{fs::File, sync::atomic::Ordering};
 
     use super::{LOG_SINK_INSTALLED, LogSinkRet};
 
@@ -76,12 +73,15 @@ mod imp {
     ///
     /// See [`super::rc_enable_log_sink()`].
     pub(super) unsafe fn enable_log_sink(fd: std::ffi::c_int) -> LogSinkRet {
-        if LOG_SINK_INSTALLED.set(()).is_err() {
+        if LOG_SINK_INSTALLED
+            .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
+            .is_err()
+        {
             return LogSinkRet::AlreadySet;
         }
 
         // SAFETY: the caller contract requires `fd` to be a valid, open,
-        // writable descriptor whose ownership is transferred to us on the
+        // writeable descriptor whose ownership is transferred to us on the
         // success path we're now committed to.
         let file = unsafe { raw_to_file(fd) };
         let file = std::sync::Mutex::new(std::io::LineWriter::new(file));
@@ -93,6 +93,7 @@ mod imp {
 
         LogSinkRet::Success
     }
+
     #[cfg(unix)]
     unsafe fn raw_to_file(fd: std::ffi::c_int) -> File {
         use std::os::fd::FromRawFd;
