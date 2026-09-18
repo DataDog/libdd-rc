@@ -212,7 +212,7 @@ struct ActiveConn {
 impl ActiveConn {
     /// Shutdown and wait for the connection control loop to exit.
     async fn stop(self) {
-        info!("stopping connection");
+        debug!("stopping connection");
         self.stop.cancel();
 
         debug!("waiting for connection stop");

@@ -22,7 +22,7 @@ use rc_crypto::{
     connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
 };
 use tokio_util::{bytes::Bytes, sync::CancellationToken};
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     codec::{ClientToServer, DecodingError, DetachedSignature, ProtocolError, ServerToClient},
@@ -186,7 +186,7 @@ impl MessageDelegate {
             }
         };
 
-        debug!(%connection_id, "connection handshake complete");
+        info!(%connection_id, "connection established");
 
         // Success - the state now changes to reflect the finalised handshake.
         self.state = ConnState::Active(connection_id)
