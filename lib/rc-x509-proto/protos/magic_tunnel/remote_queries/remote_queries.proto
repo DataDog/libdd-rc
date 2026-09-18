@@ -396,9 +396,12 @@ message NetworkTarget {
 
 // Server-owned result-delivery configuration for one run.
 message ResultDelivery {
-  // The version of the result artifact contract the pages must follow
-  // (e.g. "v1"). Opaque to the client; part of the run's canonical command.
-  string artifact_version = 1;
+  // The numeric version of the result artifact contract the pages must
+  // follow, matching the Agent's `int32 artifact_version` (the current
+  // Action Platform worker payload sends 1). Opaque to the client; part of
+  // the run's canonical command. Zero is reserved for "unset" and is
+  // invalid.
+  int32 artifact_version = 1;
 
   // The base URL of the its-agent-intake upload endpoint the pages are PUT
   // to. Must be an absolute http(s) URL. The exact allowlisted value is a
@@ -471,59 +474,83 @@ message UploadReceipt {
   uint64 total_bytes = 4;
 }
 
-// Bounded, typed execution diagnostics for a run, mirroring the current
-// Agent producer diagnostics concepts without importing Agent protos.
+// Bounded, typed execution diagnostics for a run, mirroring the Agent's
+// `RemoteQueryExecutionDiagnostics` and `RemoteQueryProducerDiagnostics`
+// messages field-for-field so a future bridge can forward the Agent's
+// current diagnostics without flattening or dropping fields. The names omit
+// the `RemoteQuery` prefix because these messages already live in this
+// Remote Queries package.
 //
 // Bounded by construction: a fixed set of scalar timings and counters, with
-// no repeated or free-form data. Every optional value uses explicit
-// presence: unset means NOT measured (never zero), and zero means the phase
-// ran and completed below the reporting resolution.
+// no repeated or free-form data. Every scalar value uses explicit presence:
+// unset means NOT measured (never zero), and zero means the phase ran and
+// completed below the reporting resolution.
 message ExecutionDiagnostics {
   // The version of this diagnostics contract.
-  uint32 contract_version = 1;
+  optional int32 contract_version = 1;
 
+  // The producer-side phase timings and counters of the run.
+  optional ProducerDiagnostics producer = 2;
+}
+
+// Producer-side phase timings and counters for one run, mirroring the
+// Agent's `RemoteQueryProducerDiagnostics` field-for-field.
+message ProducerDiagnostics {
   // Total producer wall from request validation through the completed
   // finalize response, in milliseconds.
-  optional uint64 total_ms = 2;
+  optional int64 total_ms = 1;
 
   // Database connection/transaction/schema setup, in milliseconds.
-  optional uint64 database_setup_ms = 3;
+  optional int64 database_setup_ms = 2;
 
   // Cumulative wall inside result-fetch calls, in milliseconds.
-  optional uint64 database_fetch_ms = 4;
+  optional int64 database_fetch_ms = 3;
 
   // Row normalization, JSON encoding, and page buffer writes, excluding
   // upload calls, in milliseconds.
-  optional uint64 encode_and_page_build_ms = 5;
+  optional int64 encode_and_page_build_ms = 4;
 
   // Cumulative client-observed upload wall across all attempts, including
   // retry backoff, in milliseconds.
-  optional uint64 page_upload_ms = 6;
+  optional int64 page_upload_ms = 5;
 
   // The run finalize call, in milliseconds.
-  optional uint64 finalize_ms = 7;
+  optional int64 finalize_ms = 6;
 
   // The non-negative measured remainder of `total_ms` after the named
   // non-overlapping phases, in milliseconds.
-  optional uint64 other_ms = 8;
+  optional int64 other_ms = 7;
 
   // Wall from admission to the first acknowledged page, in milliseconds.
-  optional uint64 time_to_first_page_ms = 9;
+  optional int64 time_to_first_page_ms = 8;
 
   // The number of completed page objects.
-  optional uint32 page_count = 10;
+  optional int64 page_count = 9;
 
   // The number of emitted rows.
-  optional uint64 row_count = 11;
+  optional int64 row_count = 10;
 
   // The number of encoded bytes across all pages.
-  optional uint64 byte_count = 12;
+  optional int64 byte_count = 11;
 
   // The number of page upload attempts, including retries.
-  optional uint32 upload_attempt_count = 13;
+  optional int64 upload_attempt_count = 12;
 
   // The number of page upload retries.
-  optional uint32 upload_retry_count = 14;
+  optional int64 upload_retry_count = 13;
+
+  // The minimum completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_min_ms = 14;
+
+  // The median completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_p50_ms = 15;
+
+  // The 95th percentile completed page upload attempt wall, in
+  // milliseconds.
+  optional int64 page_upload_p95_ms = 16;
+
+  // The maximum completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_max_ms = 17;
 }
 
 // A bounded, structured control-plane error.

@@ -90,7 +90,7 @@ func remoteQueriesValidStartRunRequest() *remotequeriesv1alpha1.StartRunRequest 
 		Query:         "SELECT count(*) FROM public.orders",
 		IncludeSchema: remoteQueriesBool(true),
 		ResultDelivery: &remotequeriesv1alpha1.ResultDelivery{
-			ArtifactVersion: "v1",
+			ArtifactVersion: 1,
 			IntakeBaseUrl:   "https://its-agent-intake.example.internal",
 			Limits: &remotequeriesv1alpha1.ResultDeliveryLimits{
 				MaxFileBytes:   128 * 1024 * 1024,
@@ -459,7 +459,7 @@ func TestHandleStartRun_InvalidRequestRejected(t *testing.T) {
 		"missing target":            func(r *remotequeriesv1alpha1.StartRunRequest) { r.Target = nil },
 		"empty query":               func(r *remotequeriesv1alpha1.StartRunRequest) { r.Query = " " },
 		"missing result delivery":   func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery = nil },
-		"empty artifact version":    func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.ArtifactVersion = "" },
+		"zero artifact version":     func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.ArtifactVersion = 0 },
 		"relative intake base url":  func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.IntakeBaseUrl = "uploads" },
 		"missing limits":            func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.Limits = nil },
 		"zero timeout_ms limit":     func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.Limits.TimeoutMs = 0 },
@@ -738,7 +738,7 @@ func TestCanonicalCommandDigest(t *testing.T) {
 			r.IncludeSchema = &[]bool{false}[0]
 		}},
 		{"different artifact version", func(r *remotequeriesv1alpha1.StartRunRequest) {
-			r.ResultDelivery.ArtifactVersion = "v2"
+			r.ResultDelivery.ArtifactVersion = 2
 		}},
 		{"different intake base url", func(r *remotequeriesv1alpha1.StartRunRequest) {
 			r.ResultDelivery.IntakeBaseUrl = "https://intake-2.example.internal"
