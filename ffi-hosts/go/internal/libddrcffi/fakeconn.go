@@ -15,8 +15,9 @@ type recordedDispatchResult struct {
 // plumbing can be exercised without linking or driving the native library.
 //
 // Its methods are safe for concurrent use: Connection itself only calls them
-// under its own lock or from a single invokePool result worker, but tests
-// read the recorded calls from the goroutine driving the test.
+// under its own lock or from one of invokePool's invoke workers, which can
+// call dispatchResult concurrently with each other, but tests read the
+// recorded calls from the goroutine driving the test.
 type fakeConn struct {
 	mu sync.Mutex
 
