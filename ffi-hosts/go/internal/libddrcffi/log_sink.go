@@ -23,8 +23,10 @@ var ErrLogSinkAlreadySet = errors.New("ddrc: log sink already installed for this
 // EnableLogSink installs `f` as the destination for tracing events emitted by
 // the client library.
 //
-// The file descriptor backing `f` is dup'd here so that we can close Go's
-// copy and pass ownership of the underlying descriptor to the Rust library.
+// The file descriptor backing `f` is duplicated before being installed into the
+// underlying client library; the caller continues to own `f`, and the client
+// library owns and manages the lifetime of a separate descriptor. If the caller
+// writes to `f` after this call, the write may be interleaved with log output.
 //
 // This log sink is assigned for the entire process, independent of any one
 // specific RCX509Context instance.
@@ -35,7 +37,6 @@ func EnableLogSink(f *os.File) error {
 	if err != nil {
 		return err
 	}
-	_ = f.Close() // Release Go ownership
 
 	// Pass the newly duplicated fd to the client library.
 	ret := C.rc_enable_log_sink(C.int(ffiFd))
