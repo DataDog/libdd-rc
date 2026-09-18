@@ -34,6 +34,7 @@ sort_by = "Name"
 [export.rename]
 "SendRet" = "send_ret_t"
 "RecvRet" = "recv_ret_t"
+"LogSinkRet" = "log_sink_ret_t"
 
 [enum]
 rename_variants = "ScreamingSnakeCase"

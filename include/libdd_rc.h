@@ -140,6 +140,37 @@ typedef int32_t send_ret_t;
 #endif // __STDC_VERSION__ >= 202311L
 
 /*
+ Result of a [`rc_enable_log_sink()`] call.
+ */
+enum log_sink_ret_t
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
+    /*
+     The log sink was installed successfully; ownership of `fd` has passed
+     to the client library.
+     */
+    LOG_SINK_RET_T_SUCCESS = 0,
+    /*
+     A log sink has already been installed for this process; only the
+     first call to [`rc_enable_log_sink()`] can take effect. `fd` was not
+     touched and remains owned by the caller.
+     */
+    LOG_SINK_RET_T_ALREADY_SET = 1,
+    /*
+     Log sinks are not supported on this platform. `fd` was not touched
+     and remains owned by the caller.
+     */
+    LOG_SINK_RET_T_UNSUPPORTED = INT32_MAX,
+};
+#if __STDC_VERSION__ >= 202311L
+typedef enum log_sink_ret_t log_sink_ret_t;
+#else
+typedef int32_t log_sink_ret_t;
+#endif // __STDC_VERSION__ >= 202311L
+
+/*
  A [`Ctx`] is a RAII handle for an instance of a X509 verifier.
 
  The [`Ctx`] owns the event loop / runtime that drives the internal client
@@ -473,6 +504,28 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
  subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
  */
 void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *user_data);
+
+/*
+ Install `fd` as a sink for `tracing` events emitted by the client library.
+
+ Callers MUST NOT cause writes to this `fd` to block (e.g. by not reading a
+ fixed size pipe).
+
+ Only the first call to this function during the lifetime of the process
+ takes effect; see [`LogSinkRet`] for how repeat or invalid calls are
+ reported.
+
+   * Called by: `host runtime`.
+   * Ownership: passes ownership of `fd` to the client library if and only if
+     [`LogSinkRet::Success`] is returned; the caller retains ownership of
+     `fd` for every other return value.
+
+ # Safety
+
+ `fd` MUST be a valid, open, writeable file descriptor that the caller does
+ not use or close after a [`LogSinkRet::Success`] return.
+ */
+log_sink_ret_t rc_enable_log_sink(int fd);
 
 /*
  Stop the client running in [`Ctx`], and release all resources held by
