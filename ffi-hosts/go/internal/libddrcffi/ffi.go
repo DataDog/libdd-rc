@@ -30,6 +30,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	DispatchErrorTimeout = C.DISPATCH_HOST_ERROR_HANDLER_EXEC_TIMEOUT
+)
+
 // nativeConn is the seam between Connection and the raw rc_conn_* calls
 // crossing the FFI boundary. The concrete implementation, cgoConn, wraps a
 // *C.FFIConnection; tests substitute a fake nativeConn to exercise
@@ -49,6 +53,10 @@ type nativeConn interface {
 	// dispatchResult reports the outcome of a dispatched job back across the
 	// FFI boundary. encoded must be non-empty.
 	dispatchResult(correlationID uint64, encoded []byte)
+
+	// dispatchError reports the outcome of a dispatched job that failed to
+	// complete across the FFI boundary.
+	dispatchError(correlationID uint64, errorCode int)
 
 	// free releases the underlying FFIConnection. No further calls may be
 	// made on this nativeConn afterwards.
@@ -97,6 +105,10 @@ func (c *cgoConn) dispatchResult(correlationID uint64, encoded []byte) {
 	// directly rather than copied into C memory first: the client library
 	// makes its own copy before returning.
 	C.rc_conn_dispatch_result(c.ptr, C.uint64_t(correlationID), (*C.uint8_t)(unsafe.Pointer(&encoded[0])), C.uint32_t(len(encoded)))
+}
+
+func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
+	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.int(errorCode))
 }
 
 func (c *cgoConn) free() {
