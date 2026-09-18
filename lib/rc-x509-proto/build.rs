@@ -46,6 +46,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.magic_tunnel.remote_config.v1.PingResponse.now",
         r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
+    let timestamp_fields = [
+        "rc.x509.magic_tunnel.remote_queries.v1alpha1.StartRunResponse.accepted_at",
+        "rc.x509.magic_tunnel.remote_queries.v1alpha1.GetRunStatusResponse.updated_at",
+        "rc.x509.magic_tunnel.remote_queries.v1alpha1.CancelRunResponse.updated_at",
+    ];
+    for v in timestamp_fields {
+        config.field_attribute(
+            v,
+            r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
+        );
+    }
 
     config.type_attribute(
         "rc.x509.signature.v1.DetachedSignature",
@@ -74,14 +85,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
-    // `PingRequest` is passed to policy evaluation by callers, which requires
-    // a protobuf-JSON-compliant `Serialize` impl (e.g. `payload`'s `bytes`
-    // must serialize as a base64 string, not a byte array, to match what the
-    // OPA policy expects).
+    // Requests passed to policy evaluation by callers require a
+    // protobuf-JSON-compliant `Serialize` impl (e.g. `payload`'s `bytes` must
+    // serialize as a base64 string, not a byte array, to match what the OPA
+    // policy expects).
+    //
+    // `remote_queries.v1alpha1` control requests are evaluated through the
+    // same Rego policy engine, so all four of its request messages are
+    // included here, together with the message types they reference:
+    // `pbjson-build` generates impls for exactly the named types, without
+    // descending into nested messages.
     let descriptor_bytes = std::fs::read(&descriptor_path)?;
     pbjson_build::Builder::new()
         .register_descriptors(&descriptor_bytes)?
-        .build(&[".rc.x509.magic_tunnel.remote_config.v1.PingRequest"])?;
+        .build(&[
+            ".rc.x509.magic_tunnel.remote_config.v1.PingRequest",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResolveTargetRequest",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.StartRunRequest",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.GetRunStatusRequest",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.CancelRunRequest",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.RunIdentity",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.DatabaseTarget",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.NetworkTarget",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResultDelivery",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResultDeliveryLimits",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.TraceContext",
+        ])?;
 
     Ok(())
 }

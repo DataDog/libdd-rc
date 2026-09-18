@@ -6,6 +6,9 @@ the Magic Tunnel.
 The `remote_config/` directory shows an example integration for the Remote
 Config team.
 
+The `remote_queries/` directory holds the Remote Queries team's experimental
+`v1alpha1` control service, `RemoteQueriesControlService`.
+
 ## Protocol
 
 Internal protocol details! You can ignore this if you're just looking to use
