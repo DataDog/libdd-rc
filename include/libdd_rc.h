@@ -159,12 +159,6 @@ enum log_sink_ret_t
      */
     LOG_SINK_RET_T_ALREADY_SET = 1,
     /*
-     The requested `level` is not one of the values documented on
-     [`rc_enable_log_sink()`]. `fd` was not touched and remains owned by
-     the caller.
-     */
-    LOG_SINK_RET_T_INVALID_LEVEL = 2,
-    /*
      Log sinks are not supported on this platform. `fd` was not touched
      and remains owned by the caller.
      */

@@ -31,11 +31,6 @@ pub enum LogSinkRet {
     /// touched and remains owned by the caller.
     AlreadySet = 1,
 
-    /// The requested `level` is not one of the values documented on
-    /// [`rc_enable_log_sink()`]. `fd` was not touched and remains owned by
-    /// the caller.
-    InvalidLevel = 2,
-
     /// Log sinks are not supported on this platform. `fd` was not touched
     /// and remains owned by the caller.
     Unsupported = i32::MAX,
@@ -80,9 +75,7 @@ mod imp {
     /// # Safety
     ///
     /// See [`super::rc_enable_log_sink()`].
-    pub(super) unsafe fn enable_log_sink(
-        fd: std::ffi::c_int,
-    ) -> LogSinkRet {
+    pub(super) unsafe fn enable_log_sink(fd: std::ffi::c_int) -> LogSinkRet {
         if LOG_SINK_INSTALLED.set(()).is_err() {
             return LogSinkRet::AlreadySet;
         }
@@ -90,12 +83,10 @@ mod imp {
         // SAFETY: the caller contract requires `fd` to be a valid, open,
         // writable descriptor whose ownership is transferred to us on the
         // success path we're now committed to.
-        let file = unsafe { raw_to_file(fd)};
+        let file = unsafe { raw_to_file(fd) };
         let file = std::sync::Mutex::new(std::io::LineWriter::new(file));
 
-        let subscriber = tracing_subscriber::fmt()
-            .with_writer(file)
-            .finish();
+        let subscriber = tracing_subscriber::fmt().with_writer(file).finish();
 
         tracing::subscriber::set_global_default(subscriber)
             .expect("no global tracing subscriber installed prior to rc_enable_log_sink");
