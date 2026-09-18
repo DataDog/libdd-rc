@@ -10,3 +10,6 @@ publish.log
 # Generated Go protobuf bindings (regenerate with `buf generate` or `make
 # build`/`make test` in ffi-hosts/go).
 /ffi-hosts/go/rcproto/
+
+# testx509 build output (see `make runtest` in ffi-hosts/go)
+/ffi-hosts/go/cmd/bin/

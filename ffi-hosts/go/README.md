@@ -30,7 +30,7 @@ CGO_ENABLED=1 go test ./...
 `rc-crypto`'s default `fips` feature also produces a dynamically linked
 AWS-LC FIPS crypto module (FIPS 140 validation requires it to self-verify its
 own binary at load time, so it can't ship as a static archive). `bridge.go`
-links this by name and rpath, and `make libffi` stages the built `.dylib`/
+links this by name and rpath, and the Makefile stages the built `.dylib`/
 `.so` next to `librc_x509_ffi.a` so it can be found without extra runtime
 configuration.
 
