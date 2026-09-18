@@ -3,9 +3,10 @@ package main
 import (
 	"log"
 
-	remoteconfigv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	remoteconfigv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config"
 )
 
 // handlePing implements libddrcffi.HandlerFunc for the
@@ -17,7 +18,12 @@ func handlePing(correlationID uint64, payload []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	log.Printf("received ping (correlation_id=%d) from connection %q: reason=%q", correlationID, req.GetConnectionId(), req.GetReason())
+	log.Printf("")
+	log.Printf("")
+	log.Printf("==> received PING")
+	log.Printf("      (correlation_id=%d) from connection %q: reason=%q", correlationID, req.GetConnectionId(), req.GetReason())
+	log.Printf("")
+	log.Printf("")
 
 	resp := &remoteconfigv1.PingResponse{
 		Now: timestamppb.Now(),

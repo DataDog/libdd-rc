@@ -511,6 +511,9 @@ void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *us
  Callers MUST NOT cause writes to this `fd` to block (e.g. by not reading a
  fixed size pipe).
 
+ The value of the env var `RC_LOG` at the time of this call sets the log
+ level (e.g. `RC_LOG=debug`), defaulting to `info`.
+
  Only the first call to this function during the lifetime of the process
  takes effect; see [`LogSinkRet`] for how repeat or invalid calls are
  reported.

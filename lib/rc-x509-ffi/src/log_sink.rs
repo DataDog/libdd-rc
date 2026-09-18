@@ -46,6 +46,9 @@ static LOG_SINK_INSTALLED: AtomicBool = AtomicBool::new(false);
 /// Callers MUST NOT cause writes to this `fd` to block (e.g. by not reading a
 /// fixed size pipe).
 ///
+/// The value of the env var `RC_LOG` at the time of this call sets the log
+/// level (e.g. `RC_LOG=debug`), defaulting to `info`.
+///
 /// Only the first call to this function during the lifetime of the process
 /// takes effect; see [`LogSinkRet`] for how repeat or invalid calls are
 /// reported.
@@ -66,6 +69,8 @@ pub unsafe extern "C" fn rc_enable_log_sink(fd: c_int) -> LogSinkRet {
 
 mod imp {
     use std::{fs::File, sync::atomic::Ordering};
+
+    use tracing_subscriber::{EnvFilter, layer::SubscriberExt};
 
     use super::{LOG_SINK_INSTALLED, LogSinkRet};
 
@@ -97,7 +102,14 @@ mod imp {
     fn install_subscriber(f: File) {
         let file = std::sync::Mutex::new(std::io::LineWriter::new(f));
 
-        let subscriber = tracing_subscriber::fmt().with_writer(file).finish();
+        let fmt_layer = tracing_subscriber::fmt::layer().with_writer(file);
+
+        let env_filter =
+            EnvFilter::try_from_env("RC_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+
+        let subscriber = tracing_subscriber::registry()
+            .with(env_filter)
+            .with(fmt_layer);
 
         tracing::subscriber::set_global_default(subscriber)
             .expect("no global tracing subscriber installed prior to rc_enable_log_sink");
@@ -112,6 +124,7 @@ mod imp {
 
         // Mimic doing log stuff.
         let _ = writeln!(f, "it's bananas");
+        let _ = writeln!(f, "it's still bananas");
     }
 
     #[cfg(unix)]
@@ -135,22 +148,36 @@ mod tests {
 
     use super::*;
 
-    /// Exercises the full [`rc_enable_log_sink()`] contract in a single test:
-    /// invalid levels are rejected up front, a valid install makes a
-    /// subsequent `tracing` event observable on the other end of the pipe,
-    /// and a repeat install is rejected.
+    /// Exercises the full [`rc_enable_log_sink()`] contract in a single test
+    /// (only the first call in a process takes effect, so this can't be
+    /// split across multiple `#[test]` fns): `RC_LOG` set before the call
+    /// governs the installed filter level, a valid install makes subsequent
+    /// `tracing` events at or above that level observable on the other end
+    /// of the pipe while events below it are dropped, and a repeat install
+    /// is rejected.
     #[test]
     fn test_log_sink_lifecycle() {
+        // SAFETY: no other threads read/write env vars concurrently in this
+        // test binary.
+        unsafe { std::env::set_var("RC_LOG", "debug") };
+
         let (mut reader, writer) = std::io::pipe().expect("create pipe");
         let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
         assert_eq!(ret, LogSinkRet::Success);
 
         tracing::error!("it's bananas");
+        tracing::debug!("it's still bananas");
+        tracing::trace!("it's not bananas");
 
         let mut buf = [0u8; 4096];
         let n = reader.read(&mut buf).expect("read from pipe");
         let line = String::from_utf8_lossy(&buf[..n]);
         assert!(line.contains("it's bananas"), "{line}");
+        assert!(line.contains("it's still bananas"), "{line}");
+        assert!(
+            !line.contains("it's not bananas"),
+            "RC_LOG=debug should not enable trace-level events: {line}"
+        );
 
         let (_reader, writer) = std::io::pipe().expect("create pipe");
         let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
