@@ -83,15 +83,35 @@ mod imp {
         // SAFETY: the caller contract requires `fd` to be a valid, open,
         // writeable descriptor whose ownership is transferred to us on the
         // success path we're now committed to.
+        //
+        // Perform this prior to dispatching to the cfg-gated
+        // install_subscriber() so that miri can check the unsafe call here.
         let file = unsafe { raw_to_file(fd) };
-        let file = std::sync::Mutex::new(std::io::LineWriter::new(file));
+
+        install_subscriber(file);
+
+        LogSinkRet::Success
+    }
+
+    #[cfg(not(miri))]
+    fn install_subscriber(f: File) {
+        let file = std::sync::Mutex::new(std::io::LineWriter::new(f));
 
         let subscriber = tracing_subscriber::fmt().with_writer(file).finish();
 
         tracing::subscriber::set_global_default(subscriber)
             .expect("no global tracing subscriber installed prior to rc_enable_log_sink");
+    }
 
-        LogSinkRet::Success
+    #[cfg(miri)]
+    fn install_subscriber(mut f: File) {
+        use std::io::Write;
+
+        // Silence "unused dependency" lint.
+        use tracing_subscriber as _;
+
+        // Mimic doing log stuff.
+        let _ = writeln!(f, "it's bananas");
     }
 
     #[cfg(unix)]
@@ -125,12 +145,12 @@ mod tests {
         let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
         assert_eq!(ret, LogSinkRet::Success);
 
-        tracing::error!("hello from the log sink test");
+        tracing::error!("it's bananas");
 
         let mut buf = [0u8; 4096];
         let n = reader.read(&mut buf).expect("read from pipe");
         let line = String::from_utf8_lossy(&buf[..n]);
-        assert!(line.contains("hello from the log sink test"), "{line}");
+        assert!(line.contains("it's bananas"), "{line}");
 
         let (_reader, writer) = std::io::pipe().expect("create pipe");
         let ret = unsafe { rc_enable_log_sink(writer.into_raw_fd()) };
