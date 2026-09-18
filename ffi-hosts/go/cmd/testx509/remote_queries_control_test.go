@@ -460,6 +460,7 @@ func TestHandleStartRun_InvalidRequestRejected(t *testing.T) {
 		"empty query":               func(r *remotequeriesv1alpha1.StartRunRequest) { r.Query = " " },
 		"missing result delivery":   func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery = nil },
 		"zero artifact version":     func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.ArtifactVersion = 0 },
+		"negative artifact version": func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.ArtifactVersion = -1 },
 		"relative intake base url":  func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.IntakeBaseUrl = "uploads" },
 		"missing limits":            func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.Limits = nil },
 		"zero timeout_ms limit":     func(r *remotequeriesv1alpha1.StartRunRequest) { r.ResultDelivery.Limits.TimeoutMs = 0 },

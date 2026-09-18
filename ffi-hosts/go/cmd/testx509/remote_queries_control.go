@@ -521,10 +521,10 @@ func remoteQueriesValidateResultDelivery(delivery *remotequeriesv1alpha1.ResultD
 			message: "result delivery must be present",
 		}
 	}
-	if delivery.GetArtifactVersion() == 0 {
+	if delivery.GetArtifactVersion() <= 0 {
 		return &remoteQueriesControlError{
 			code:    remoteQueriesErrInvalidResultDelivery,
-			message: "result delivery must carry a non-zero artifact version",
+			message: "result delivery must carry a positive artifact version",
 		}
 	}
 	// Note: || short-circuits before the intakeURL fields are dereferenced,
@@ -607,9 +607,6 @@ func canonicalCommandDigest(req *remotequeriesv1alpha1.StartRunRequest) string {
 	writeCanonicalBool(h, "include_schema", req.GetIncludeSchema())
 
 	delivery := req.GetResultDelivery()
-	// The artifact version is a validated non-zero int32. The uint64 cast
-	// sign-extends negative values deterministically, so the encoding stays
-	// injective over the whole int32 range.
 	writeCanonicalUint(h, "artifact_version", uint64(delivery.GetArtifactVersion()))
 	writeCanonicalString(h, "intake_base_url", delivery.GetIntakeBaseUrl())
 

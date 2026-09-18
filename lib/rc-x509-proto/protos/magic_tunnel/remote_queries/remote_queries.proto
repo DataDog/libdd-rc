@@ -399,8 +399,8 @@ message ResultDelivery {
   // The numeric version of the result artifact contract the pages must
   // follow, matching the Agent's `int32 artifact_version` (the current
   // Action Platform worker payload sends 1). Opaque to the client; part of
-  // the run's canonical command. Zero is reserved for "unset" and is
-  // invalid.
+  // the run's canonical command. Must be positive: zero and negative
+  // values are invalid.
   int32 artifact_version = 1;
 
   // The base URL of the its-agent-intake upload endpoint the pages are PUT
