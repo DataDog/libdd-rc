@@ -29,6 +29,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Register handlers for the fully-qualified RemoteQueriesControlService
+	// URIs. One explicit controller instance backs all four methods: it is
+	// the process's single owner of the admitted-run state.
+	remoteQueries := newRemoteQueriesController()
+	for uri, handler := range map[string]func(uint64, []byte) ([]byte, error){
+		remoteQueriesResolveTargetURI: remoteQueries.handleResolveTarget,
+		remoteQueriesStartRunURI:      remoteQueries.handleStartRun,
+		remoteQueriesGetRunStatusURI:  remoteQueries.handleGetRunStatus,
+		remoteQueriesCancelRunURI:     remoteQueries.handleCancelRun,
+	} {
+		if err := client.RegisterHandler(uri, handler); err != nil {
+			log.Fatal(err)
+		}
+	}
+	log.Print("registered the Remote Queries control-plane reference state machine: it simulates the control lifecycle only, executes no SQL, performs no upload, and loses all admitted-run state when the process restarts")
+
 	go client.Start()
 
 	fmt.Println("Press Enter to exit...")

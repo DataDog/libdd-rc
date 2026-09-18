@@ -1,0 +1,566 @@
+// EXPERIMENTAL Remote Queries control-plane contract for the Magic Tunnel.
+//
+// This is the explicitly experimental `v1alpha1` Remote Queries control
+// contract: the bounded exchange that resolves a database target on one
+// connected client, admits an Agent-backed query run, observes its control
+// state, and cancels it. It is a control plane ONLY.
+//
+// Result data never travels through this service. The Agent integration
+// uploads bounded JSON result pages directly to its-agent-intake using the
+// server-owned session and limits delivered with `StartRun`, and the backend
+// treats intake's finalized result as authoritative for completion. No
+// message in this package carries database credentials, object-store
+// credentials, page bodies, caller-selected object keys, or upload tokens.
+//
+// Every request carries:
+//
+//  * `connection_id`: the ephemeral RC connection ID the Magic Tunnel routed
+//    the request to. Magic Tunnel is a 1:1 transport with no predicate
+//    targeting or fanout, so this is transport and audit context only, and
+//    handlers MUST NOT treat it as an authorization, routing, or
+//    result-validation input.
+//
+//  * `reason`: a REQUIRED, non-empty, human- or service-readable audit
+//    string. Handlers MUST reject requests whose `reason` is empty.
+//
+// Run-mutating and run-observing requests address exactly one immutable run
+// identity: `(org_id, task_id, run_id, upload_id)`. The identity is the
+// execution deduplication key: the same identity may only ever refer to one
+// canonical command, and a request repeating a known identity with different
+// command semantics must fail closed rather than execute again.
+//
+// The `v1alpha1` suffix marks this contract as unstable: it may change or be
+// withdrawn without notice, and no wire compatibility is guaranteed between
+// revisions.
+syntax = "proto3";
+package rc.x509.magic_tunnel.remote_queries.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
+
+// The Remote Queries control service.
+//
+// The fully-qualified URIs to register handlers for each method are:
+//
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesControlService/ResolveTarget
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesControlService/StartRun
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesControlService/GetRunStatus
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesControlService/CancelRun
+service RemoteQueriesControlService {
+  // Resolve a credential-free database target against the receiving client.
+  //
+  // Advisory and side-effect-free: it proves that a target matches on the
+  // addressed connection before a run is started, and MUST NOT mutate any
+  // session or shared upload state. `StartRun` resolves the target again
+  // under execution admission so a configuration change cannot execute
+  // against a stale match.
+  rpc ResolveTarget(ResolveTargetRequest) returns (ResolveTargetResponse);
+
+  // Admit a query run for execution on the receiving client.
+  //
+  // Returns promptly after admission; it does not wait for SQL execution or
+  // page upload to finish. Delivery is idempotent per run identity: a
+  // duplicate of the accepted command reports the existing admission, and
+  // a conflicting command for the same identity is rejected.
+  rpc StartRun(StartRunRequest) returns (StartRunResponse);
+
+  // Observe the control state of a previously started run. Exists
+  // specifically to resolve an ambiguous `StartRun` outcome without
+  // blindly executing SQL again.
+  rpc GetRunStatus(GetRunStatusRequest) returns (GetRunStatusResponse);
+
+  // Request cancellation of a run. Idempotent, and addressed to the same
+  // immutable identity the run was started with.
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+}
+
+// A request to resolve a credential-free database target against the
+// receiving client.
+message ResolveTargetRequest {
+  // The ephemeral RC connection ID the request was routed to. Transport and
+  // audit context only.
+  string connection_id = 1;
+
+  // REQUIRED: a non-empty, human- or service-readable audit reason for the
+  // resolution. Handlers MUST reject requests where it is empty.
+  string reason = 2;
+
+  // The identifier of the integration that would execute the query (e.g.
+  // "postgres").
+  string integration = 3;
+
+  // The credential-free database target to resolve. Must carry either a
+  // network target or a database instance.
+  DatabaseTarget target = 4;
+}
+
+// The outcome of resolving a target.
+message ResolveTargetResponse {
+  // The resolution outcome.
+  ResolveTargetStatus status = 1;
+
+  // Bounded error detail, set when `status` is `RESOLUTION_ERROR`.
+  ControlError error = 2;
+}
+
+// The result of matching a target against the receiving client.
+enum ResolveTargetStatus {
+  // The default value; never a valid outcome on the wire from a conforming
+  // handler.
+  RESOLVE_TARGET_STATUS_UNSPECIFIED = 0;
+
+  // Exactly one configured database matched the target.
+  RESOLVE_TARGET_STATUS_MATCHED = 1;
+
+  // The target is well-formed but no configured database matches it.
+  RESOLVE_TARGET_STATUS_TARGET_NOT_FOUND = 2;
+
+  // The target matches more than one configured database; the caller must
+  // not start a run against this connection.
+  RESOLVE_TARGET_STATUS_AMBIGUOUS_TARGET = 3;
+
+  // The target could not be resolved (e.g. structurally invalid request or
+  // target). Carries bounded detail in `ResolveTargetResponse.error`.
+  RESOLVE_TARGET_STATUS_RESOLUTION_ERROR = 4;
+}
+
+// A request to admit a query run for execution on the receiving client.
+message StartRunRequest {
+  // The ephemeral RC connection ID the request was routed to. Transport and
+  // audit context only; excluded from the run's canonical command.
+  string connection_id = 1;
+
+  // REQUIRED: a non-empty, human- or service-readable audit reason for
+  // starting the run. Handlers MUST reject requests where it is empty.
+  string reason = 2;
+
+  // The immutable identity of the run to admit. The `(org_id, task_id,
+  // run_id, upload_id)` tuple is the execution deduplication key.
+  RunIdentity run_identity = 3;
+
+  // The identifier of the integration that executes the query (e.g.
+  // "postgres").
+  string integration = 4;
+
+  // The credential-free database target to execute against. Must carry
+  // either a network target or a database instance.
+  DatabaseTarget target = 5;
+
+  // The non-empty SQL query text to execute. SQL safety remains a Remote
+  // Queries validation and integration responsibility.
+  string query = 6;
+
+  // Whether the result pages must include the schema section. Explicit
+  // presence: an unset value means the same as `false` (schema disabled),
+  // and it can never change the transport, limits, object names, or page
+  // layout.
+  optional bool include_schema = 7;
+
+  // The server-owned result-delivery configuration for this run: the
+  // artifact version, the intake base URL, and the upload/execution limits
+  // the integration must respect.
+  ResultDelivery result_delivery = 8;
+
+  // Optional trace context the Agent should parent its work under.
+  // Observability-only: it MUST NOT be an authorization, routing, or
+  // result-validation input, and conforming handlers MUST NOT treat a
+  // differing trace context as a command conflict.
+  TraceContext trace_context = 9;
+}
+
+// The admission outcome for a StartRun request. Returned promptly after
+// admission; it does not reflect SQL execution or upload completion.
+message StartRunResponse {
+  // The admission outcome.
+  StartRunStatus status = 1;
+
+  // The immutable run identity echoed back from the request.
+  RunIdentity run_identity = 2;
+
+  // When the run was first accepted. For `ALREADY_ACCEPTED` this is the
+  // ORIGINAL acceptance time of the existing admission. Unset for
+  // `REJECTED`.
+  google.protobuf.Timestamp accepted_at = 3;
+
+  // Bounded error detail, set when `status` is `REJECTED`.
+  ControlError error = 4;
+}
+
+// The result of admitting a run.
+enum StartRunStatus {
+  // The default value; never a valid outcome on the wire from a conforming
+  // handler.
+  START_RUN_STATUS_UNSPECIFIED = 0;
+
+  // The run was admitted for execution by this client.
+  START_RUN_STATUS_ACCEPTED = 1;
+
+  // A run with the same identity and the same canonical command was already
+  // admitted; the existing admission is authoritative and the command was
+  // not duplicated.
+  START_RUN_STATUS_ALREADY_ACCEPTED = 2;
+
+  // The run was not admitted: the request was invalid, or the identity was
+  // already accepted with a different canonical command. Carries bounded
+  // detail in `StartRunResponse.error`.
+  START_RUN_STATUS_REJECTED = 3;
+}
+
+// A request to observe the control state of a run.
+message GetRunStatusRequest {
+  // The ephemeral RC connection ID the request was routed to. Transport and
+  // audit context only.
+  string connection_id = 1;
+
+  // REQUIRED: a non-empty, human- or service-readable audit reason for the
+  // lookup. Handlers MUST reject requests where it is empty.
+  string reason = 2;
+
+  // The immutable identity of the run to look up.
+  RunIdentity run_identity = 3;
+}
+
+// The control state of a run.
+message GetRunStatusResponse {
+  // The stored lifecycle state of the run, or `NOT_FOUND` when no run with
+  // this identity was ever accepted by this client.
+  RunState state = 1;
+
+  // The immutable run identity echoed back from the request.
+  RunIdentity run_identity = 2;
+
+  // When the reported state was last updated. Unset for `NOT_FOUND` and any
+  // state that was never updated.
+  google.protobuf.Timestamp updated_at = 3;
+
+  // The bounded terminal error of a `FAILED` run. Unset for any other
+  // state.
+  ControlError error = 4;
+
+  // The compact upload receipt of a `COMPLETED` run. Unset for any other
+  // state. Intake's authoritative finalized result remains the source of
+  // truth for totals and object keys, even when a receipt is present.
+  UploadReceipt receipt = 5;
+
+  // Bounded, typed execution diagnostics of a run, when available. Unset
+  // means not collected, not "completed with nothing to report".
+  ExecutionDiagnostics diagnostics = 6;
+}
+
+// The stored lifecycle state of a run. `NOT_FOUND` is a state value so one
+// field can describe both an absent run and every stored lifecycle state
+// without fabrication.
+enum RunState {
+  // The default value; never a valid state on the wire from a conforming
+  // handler.
+  RUN_STATE_UNSPECIFIED = 0;
+
+  // No run with the requested identity was ever accepted by this client.
+  // Note that clients which lose state on restart (e.g. the current
+  // reference handler) cannot distinguish "never started" from "lost".
+  RUN_STATE_NOT_FOUND = 1;
+
+  // The run was admitted and has not started executing yet.
+  RUN_STATE_ACCEPTED = 2;
+
+  // The query is executing.
+  RUN_STATE_EXECUTING = 3;
+
+  // Result pages are being uploaded to intake.
+  RUN_STATE_UPLOADING = 4;
+
+  // Execution and upload finished; the run's outcome is final.
+  RUN_STATE_COMPLETED = 5;
+
+  // The run failed terminally. The bounded terminal error is in
+  // `GetRunStatusResponse.error`.
+  RUN_STATE_FAILED = 6;
+
+  // Cancellation was requested and cleanup is still in progress. A
+  // conforming executor MUST distinguish this from `CANCELLED`.
+  RUN_STATE_CANCELLATION_REQUESTED = 7;
+
+  // Cancellation was requested and cleanup completed.
+  RUN_STATE_CANCELLED = 8;
+}
+
+// A request to cancel a run.
+message CancelRunRequest {
+  // The ephemeral RC connection ID the request was routed to. Transport and
+  // audit context only.
+  string connection_id = 1;
+
+  // REQUIRED: a non-empty, human- or service-readable audit reason for the
+  // cancellation. Handlers MUST reject requests where it is empty.
+  string reason = 2;
+
+  // The immutable identity of the run to cancel.
+  RunIdentity run_identity = 3;
+}
+
+// The outcome of a cancellation request.
+message CancelRunResponse {
+  // The cancellation outcome.
+  CancelRunStatus status = 1;
+
+  // The immutable run identity echoed back from the request.
+  RunIdentity run_identity = 2;
+
+  // When the addressed run's state was last updated. Unset for `NOT_FOUND`
+  // and `REJECTED`.
+  google.protobuf.Timestamp updated_at = 3;
+
+  // Bounded error detail, set when `status` is `REJECTED`.
+  ControlError error = 4;
+}
+
+// The result of a cancellation request.
+enum CancelRunStatus {
+  // The default value; never a valid outcome on the wire from a conforming
+  // handler.
+  CANCEL_RUN_STATUS_UNSPECIFIED = 0;
+
+  // Cancellation was requested for an accepted run. This is not a claim that
+  // cleanup finished: a conforming executor must bound cleanup and only
+  // report `CANCELLED` (via status) once cleanup is complete.
+  CANCEL_RUN_STATUS_CANCELLATION_REQUESTED = 1;
+
+  // A cancellation was already requested and is still in progress; the
+  // repeat had no additional effect.
+  CANCEL_RUN_STATUS_ALREADY_REQUESTED = 2;
+
+  // The addressed run is already in a terminal state; cancellation had no
+  // effect.
+  CANCEL_RUN_STATUS_ALREADY_TERMINAL = 3;
+
+  // No run with the requested identity was ever accepted by this client.
+  CANCEL_RUN_STATUS_NOT_FOUND = 4;
+
+  // The cancellation request was invalid and had no effect. Carries bounded
+  // detail in `CancelRunResponse.error`.
+  CANCEL_RUN_STATUS_REJECTED = 5;
+}
+
+// The immutable identity of one run.
+//
+// The identity is the execution deduplication key: exactly one canonical
+// command may ever be associated with it on a given client.
+message RunIdentity {
+  // The Datadog organization that owns the task. Must be non-zero.
+  uint64 org_id = 1;
+
+  // The persistent ITS task ID that produced the run, as a canonical
+  // non-empty string.
+  string task_id = 2;
+
+  // The authoritative ITS run ID for this execution, as a canonical
+  // non-empty string.
+  string run_id = 3;
+
+  // The its-agent-intake upload session ID, as a canonical non-empty
+  // string. This is the sole intake session identifier carried through the
+  // command; it is not an upload token and grants no upload authorization
+  // by itself.
+  string upload_id = 4;
+}
+
+// A credential-free database target.
+//
+// Exactly one of the oneof arms must be set: a network target resolved
+// against Agent configuration, or the name of a configured database
+// instance.
+message DatabaseTarget {
+  oneof target {
+    // A network-reachable database target.
+    NetworkTarget network_target = 1;
+
+    // The name of a database instance configured in the Agent. Must be
+    // non-empty.
+    string database_instance = 2;
+  }
+}
+
+// A network-reachable, credential-free database target.
+message NetworkTarget {
+  // The database host. Must be non-empty.
+  string host = 1;
+
+  // The database port. Must be in the 1-65535 range; zero is reserved for
+  // "unset" and is invalid.
+  uint32 port = 2;
+
+  // The database name. Must be non-empty.
+  string dbname = 3;
+}
+
+// Server-owned result-delivery configuration for one run.
+message ResultDelivery {
+  // The numeric version of the result artifact contract the pages must
+  // follow, matching the Agent's `int32 artifact_version` (the current
+  // Action Platform worker payload sends 1). Opaque to the client; part of
+  // the run's canonical command. Must be positive: zero and negative
+  // values are invalid.
+  int32 artifact_version = 1;
+
+  // The base URL of the its-agent-intake upload endpoint the pages are PUT
+  // to. Must be an absolute http(s) URL. The exact allowlisted value is a
+  // backend policy concern, not a schema concern.
+  string intake_base_url = 2;
+
+  // The server-owned upload and execution limits for this run.
+  ResultDeliveryLimits limits = 3;
+}
+
+// Server-owned upload and execution limits for one run, matching the current
+// Action Platform semantic payload. A caller cannot raise platform ceilings
+// through these values.
+message ResultDeliveryLimits {
+  // Maximum encoded bytes in one completed JSON page (AP: maxFileBytes).
+  uint64 max_file_bytes = 1;
+
+  // Maximum encoded bytes across all pages of one run (AP:
+  // maxResultBytes).
+  uint64 max_result_bytes = 2;
+
+  // Maximum encoded bytes for one row (AP: maxRowBytes).
+  uint64 max_row_bytes = 3;
+
+  // Maximum number of described result columns (AP: maxColumns).
+  uint32 max_columns = 4;
+
+  // Maximum encoded schema bytes repeated in one page (AP: maxSchemaBytes).
+  uint64 max_schema_bytes = 5;
+
+  // Maximum number of page objects and filesWritten entries (AP: maxPages).
+  uint32 max_pages = 6;
+
+  // Milliseconds allotted to target resolution, query execution, page
+  // construction, upload, and retries (AP: timeoutMs).
+  uint64 timeout_ms = 7;
+}
+
+// Observability-only trace context for a run.
+//
+// Never an authorization, routing, or result-validation input: conforming
+// handlers use it only to parent their telemetry, and MUST NOT treat a
+// differing trace context as a command conflict.
+message TraceContext {
+  // The trace ID the Agent should parent its work under.
+  uint64 trace_id = 1;
+
+  // The parent span ID within that trace.
+  uint64 parent_id = 2;
+
+  // The effective sampling priority for the propagated trace.
+  int32 sampling_priority = 3;
+}
+
+// A compact upload receipt for a run whose pages were uploaded.
+//
+// The backend MUST NOT trust this receipt alone: intake's authoritative
+// finalized result remains the source of truth for totals and object keys.
+message UploadReceipt {
+  // The intake upload session the pages were uploaded under.
+  string upload_id = 1;
+
+  // The number of completed page objects.
+  uint32 page_count = 2;
+
+  // The total number of rows across all completed pages.
+  uint64 total_rows = 3;
+
+  // The total number of encoded bytes across all completed pages.
+  uint64 total_bytes = 4;
+}
+
+// Bounded, typed execution diagnostics for a run, mirroring the Agent's
+// `RemoteQueryExecutionDiagnostics` and `RemoteQueryProducerDiagnostics`
+// messages field-for-field so a future bridge can forward the Agent's
+// current diagnostics without flattening or dropping fields. The names omit
+// the `RemoteQuery` prefix because these messages already live in this
+// Remote Queries package.
+//
+// Bounded by construction: a fixed set of scalar timings and counters, with
+// no repeated or free-form data. Every scalar value uses explicit presence:
+// unset means NOT measured (never zero), and zero means the phase ran and
+// completed below the reporting resolution.
+message ExecutionDiagnostics {
+  // The version of this diagnostics contract.
+  optional int32 contract_version = 1;
+
+  // The producer-side phase timings and counters of the run.
+  optional ProducerDiagnostics producer = 2;
+}
+
+// Producer-side phase timings and counters for one run, mirroring the
+// Agent's `RemoteQueryProducerDiagnostics` field-for-field.
+message ProducerDiagnostics {
+  // Total producer wall from request validation through the completed
+  // finalize response, in milliseconds.
+  optional int64 total_ms = 1;
+
+  // Database connection/transaction/schema setup, in milliseconds.
+  optional int64 database_setup_ms = 2;
+
+  // Cumulative wall inside result-fetch calls, in milliseconds.
+  optional int64 database_fetch_ms = 3;
+
+  // Row normalization, JSON encoding, and page buffer writes, excluding
+  // upload calls, in milliseconds.
+  optional int64 encode_and_page_build_ms = 4;
+
+  // Cumulative client-observed upload wall across all attempts, including
+  // retry backoff, in milliseconds.
+  optional int64 page_upload_ms = 5;
+
+  // The run finalize call, in milliseconds.
+  optional int64 finalize_ms = 6;
+
+  // The non-negative measured remainder of `total_ms` after the named
+  // non-overlapping phases, in milliseconds.
+  optional int64 other_ms = 7;
+
+  // Wall from admission to the first acknowledged page, in milliseconds.
+  optional int64 time_to_first_page_ms = 8;
+
+  // The number of completed page objects.
+  optional int64 page_count = 9;
+
+  // The number of emitted rows.
+  optional int64 row_count = 10;
+
+  // The number of encoded bytes across all pages.
+  optional int64 byte_count = 11;
+
+  // The number of page upload attempts, including retries.
+  optional int64 upload_attempt_count = 12;
+
+  // The number of page upload retries.
+  optional int64 upload_retry_count = 13;
+
+  // The minimum completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_min_ms = 14;
+
+  // The median completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_p50_ms = 15;
+
+  // The 95th percentile completed page upload attempt wall, in
+  // milliseconds.
+  optional int64 page_upload_p95_ms = 16;
+
+  // The maximum completed page upload attempt wall, in milliseconds.
+  optional int64 page_upload_max_ms = 17;
+}
+
+// A bounded, structured control-plane error.
+message ControlError {
+  // A stable, machine-readable error code from a closed per-method
+  // vocabulary (e.g. "COMMAND_CONFLICT"). Callers SHOULD match on `code`
+  // and MUST NOT parse `message` to classify failures.
+  string code = 1;
+
+  // A short, bounded human-readable description for operators. Conforming
+  // handlers keep it under a few hundred bytes.
+  string message = 2;
+}

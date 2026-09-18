@@ -45,6 +45,18 @@ pub(crate) mod rc {
                     ));
                 }
             }
+            pub mod remote_queries {
+                pub mod v1alpha1 {
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_queries.v1alpha1.rs"
+                    ));
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.remote_queries.v1alpha1.serde.rs"
+                    ));
+                }
+            }
         }
         pub mod signature {
             pub mod v1 {
@@ -114,6 +126,30 @@ mod tests {
 
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
+
+    /// `remote_config.v1.PingRequest` is evaluated through a Rego policy
+    /// engine by callers, so it must keep the generated protobuf-JSON
+    /// `Serialize` impl; if the `pbjson` codegen is accidentally removed,
+    /// this fails to compile.
+    #[test]
+    fn test_remote_config_ping_request_serializable() {
+        fn assert_serializable<T: serde::Serialize>() {}
+        assert_serializable::<magic_tunnel::remote_config::v1::PingRequest>();
+    }
+
+    /// Every `remote_queries.v1alpha1` control request is evaluated through
+    /// a Rego policy engine by callers, so all four request messages must
+    /// keep their generated protobuf-JSON `Serialize` impls; if the `pbjson`
+    /// codegen is accidentally removed for any of them, this fails to
+    /// compile.
+    #[test]
+    fn test_remote_queries_v1alpha1_requests_serializable() {
+        fn assert_serializable<T: serde::Serialize>() {}
+        assert_serializable::<magic_tunnel::remote_queries::v1alpha1::ResolveTargetRequest>();
+        assert_serializable::<magic_tunnel::remote_queries::v1alpha1::StartRunRequest>();
+        assert_serializable::<magic_tunnel::remote_queries::v1alpha1::GetRunStatusRequest>();
+        assert_serializable::<magic_tunnel::remote_queries::v1alpha1::CancelRunRequest>();
+    }
 
     /// Ensure the encoding of a sample payload does not change (e.g.
     /// serialisation configuration changes).
