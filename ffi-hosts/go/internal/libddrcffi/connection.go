@@ -143,6 +143,9 @@ func (c *Connection) Close() error {
 	// Stop the connection processing pipeline. The drain runs before
 	// rc_conn_disconnected below, because rc-x509-client discards dispatch
 	// results for a connection that is no longer connected.
+	//
+	// This also ensures that we don't have a use after free of the FFI connection
+	// for any jobs finishing up, as shutdown allows that to close out first.
 	c.state.pool.shutdown()
 
 	if wasConnected {
@@ -239,6 +242,10 @@ func (c *Connection) sendDispatchResult(result dispatchResult) {
 	}
 
 	c.state.conn.dispatchResult(result.correlationID, encoded)
+}
+
+func (c *Connection) sendDispatchError(correlationID uint64, errorCode int) {
+	c.state.conn.dispatchError(correlationID, errorCode)
 }
 
 // marshalDispatchResponse encodes the outcome of a dispatch handler as the

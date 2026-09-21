@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 // without a running invokePool behind it.
 type discardResultSink struct{}
 
-func (discardResultSink) sendDispatchResult(dispatchResult) {}
+func (discardResultSink) sendDispatchResult(result dispatchResult)              {}
+func (discardResultSink) sendDispatchError(correlationID uint64, errorCode int) {}
 
 func newTestConnState() *connState {
 	return &connState{
@@ -68,7 +70,7 @@ func encodeDispatchRequest(t *testing.T, uri string, innerPayload []byte) []byte
 func TestGoDispatchCb_EnqueuesAndCopies(t *testing.T) {
 	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(uri, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(uri) }()
@@ -175,7 +177,7 @@ func TestGoDispatchCb_NoDispatchHandler(t *testing.T) {
 func TestGoDispatchCb_QueueFull(t *testing.T) {
 	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(uri, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(uri) }()
@@ -205,7 +207,7 @@ func TestGoDispatchCb_QueueFull(t *testing.T) {
 func TestGoDispatchCb_RejectsWhenNotAccepting(t *testing.T) {
 	const uri = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-	if err := RegisterHandler(uri, func(uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
+	if err := RegisterHandler(uri, func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }); err != nil {
 		t.Fatalf("RegisterHandler(uri) returned error: %v", err)
 	}
 	defer func() { _ = UnregisterHandler(uri) }()
@@ -312,7 +314,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		payload       []byte
 	}
 	called := make(chan invocation, 1)
-	handler := func(correlationID uint64, payload []byte) ([]byte, error) {
+	handler := func(ctx context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 		called <- invocation{correlationID: correlationID, payload: payload}
 		return []byte{0xaa, 0xbb}, nil
 	}
@@ -339,7 +341,7 @@ func TestDispatchWorker_RoutesToHandler(t *testing.T) {
 		handler:       handler,
 		request:       &magictunnelv1.MagicTunnelRequest{Uri: uri, Request: innerPayload},
 	}
-	conn.state.pool.dispatchQueue <- job
+	conn.state.pool.enqueue(job)
 
 	select {
 	case got := <-called:

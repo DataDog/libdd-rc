@@ -1,6 +1,7 @@
 package libddrcffi
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -100,13 +101,32 @@ func TestConnectionConnectedTwice(t *testing.T) {
 	}
 }
 
+type dispatchError struct {
+	correlationID uint64
+	errorCode     int
+}
+
 // chanResultSink is a resultSink that delivers each result onto itself, for
 // tests that drive an invokePool directly and want to observe its results
 // without a real FFIConnection.
-type chanResultSink chan dispatchResult
+type chanResultSink struct {
+	results chan dispatchResult
+	errors  chan dispatchError
+}
+
+func newChanResultSink() chanResultSink {
+	return chanResultSink{
+		results: make(chan dispatchResult, invokeWorkerCount),
+		errors:  make(chan dispatchError, invokeWorkerCount),
+	}
+}
 
 func (s chanResultSink) sendDispatchResult(result dispatchResult) {
-	s <- result
+	s.results <- result
+}
+
+func (s chanResultSink) sendDispatchError(correlationID uint64, errorCode int) {
+	s.errors <- dispatchError{correlationID: correlationID, errorCode: errorCode}
 }
 
 // newTestInvokePipeline wires up a connState's invokePool and starts it,
@@ -115,7 +135,7 @@ func (s chanResultSink) sendDispatchResult(result dispatchResult) {
 func newTestInvokePipeline(t *testing.T) (*Connection, chanResultSink) {
 	t.Helper()
 
-	sink := make(chanResultSink, invokeWorkerCount)
+	sink := newChanResultSink()
 	pool := newInvokePool(sink)
 	conn := &Connection{state: &connState{pool: pool}}
 
@@ -135,19 +155,19 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	started := make(chan uint64, 2)
 	release := make(chan struct{})
 
-	slow := func(correlationID uint64, _ []byte) ([]byte, error) {
+	slow := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		<-release
 		return nil, nil
 	}
-	fast := func(correlationID uint64, _ []byte) ([]byte, error) {
+	fast := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		started <- correlationID
 		return nil, nil
 	}
 
 	req := &magictunnelv1.MagicTunnelRequest{}
-	conn.state.pool.dispatchQueue <- dispatchJob{correlationID: 1, handler: slow, request: req}
-	conn.state.pool.dispatchQueue <- dispatchJob{correlationID: 2, handler: fast, request: req}
+	conn.state.pool.enqueue(dispatchJob{correlationID: 1, handler: slow, request: req})
+	conn.state.pool.enqueue(dispatchJob{correlationID: 2, handler: fast, request: req})
 
 	seen := map[uint64]bool{}
 	for range 2 {
@@ -163,7 +183,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	}
 
 	select {
-	case result := <-sink:
+	case result := <-sink.results:
 		if result.correlationID != 2 {
 			t.Fatalf("first result correlationID = %d, want 2 (fast handler must finish before the slow handler is released)", result.correlationID)
 		}
@@ -174,7 +194,7 @@ func TestInvokeWorkersOverlapSlowAndFastHandlers(t *testing.T) {
 	close(release)
 
 	select {
-	case result := <-sink:
+	case result := <-sink.results:
 		if result.correlationID != 1 {
 			t.Fatalf("second result correlationID = %d, want 1", result.correlationID)
 		}
@@ -192,15 +212,15 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	conn, sink := newTestInvokePipeline(t)
 
 	const jobs = 50
-	noop := func(uint64, []byte) ([]byte, error) { return nil, nil }
+	noop := func(context.Context, uint64, []byte) ([]byte, error) { return nil, nil }
 	for i := uint64(1); i <= jobs; i++ {
-		conn.state.pool.dispatchQueue <- dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}}
+		conn.state.pool.enqueue(dispatchJob{correlationID: i, handler: noop, request: &magictunnelv1.MagicTunnelRequest{}})
 	}
 
 	seen := map[uint64]int{}
 	for range jobs {
 		select {
-		case result := <-sink:
+		case result := <-sink.results:
 			seen[result.correlationID]++
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for results, got %d of %d", len(seen), jobs)
@@ -214,7 +234,7 @@ func TestInvokeWorkersYieldExactlyOneResultPerJob(t *testing.T) {
 	}
 
 	select {
-	case extra := <-sink:
+	case extra := <-sink.results:
 		t.Fatalf("unexpected extra result: %+v", extra)
 	default:
 	}
@@ -230,12 +250,12 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 
 	// Blocks the worker inside the first job, so the remaining jobs are still
 	// queued by the time Disconnected runs.
-	blocking := func(correlationID uint64, _ []byte) ([]byte, error) {
+	blocking := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		<-release
 		return nil, nil
 	}
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	recording := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
@@ -253,7 +273,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		}
 	}
 
-	conn.state.pool.dispatchQueue <- newJob(1, blocking)
+	conn.state.pool.enqueue(newJob(1, blocking))
 
 	// Wait until the worker is inside the blocking handler before queueing
 	// the jobs that must survive teardown.
@@ -266,8 +286,8 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 		t.Fatal("timed out waiting for the dispatch worker to pick up the first job")
 	}
 
-	conn.state.pool.dispatchQueue <- newJob(2, recording)
-	conn.state.pool.dispatchQueue <- newJob(3, recording)
+	conn.state.pool.enqueue(newJob(2, recording))
+	conn.state.pool.enqueue(newJob(3, recording))
 
 	disconnected := make(chan error, 1)
 	go func() { disconnected <- conn.Close() }()
@@ -305,18 +325,18 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 	conn, _ := newTestConnection(t)
 
 	handled := make(chan uint64, 1)
-	panicking := func(uint64, []byte) ([]byte, error) { panic("handler is unwell") }
-	recording := func(correlationID uint64, _ []byte) ([]byte, error) {
+	panicking := func(context.Context, uint64, []byte) ([]byte, error) { panic("handler is unwell") }
+	recording := func(ctx context.Context, correlationID uint64, _ []byte) ([]byte, error) {
 		handled <- correlationID
 		return nil, nil
 	}
 
 	for i, h := range []HandlerFunc{panicking, recording} {
-		conn.state.pool.dispatchQueue <- dispatchJob{
+		conn.state.pool.enqueue(dispatchJob{
 			correlationID: uint64(i + 1),
 			handler:       h,
 			request:       &magictunnelv1.MagicTunnelRequest{},
-		}
+		})
 	}
 
 	select {
