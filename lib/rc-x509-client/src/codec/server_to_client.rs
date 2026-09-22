@@ -71,12 +71,12 @@ pub enum ServerToClient {
     /// The server has requested an immediate PONG response.
     Ping,
 
-    /// The server has pushed a new certificate to the client, as raw
+    /// The server has pushed a batch of certificates to the client, as raw
     /// (untrusted) DER bytes.
     ///
     /// The application is responsible for parsing and validating these bytes
     /// before use.
-    CertificatePush(UntrustedCertBytes),
+    CertificatePush(Vec<UntrustedCertBytes>),
 
     /// A request to dispatch the provided payload to the host application.
     Dispatch {
@@ -126,9 +126,12 @@ impl TryFrom<&[u8]> for ServerToClient {
                     signature: v.signature,
                 }),
             },
-            Message::CertificatePush(cert) => {
-                Self::CertificatePush(UntrustedCertBytes::new(cert.der))
-            }
+            Message::CertificatePush(push) => Self::CertificatePush(
+                push.certificate
+                    .into_iter()
+                    .map(|cert| UntrustedCertBytes::new(cert.der))
+                    .collect(),
+            ),
             Message::ClientHelloAck(v) => Self::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     v.server_nonce,

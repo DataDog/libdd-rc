@@ -118,8 +118,10 @@ fn ffi_io() {
     write_proto(
         FFI_IO,
         ServerToClient {
-            message: Some(Message::CertificatePush(v1::Certificate {
-                der: SAMPLE_CERT_DER.into(),
+            message: Some(Message::CertificatePush(v1::CertificatePush {
+                certificate: vec![v1::Certificate {
+                    der: SAMPLE_CERT_DER.into(),
+                }],
             })),
         },
     );
