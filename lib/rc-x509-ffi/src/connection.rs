@@ -42,6 +42,22 @@ use super::Ctx;
 /// (independently) before returning errors.
 const QUEUE_BUFFER_LEN: usize = 100;
 
+/// Report a caller-side state machine violation.
+///
+/// Debug builds panic immediately: an invalid state transition is a bug in
+/// the FFI host, and CI/tests are expected to catch it loudly. Release
+/// builds must not let a misbehaving host crash the process across the FFI
+/// boundary, so they instead log the violation and evaluate to `$ret`.
+macro_rules! invalid_state {
+    ($msg:literal, $ret:expr) => {{
+        if cfg!(debug_assertions) {
+            panic!($msg);
+        }
+        error!($msg);
+        $ret
+    }};
+}
+
 /// Initialise a new client connection state.
 ///
 /// The `user_data` pointer is for use by the caller to pass state to the
@@ -264,9 +280,9 @@ pub unsafe extern "C" fn rc_conn_dispatch_error(
 
 /// Mark the connection as established.
 ///
-/// The caller MUST have made a previous call to [`rc_conn_send_callback()`],
-/// else this call will return an error and the connection will not be marked as
-/// available internally.
+/// The caller MUST have made a previous call to [`rc_conn_send_callback()`].
+/// Calling this out of order is a debug-build panic; release builds instead
+/// return [`ConnRet::InvalidState`] and leave the connection unchanged.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of [`FFIConnection`] to client
@@ -276,11 +292,11 @@ pub unsafe extern "C" fn rc_conn_dispatch_error(
 ///
 /// This call is not concurrency safe.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
+pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) -> ConnRet {
     assert!(!conn.is_null());
 
     let conn = unsafe { &mut *conn };
-    conn.set_connected();
+    conn.set_connected()
 }
 
 /// Mark the connection as closed.
@@ -295,6 +311,10 @@ pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
 /// internal I/O task exists cleanly, after which time it is guaranteed no more
 /// calls to the [`SendCb`] will be made.
 ///
+/// Calling this on a connection that is not currently connected is a
+/// debug-build panic; release builds instead return
+/// [`ConnRet::InvalidState`] and leave the connection unchanged.
+///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of [`FFIConnection`] to client
 ///     library for the duration of the call.
@@ -303,11 +323,11 @@ pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) {
 ///
 /// This call is not concurrency safe.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_disconnected(conn: *mut FFIConnection) {
+pub unsafe extern "C" fn rc_conn_disconnected(conn: *mut FFIConnection) -> ConnRet {
     assert!(!conn.is_null());
 
     let conn = unsafe { &mut *conn };
-    conn.set_disconnected();
+    conn.set_disconnected()
 }
 
 /// Pass data received from the RC delivery backend for the `conn` connection.
@@ -324,6 +344,10 @@ pub unsafe extern "C" fn rc_conn_disconnected(conn: *mut FFIConnection) {
 /// The `conn` MUST have previously been marked as ready using
 /// [`rc_conn_connected()`], and the provided `data` MUST be valid for a read of
 /// `length` bytes for the duration of this function call.
+///
+/// Calling this before the connection is ready is a debug-build panic;
+/// release builds instead return [`RecvRet::InvalidState`] and drop the
+/// payload.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rc_conn_recv(
     conn: *const FFIConnection,
@@ -350,9 +374,7 @@ pub unsafe extern "C" fn rc_conn_recv(
     // Call into the connection to enqueue the deserialised message (or
     // deserialisation error).
     let conn = unsafe { &*conn };
-    conn.recv_incoming(message);
-
-    RecvRet::Success
+    conn.recv_incoming(message)
 }
 
 /// Send `data` from the client library to the RC delivery backend over the
@@ -392,16 +414,20 @@ pub type SendCb =
 /// This call MUST provide a `cb` that is valid and safe to call concurrently at
 /// all times after [`rc_conn_connected()`] is called for `conn`, until a
 /// subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
+///
+/// Calling this while connected, or after disconnecting, is a debug-build
+/// panic; release builds instead return [`ConnRet::InvalidState`] and leave
+/// the connection unchanged.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rc_conn_send_callback(
     conn: *mut FFIConnection,
     cb: SendCb,
     user_data: *const c_void,
-) {
+) -> ConnRet {
     assert!(!conn.is_null());
 
     let conn = unsafe { &mut *conn };
-    conn.set_send_callback(cb, SendCbUserData(user_data));
+    conn.set_send_callback(cb, SendCbUserData(user_data))
 }
 
 /// Release the resources held by this `conn`.
@@ -413,13 +439,37 @@ pub unsafe extern "C" fn rc_conn_send_callback(
 ///
 /// The `conn` MUST be marked as disconnected ([`rc_conn_disconnected()`]) prior
 /// to freeing the connection.
+///
+/// Freeing a still-connected connection is a debug-build panic; release
+/// builds instead log the violation and return [`ConnRet::InvalidState`],
+/// leaving `conn` valid and unchanged: resources are only released once this
+/// call returns [`ConnRet::Success`]. A caller that retries after a
+/// [`ConnRet::InvalidState`] return without first calling
+/// [`rc_conn_disconnected()`] gets [`ConnRet::InvalidState`] again rather
+/// than a use-after-free.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) {
+pub unsafe extern "C" fn rc_conn_free(conn: *mut FFIConnection) -> ConnRet {
     assert!(!conn.is_null());
+
+    let orig_ptr = conn;
 
     let conn = unsafe { Box::from_raw(conn) };
 
-    conn.free()
+    match conn.free() {
+        Ok(()) => ConnRet::Success,
+        Err((conn, ret)) => {
+            // Nothing is freed here: `conn` is a Box, so calling "into_raw"
+            // consumes the Box<> pointer without deallocating it - the caller
+            // retains a pointer to the boxed FFIConnection, which remains a
+            // valid pointer to the still-live allocation.
+            let new_ptr = Box::into_raw(conn);
+
+            // Invariant: caller's pointer remains valid.
+            assert_eq!(new_ptr, orig_ptr);
+
+            ret
+        }
+    }
 }
 
 /// Result of sending data to the RC delivery backend, returned by the host
@@ -444,6 +494,25 @@ pub enum SendRet {
 pub enum RecvRet {
     /// The message was successfully passed.
     Success = 0,
+
+    /// The connection was not in a state where it could accept incoming
+    /// data (e.g. not yet connected, or already disconnected). The payload
+    /// was dropped.
+    InvalidState = 1,
+}
+
+/// Result of a [`FFIConnection`] lifecycle call (e.g.
+/// [`rc_conn_connected()`], [`rc_conn_disconnected()`],
+/// [`rc_conn_send_callback()`], [`rc_conn_free()`]) made by the host runtime.
+#[derive(Debug, PartialEq, Eq)]
+#[repr(i32)]
+pub enum ConnRet {
+    /// The call completed successfully.
+    Success = 0,
+
+    /// The connection was not in a valid state for this call, e.g. it was
+    /// called out of the expected lifecycle order. The call had no effect.
+    InvalidState = 1,
 }
 
 /// A container to hold the callback context pointer for a [`SendCb`] call.
@@ -710,9 +779,11 @@ impl FFIConnection {
     ///
     /// # Panics
     ///
-    /// This call panics if the connection has not yet been configured with a
-    /// [`SendCb`] callback, or is already connected.
-    fn set_connected(&mut self) {
+    /// In debug builds, this call panics if the connection has not yet been
+    /// configured with a [`SendCb`] callback, or is already connected.
+    /// Release builds instead return [`ConnRet::InvalidState`] and leave the
+    /// connection unchanged.
+    fn set_connected(&mut self) -> ConnRet {
         // Correctness: the callback can only be changed when the connection is
         // not in use (and therefore the caller has an exclusive ref).
         //
@@ -720,7 +791,7 @@ impl FFIConnection {
         let (send, user_data) = match self.state {
             State::Configured { send, user_data } => (send, user_data),
             State::Init | State::Connected { .. } | State::Disconnected => {
-                panic!("connection not in configured state")
+                return invalid_state!("connection not in configured state", ConnRet::InvalidState);
             }
         };
 
@@ -796,14 +867,18 @@ impl FFIConnection {
         };
 
         self.publish_event(ConnectionEvent::Connected(io_handle, publisher));
+
+        ConnRet::Success
     }
 
     /// Receive a payload from the RC backend, to the library.
     ///
     /// # Panics
     ///
-    /// This call panics if the connection is not in the "connected" state.
-    fn recv_incoming(&self, payload: Result<ServerToClient, DecodingError>) {
+    /// In debug builds, this call panics if the connection is not in the
+    /// "connected" state. Release builds instead return
+    /// [`RecvRet::InvalidState`] and drop the payload.
+    fn recv_incoming(&self, payload: Result<ServerToClient, DecodingError>) -> RecvRet {
         match &self.state {
             State::Connected { ffi2lib, .. } => {
                 // Pass the payload to the I/O handle.
@@ -812,9 +887,10 @@ impl FFIConnection {
                     // the connection has closed.
                     error!("IOHandle is not listening for payloads");
                 }
+                RecvRet::Success
             }
             State::Init | State::Configured { .. } | State::Disconnected => {
-                panic!("invalid connection state for recv")
+                invalid_state!("invalid connection state for recv", RecvRet::InvalidState)
             }
         }
     }
@@ -833,9 +909,12 @@ impl FFIConnection {
     ///
     /// # Panics
     ///
-    /// This call panics if the connection was not in the "connected" state, or
-    /// the [`io_task`] panicked.
-    fn set_disconnected(&mut self) {
+    /// In debug builds, this call panics if the connection was not in the
+    /// "connected" state. Release builds instead return
+    /// [`ConnRet::InvalidState`] and leave the connection unchanged.
+    ///
+    /// This call always panics if the [`io_task`] panicked.
+    fn set_disconnected(&mut self) -> ConnRet {
         let last_state = std::mem::replace(&mut self.state, State::Disconnected);
 
         match last_state {
@@ -859,19 +938,27 @@ impl FFIConnection {
             State::Init | State::Configured { .. } | State::Disconnected => {
                 // Restore the state - it was not actually connected.
                 self.state = last_state;
-                panic!("disconnect on connection not in connected state")
+                return invalid_state!(
+                    "disconnect on connection not in connected state",
+                    ConnRet::InvalidState
+                );
             }
         };
 
         self.publish_event(ConnectionEvent::Disconnected);
+
+        ConnRet::Success
     }
 
     /// Set the [`SendCb`] for this [`FFIConnection`].
     ///
     /// # Panics
     ///
-    /// This call panics if the connection is in use ([`State::Connected`]).
-    fn set_send_callback(&mut self, cb: SendCb, user_data: SendCbUserData) {
+    /// In debug builds, this call panics if the connection is in use
+    /// ([`State::Connected`]) or already disconnected
+    /// ([`State::Disconnected`]). Release builds instead return
+    /// [`ConnRet::InvalidState`] and leave the connection unchanged.
+    fn set_send_callback(&mut self, cb: SendCb, user_data: SendCbUserData) -> ConnRet {
         assert_ne!(cb as usize, 0, "send callback must not be null");
 
         // Correctness: the callback can only be changed when the connection is
@@ -881,10 +968,16 @@ impl FFIConnection {
         match &self.state {
             State::Init | State::Configured { .. } => { /* allowed */ }
             State::Connected { .. } => {
-                panic!("must disconnect connection before changing send callbacks")
+                return invalid_state!(
+                    "must disconnect connection before changing send callbacks",
+                    ConnRet::InvalidState
+                );
             }
             State::Disconnected => {
-                panic!("connection is disconnected and cannot be reconfigured")
+                return invalid_state!(
+                    "connection is disconnected and cannot be reconfigured",
+                    ConnRet::InvalidState
+                );
             }
         }
 
@@ -892,19 +985,34 @@ impl FFIConnection {
             send: cb,
             user_data,
         };
+
+        ConnRet::Success
     }
 
     /// Free this [`FFIConnection`] and emit a [`ConnectionEvent::Release`] to
     /// any event observers.
-    fn free(self: Box<Self>) {
-        match &self.state {
-            State::Init | State::Configured { .. } | State::Disconnected => { /* allowed */ }
-            State::Connected { .. } => {
-                panic!("must disconnect connection before free")
-            }
+    ///
+    /// Returns `Err` with `self` handed back, unfreed, if the connection is
+    /// still connected: freeing resources for a raw pointer the caller might
+    /// retry would be a use-after-free, so freeing only happens on `Ok`.
+    ///
+    /// # Panics
+    ///
+    /// In debug builds, this call panics if the connection is still
+    /// connected ([`State::Connected`]). Release builds instead log the
+    /// violation and return `Err` without freeing anything.
+    fn free(self: Box<Self>) -> Result<(), (Box<Self>, ConnRet)> {
+        if matches!(self.state, State::Connected { .. }) {
+            let ret = invalid_state!(
+                "must disconnect connection before free",
+                ConnRet::InvalidState
+            );
+            return Err((self, ret));
         }
 
         self.publish_event(ConnectionEvent::Release);
+
+        Ok(())
     }
 }
 
@@ -1471,6 +1579,216 @@ mod tests {
             rc_conn_free(conn);
             drop(Box::from_raw(tx_ptr));
 
+            rc_free(ctx);
+        }
+    }
+
+    unsafe extern "C" fn noop_dispatch(
+        _correlation_id: u64,
+        _data: *const u8,
+        _length: u32,
+        _user_data: *const c_void,
+    ) -> DispatchRet {
+        DispatchRet::Unknown
+    }
+
+    /// Debug builds MUST panic on an invalid state transition; release
+    /// builds MUST instead return an `InvalidState` sentinel and leave the
+    /// connection's state unchanged. Exercised directly against the
+    /// non-`extern "C"` state methods, since panicking across an `extern
+    /// "C"` ABI boundary aborts the process rather than unwinding.
+    #[test]
+    fn test_set_connected_invalid_state() {
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        // Never configured with a send callback: invalid transition to
+        // Connected.
+        let conn_ref = unsafe { &mut *conn };
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| conn_ref.set_connected()));
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_err(), "expected a panic in a debug build");
+        } else {
+            assert_matches!(result, Ok(ConnRet::InvalidState));
+        }
+        assert_matches!(unsafe { &*conn }.state, State::Init);
+
+        unsafe {
+            rc_conn_free(conn);
+            rc_free(ctx);
+        }
+    }
+
+    #[test]
+    fn test_set_disconnected_invalid_state() {
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        // Never connected: invalid transition to Disconnected.
+        let conn_ref = unsafe { &mut *conn };
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| conn_ref.set_disconnected()));
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_err(), "expected a panic in a debug build");
+        } else {
+            assert_matches!(result, Ok(ConnRet::InvalidState));
+        }
+        assert_matches!(unsafe { &*conn }.state, State::Init);
+
+        unsafe {
+            rc_conn_free(conn);
+            rc_free(ctx);
+        }
+    }
+
+    #[test]
+    fn test_recv_incoming_invalid_state() {
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        // Never connected: recv is not valid yet.
+        let conn_ref = unsafe { &*conn };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            conn_ref.recv_incoming(Ok(ServerToClient::Ping))
+        }));
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_err(), "expected a panic in a debug build");
+        } else {
+            assert_matches!(result, Ok(RecvRet::InvalidState));
+        }
+
+        unsafe {
+            rc_conn_free(conn);
+            rc_free(ctx);
+        }
+    }
+
+    #[test]
+    fn test_set_send_callback_invalid_state_disconnected() {
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
+            SendRet::Success
+        }
+
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        unsafe {
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            rc_conn_connected(conn);
+            rc_conn_disconnected(conn);
+        }
+
+        // Disconnected is terminal: reconfiguring the send callback is
+        // invalid.
+        let conn_ref = unsafe { &mut *conn };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            conn_ref.set_send_callback(do_send, SendCbUserData(ptr::null()))
+        }));
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_err(), "expected a panic in a debug build");
+        } else {
+            assert_matches!(result, Ok(ConnRet::InvalidState));
+        }
+        assert_matches!(unsafe { &*conn }.state, State::Disconnected);
+
+        unsafe {
+            rc_conn_free(conn);
+            rc_free(ctx);
+        }
+    }
+
+    #[test]
+    fn test_free_invalid_state_connected() {
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
+            SendRet::Success
+        }
+
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        unsafe {
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            rc_conn_connected(conn);
+        }
+
+        // Still connected: freeing without disconnecting first is invalid.
+        // `conn` MUST remain valid and unfreed, so a caller that retries
+        // after seeing InvalidState is not left with a use-after-free.
+        let boxed = unsafe { Box::from_raw(conn) };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| boxed.free()));
+
+        if cfg!(debug_assertions) {
+            assert!(result.is_err(), "expected a panic in a debug build");
+        } else {
+            let (mut boxed, ret) = result.unwrap().unwrap_err();
+            assert_eq!(ret, ConnRet::InvalidState);
+
+            // Not freed: disconnecting first and retrying succeeds against
+            // the same box.
+            let ret = boxed.set_disconnected();
+            assert_eq!(ret, ConnRet::Success);
+            assert_matches!(boxed.free(), Ok(()));
+        }
+
+        unsafe {
             rc_free(ctx);
         }
     }
