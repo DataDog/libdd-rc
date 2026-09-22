@@ -625,9 +625,9 @@ mod tests {
         prop_oneof![
             arbitrary_valid_dispatch_request(),
             LazyJust::new(|| ServerToClient::Ping),
-            LazyJust::new(|| ServerToClient::CertificatePush(UntrustedCertBytes::new(
-                SAMPLE_CERT_DER
-            ))),
+            LazyJust::new(
+                || ServerToClient::CertificatePush(vec![UntrustedCertBytes::new(SAMPLE_CERT_DER)])
+            ),
             LazyJust::new(|| ServerToClient::ClientHelloAck {
                 connection_id: UntrustedConnectionId::new(
                     Bytes::from_static(&[1, 2, 3, 4]),

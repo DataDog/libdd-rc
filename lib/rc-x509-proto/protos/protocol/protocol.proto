@@ -5,7 +5,7 @@ syntax = "proto3";
 // of RC).
 package rc.x509.protocol.v1;
 
-import "protocol/certificate.proto";
+import "protocol/chain.proto";
 import "protocol/dispatch.proto";
 import "protocol/handshake.proto";
 import "protocol/ping.proto";
@@ -33,11 +33,11 @@ message ServerToClient {
   oneof message {
     Ping ping = 1;
 
-    // The server is pushing a new X509 certificate to the client to consider
-    // when chain building.
+    // The server is pushing one or more X509 certificates to the client to
+    // consider when chain building. This can occur at any time.
     //
-    // This certificate MUST be treated as an untrusted input.
-    Certificate certificate_push = 2;
+    // This certificates MUST be treated as an untrusted input.
+    CertificatePush certificate_push = 2;
 
     // Pass a message to the host application.
     DispatchRequest dispatch = 3;
@@ -66,5 +66,8 @@ message ClientToServer {
     // The client is triggering a disconnect because of an unexpected protocol
     // error.
     ClientProtocolError protocol_error = 4;
+
+    // Request for a missing certificate and optionally the chain to it.
+    ChainFetch chain_fetch = 5;
   }
 }

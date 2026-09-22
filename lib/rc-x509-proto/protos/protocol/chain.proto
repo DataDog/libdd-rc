@@ -1,0 +1,36 @@
+// X509 certificate chain resolution.
+
+syntax = "proto3";
+package rc.x509.protocol.v1;
+
+import "protocol/certificate.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
+
+// Request from the client for the server to deliver a `CertificatePush`
+// containing at least the certificate identified by `cert_id`, and optionally a
+// set of certificates that chain to `cert_id` at the server's discretion.
+//
+// The server SHOULD provide the full intermediate chain to `cert_id` (without
+// roots). However, the server MAY omit any certificate in the response that it
+// believes the client already has cached, with the exception of the requested
+// `cert_id` which MUST be provided.
+//
+// If the server omits a certificate in the chain that the client requires, the
+// client SHOULD send a new `ChainFetch` for the missing certificate.
+//
+// The server MUST eventually respond with an asynchronously delivered
+// `CertificatePush` that contains at least `cert_id`.
+message ChainFetch {
+  // Request the certificate identified by `cert_id`, and the chain to it if
+  // the server deems necessary.
+  bytes cert_id = 1;
+}
+
+// Push a set of certificates to the client to consider when chain building.
+//
+// These certificates MAY be unrelated to each other.
+message CertificatePush {
+  // An unordered set of untrusted certificates.
+  repeated Certificate certificate = 1;
+}

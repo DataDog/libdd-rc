@@ -6,6 +6,8 @@ package rc.x509.protocol.v1;
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
 // An X509 certificate as raw DER-encoded bytes.
+//
+// This certificate MUST be treated as an untrusted input.
 message Certificate {
   bytes der = 1;
 }
