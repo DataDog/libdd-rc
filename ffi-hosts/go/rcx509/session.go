@@ -27,6 +27,11 @@ const (
 	// defaultReadLimit overrides coder/websocket's own default of 32 KiB,
 	// which is too small for RC payloads.
 	defaultReadLimit = 52428800 // 50 MiB
+
+	// resetThreshold is how long a session must stay up for its eventual
+	// failure to not be held against the next reconnection attempt's
+	// backoff delay.
+	resetThreshold = 5 * time.Second
 )
 
 type WebsocketDialer interface {
@@ -98,18 +103,16 @@ var errEmptyPayload = errors.New("rcx509: received an empty payload")
 // X509Context is closed while a session is running.
 var errFFIConnectionReleased = errors.New("rcx509: FFI connection was released")
 
-// runSession the entire lifecycle of an active connection between the x509 FFI
-// backend and the RC backend.
+// runSession runs the message loop for an already-established connection
+// between the x509 FFI backend and the RC backend.
 //
 // One call to runSession corresponds to exactly one FFIConnection: the FFI
 // layer's connection lifecycle is terminal, so a fresh Connection must be
 // created for every new WebSocket session rather than reused across
-// reconnects.
-func (c *Client) runSession(ctx context.Context) error {
-	conn, ws, err := c.establishConnection(ctx)
-	if err != nil {
-		return err
-	}
+// reconnects. The caller is responsible for establishing conn and ws (see
+// establishConnection) before calling runSession.
+func (c *Client) runSession(ctx context.Context, conn FFIConnection, ws WebsocketConnection) error {
+	var err error
 
 	// websocket read operations block, and we also need to be managing messages
 	// from the rc-x509-client layer that we need to send to the backend, so run

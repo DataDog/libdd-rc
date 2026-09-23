@@ -11,11 +11,15 @@ import (
 type fakeWebsocketDialer struct {
 	conn      WebsocketConnection
 	dialErr   error
+	dialDelay time.Duration
 	dialCount int
 }
 
 func (fd *fakeWebsocketDialer) Dial(ctx context.Context, url string, dialTimeout time.Duration) (WebsocketConnection, error) {
 	fd.dialCount++
+	if fd.dialDelay > 0 {
+		time.Sleep(fd.dialDelay)
+	}
 	if fd.dialErr != nil {
 		return nil, fd.dialErr
 	}
