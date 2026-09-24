@@ -9,7 +9,7 @@ import (
 	remotequeriesv1alpha1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries"
 )
 
-func TestHandleStartRun(t *testing.T) {
+func TestHandleExecute(t *testing.T) {
 	for _, tt := range []struct {
 		resolveOnly bool
 		wantCode    string
@@ -17,15 +17,15 @@ func TestHandleStartRun(t *testing.T) {
 		{resolveOnly: false, wantCode: "EXECUTION_UNAVAILABLE"},
 		{resolveOnly: true, wantCode: "TARGET_NOT_FOUND"},
 	} {
-		payload, err := proto.Marshal(&remotequeriesv1alpha1.StartRunRequest{ResolveOnly: tt.resolveOnly})
+		payload, err := proto.Marshal(&remotequeriesv1alpha1.ExecuteRequest{ResolveOnly: tt.resolveOnly})
 		if err != nil {
 			t.Fatalf("marshal request: %v", err)
 		}
-		respBytes, err := handleStartRun(context.Background(), 1, payload)
+		respBytes, err := handleExecute(context.Background(), 1, payload)
 		if err != nil {
 			t.Fatalf("handler returned error: %v", err)
 		}
-		var resp remotequeriesv1alpha1.StartRunResponse
+		var resp remotequeriesv1alpha1.ExecuteResponse
 		if err := proto.Unmarshal(respBytes, &resp); err != nil {
 			t.Fatalf("unmarshal response: %v", err)
 		}

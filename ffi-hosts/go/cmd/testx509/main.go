@@ -12,9 +12,9 @@ import (
 // Remote Config team's example DebugService/Ping RPC.
 const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
-// remoteQueriesServiceStartRunURI is the fully-qualified gRPC method name for
-// the Remote Queries team's RemoteQueriesService/StartRun RPC.
-const remoteQueriesServiceStartRunURI = "rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun"
+// remoteQueriesServiceExecuteURI is the fully-qualified gRPC method name for
+// the Remote Queries team's RemoteQueriesService/Execute RPC.
+const remoteQueriesServiceExecuteURI = "rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute"
 
 func main() {
 	enableLogging()
@@ -34,8 +34,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Register a handler for the RemoteQueriesService/StartRun URI:
-	if err := client.RegisterHandler(remoteQueriesServiceStartRunURI, handleStartRun); err != nil {
+	// Register a handler for the RemoteQueriesService/Execute URI:
+	if err := client.RegisterHandler(remoteQueriesServiceExecuteURI, handleExecute); err != nil {
 		log.Fatal(err)
 	}
 

@@ -6,23 +6,22 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunn
 // A service for the Remote Queries team to start query runs on connected
 // clients. The fully-qualified URI to register a handler for is:
 //
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute
 service RemoteQueriesService {
   // Starts a query run and responds without waiting for it to finish.
-  rpc StartRun(StartRunRequest) returns (StartRunResponse);
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
 }
 
-message StartRunRequest {
+message ExecuteRequest {
   string connection_id = 1;
-  string reason = 2;
-  string integration = 3;
-  Target target = 4;
-  string query = 5;
-  bool include_schema = 6;
+  string integration = 2;
+  Target target = 3;
+  string query = 4;
+  bool include_schema = 5;
   // Where the client uploads the query results.
-  ResultDelivery result_delivery = 7;
+  ResultDelivery result_delivery = 6;
   // Only resolve the target; do not run the query.
-  bool resolve_only = 8;
+  bool resolve_only = 7;
 }
 
 // The database to run the query against. Carries no credentials.
@@ -34,7 +33,7 @@ message Target {
 }
 
 message ResultDelivery {
-  // Identifies the run. StartRun requests with the same run_id are
+  // Identifies the run. Execute requests with the same run_id are
   // deduplicated.
   string run_id = 1;
   string task_id = 2;
@@ -54,20 +53,20 @@ message UploadLimits {
   int64 timeout_ms = 7;
 }
 
-message StartRunResponse {
-  StartRunStatus status = 1;
+message ExecuteResponse {
+  ExecuteStatus status = 1;
   // A machine-readable error code (e.g. TARGET_NOT_FOUND,
   // AMBIGUOUS_TARGET), set when rejected.
   string error_code = 2;
   string error_message = 3;
 }
 
-enum StartRunStatus {
-  START_RUN_STATUS_UNSPECIFIED = 0;
-  START_RUN_STATUS_ACCEPTED = 1;
+enum ExecuteStatus {
+  EXECUTE_STATUS_UNSPECIFIED = 0;
+  EXECUTE_STATUS_ACCEPTED = 1;
   // A run with this run_id was already accepted.
-  START_RUN_STATUS_ALREADY_ACCEPTED = 2;
-  START_RUN_STATUS_REJECTED = 3;
+  EXECUTE_STATUS_ALREADY_ACCEPTED = 2;
+  EXECUTE_STATUS_REJECTED = 3;
   // resolve_only: the target matched one integration instance.
-  START_RUN_STATUS_MATCHED = 4;
+  EXECUTE_STATUS_MATCHED = 4;
 }
