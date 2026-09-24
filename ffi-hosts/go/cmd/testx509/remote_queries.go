@@ -10,7 +10,7 @@ import (
 )
 
 // handleStartRun implements libddrcffi.HandlerFunc for the
-// RemoteQueriesService/StartRun uri. testx509 does not execute queries.
+// RemoteQueriesService/StartRun uri. It logs the request and responds REJECTED.
 func handleStartRun(_ context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	var req remotequeriesv1alpha1.StartRunRequest
 	if err := proto.Unmarshal(payload, &req); err != nil {
@@ -29,7 +29,7 @@ func handleStartRun(_ context.Context, correlationID uint64, payload []byte) ([]
 }
 
 // handleCancelRun implements libddrcffi.HandlerFunc for the
-// RemoteQueriesService/CancelRun uri. testx509 never starts runs.
+// RemoteQueriesService/CancelRun uri. It logs the request and responds NOT_RUNNING.
 func handleCancelRun(_ context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	var req remotequeriesv1alpha1.CancelRunRequest
 	if err := proto.Unmarshal(payload, &req); err != nil {

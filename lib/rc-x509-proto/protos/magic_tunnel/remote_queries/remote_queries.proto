@@ -4,8 +4,7 @@ package rc.x509.magic_tunnel.remote_queries.v1alpha1;
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
 
 // A service for the Remote Queries team to start and cancel query runs on
-// connected clients. Handlers must answer promptly: the Go FFI enforces a 30s
-// handler timeout. The fully-qualified URIs to register handlers for are:
+// connected clients. The fully-qualified URIs to register handlers for are:
 //
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/CancelRun
@@ -21,12 +20,11 @@ message StartRunRequest {
   Target target = 4;
   string query = 5;
   bool include_schema = 6;
-  // Results are uploaded to this intake, not returned over the tunnel.
+  // Where the client uploads the query results.
   ResultDelivery result_delivery = 7;
 }
 
-// The database the client should run the query against; the client resolves
-// its own credentials for it (credentials never cross the tunnel).
+// The database to run the query against. Carries no credentials.
 message Target {
   string host = 1;
   int32 port = 2;
@@ -35,7 +33,8 @@ message Target {
 }
 
 message ResultDelivery {
-  // The idempotency key: clients deduplicate StartRun by run_id.
+  // Identifies the run. StartRun requests with the same run_id are
+  // deduplicated.
   string run_id = 1;
   string task_id = 2;
   int32 artifact_version = 3;

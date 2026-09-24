@@ -78,9 +78,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // a protobuf-JSON-compliant `Serialize` impl (e.g. `payload`'s `bytes`
     // must serialize as a base64 string, not a byte array, to match what the
     // OPA policy expects).
-    //
-    // The Remote Queries request messages (and the nested types they
-    // reference) need the same treatment for policy evaluation.
     let descriptor_bytes = std::fs::read(&descriptor_path)?;
     pbjson_build::Builder::new()
         .register_descriptors(&descriptor_bytes)?
