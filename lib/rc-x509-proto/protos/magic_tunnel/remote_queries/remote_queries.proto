@@ -1,0 +1,87 @@
+syntax = "proto3";
+package rc.x509.magic_tunnel.remote_queries.v1alpha1;
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
+
+// A service for the Remote Queries team to start and cancel query runs on
+// connected clients. Handlers must answer promptly: the Go FFI enforces a 30s
+// handler timeout. The fully-qualified URIs to register handlers for are:
+//
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/CancelRun
+service RemoteQueriesService {
+  rpc StartRun(StartRunRequest) returns (StartRunResponse);
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+}
+
+message StartRunRequest {
+  string connection_id = 1;
+  string reason = 2;
+  string integration = 3;
+  Target target = 4;
+  string query = 5;
+  bool include_schema = 6;
+  // Results are uploaded to this intake, not returned over the tunnel.
+  ResultDelivery result_delivery = 7;
+}
+
+// The database the client should run the query against; the client resolves
+// its own credentials for it (credentials never cross the tunnel).
+message Target {
+  string host = 1;
+  int32 port = 2;
+  string dbname = 3;
+  string database_instance = 4;
+}
+
+message ResultDelivery {
+  // The idempotency key: clients deduplicate StartRun by run_id.
+  string run_id = 1;
+  string task_id = 2;
+  int32 artifact_version = 3;
+  string upload_id = 4;
+  string base_url = 5;
+  UploadLimits limits = 6;
+}
+
+message UploadLimits {
+  int64 max_file_bytes = 1;
+  int64 max_result_bytes = 2;
+  int64 max_row_bytes = 3;
+  int64 max_columns = 4;
+  int64 max_schema_bytes = 5;
+  int64 max_pages = 6;
+  int64 timeout_ms = 7;
+}
+
+message StartRunResponse {
+  StartRunStatus status = 1;
+  // A machine-readable error code, set when the run is rejected.
+  string error_code = 2;
+  string error_message = 3;
+}
+
+enum StartRunStatus {
+  START_RUN_STATUS_UNSPECIFIED = 0;
+  START_RUN_STATUS_ACCEPTED = 1;
+  // A run with this run_id was already accepted.
+  START_RUN_STATUS_ALREADY_ACCEPTED = 2;
+  START_RUN_STATUS_REJECTED = 3;
+}
+
+message CancelRunRequest {
+  string connection_id = 1;
+  string reason = 2;
+  string run_id = 3;
+}
+
+message CancelRunResponse {
+  CancelRunStatus status = 1;
+}
+
+enum CancelRunStatus {
+  CANCEL_RUN_STATUS_UNSPECIFIED = 0;
+  CANCEL_RUN_STATUS_CANCEL_REQUESTED = 1;
+  // The run is unknown to the client, or already finished.
+  CANCEL_RUN_STATUS_NOT_RUNNING = 2;
+}
