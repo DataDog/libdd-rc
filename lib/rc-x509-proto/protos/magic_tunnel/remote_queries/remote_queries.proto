@@ -10,7 +10,7 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunn
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/ResolveTarget
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
 service RemoteQueriesService {
-  // Checks whether the target matches exactly one integration instance, without running a query.
+  // Resolves the target to one integration instance without running a query.
   rpc ResolveTarget(ResolveTargetRequest) returns (ResolveTargetResponse);
   // Starts a query run and responds without waiting for it to finish.
   rpc StartRun(StartRunRequest) returns (StartRunResponse);
