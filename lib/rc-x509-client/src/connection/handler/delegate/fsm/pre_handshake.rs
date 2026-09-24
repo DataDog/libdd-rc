@@ -19,6 +19,7 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    app_info::AppInfo,
     codec::{ClientToServer, ProtocolError, ServerToClient},
     connection::handler::{
         SendToServer,
@@ -37,8 +38,7 @@ use super::{Fsm, Handshaking, ServerMessageDelegate};
 /// Call [`ServerMessageDelegate::send_hello()`] to begin the handshake.
 #[derive(Debug)]
 pub(crate) struct PreHandshake {
-    app_name: String,
-    app_version: String,
+    app_info: AppInfo,
 }
 
 impl Fsm<PreHandshake> {
@@ -46,17 +46,13 @@ impl Fsm<PreHandshake> {
         metrics: Arc<InstanceMetrics>,
         stop: CancellationToken,
         dispatch: DispatchPublisher,
-        app_name: String,
-        app_version: String,
+        app_info: AppInfo,
     ) -> Self {
         Self {
             metrics,
             stop,
             dispatch,
-            state: PreHandshake {
-                app_name,
-                app_version,
-            },
+            state: PreHandshake { app_info },
         }
     }
 }
@@ -72,8 +68,7 @@ where
     /// Send a `ClientHello`, (re)starting the handshake and transitioning to
     /// [`Handshaking`] with a freshly generated nonce.
     async fn send_hello(self, reply: &mut IO) -> State {
-        let (nonce, hello) =
-            build_hello(&self.state.app_name, &self.state.app_version, &self.metrics);
+        let (nonce, hello) = build_hello(&self.state.app_info, &self.metrics);
         retry_send(reply, hello, &self.stop).await;
 
         State::Handshaking(self.into_state(Handshaking(nonce)))

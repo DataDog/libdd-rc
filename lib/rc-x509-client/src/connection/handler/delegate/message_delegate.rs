@@ -18,6 +18,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
 use crate::{
+    app_info::AppInfo,
     codec::{DecodingError, ProtocolError, ServerToClient},
     connection::handler::{SendToServer, ServerMessageDelegate, delegate::state::State},
     dispatch::DispatchPublisher,
@@ -36,15 +37,10 @@ impl MessageDelegate {
         stop: CancellationToken,
         metrics: Arc<InstanceMetrics>,
         dispatch: DispatchPublisher,
-        client_name: String,
-        client_version: String,
+        app_info: AppInfo,
     ) -> Self {
         Self(State::PreHandshake(fsm::Fsm::new(
-            metrics,
-            stop,
-            dispatch,
-            client_name,
-            client_version,
+            metrics, stop, dispatch, app_info,
         )))
     }
 
@@ -132,8 +128,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -153,8 +148,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         // The initial state is "pre-handshake":
@@ -223,8 +217,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -364,8 +357,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -410,8 +402,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -466,8 +457,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -527,8 +517,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -557,8 +546,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -611,8 +599,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         // The initial state is "pre-handshake":
@@ -684,8 +671,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            "bananas".to_string(),
-            "1.0.0".to_string(),
+            AppInfo::new("bananas".into(), "1.0.0".into()),
         );
 
         let (mut client, mut server) = new_io_pair();
