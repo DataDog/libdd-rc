@@ -10,8 +10,7 @@ import (
 )
 
 // handleExecute implements libddrcffi.HandlerFunc for the
-// RemoteQueriesService/Execute uri. It logs the request and responds REJECTED
-// with TARGET_NOT_FOUND when resolve_only is set, else EXECUTION_UNAVAILABLE.
+// RemoteQueriesService/Execute uri. It rejects every request.
 func handleExecute(_ context.Context, correlationID uint64, payload []byte) ([]byte, error) {
 	var req remotequeriesv1alpha1.ExecuteRequest
 	if err := proto.Unmarshal(payload, &req); err != nil {

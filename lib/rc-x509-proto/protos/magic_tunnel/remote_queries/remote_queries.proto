@@ -8,7 +8,6 @@ option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunn
 //
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute
 service RemoteQueriesService {
-  // Starts a query run and responds without waiting for it to finish.
   rpc Execute(ExecuteRequest) returns (ExecuteResponse);
 }
 
@@ -18,13 +17,11 @@ message ExecuteRequest {
   Target target = 3;
   string query = 4;
   bool include_schema = 5;
-  // Where the client uploads the query results.
   ResultDelivery result_delivery = 6;
-  // Only resolve the target; do not run the query.
+  // Resolve the target without running the query.
   bool resolve_only = 7;
 }
 
-// The database to run the query against. Carries no credentials.
 message Target {
   string host = 1;
   int32 port = 2;
@@ -33,8 +30,6 @@ message Target {
 }
 
 message ResultDelivery {
-  // Identifies the run. Execute requests with the same run_id are
-  // deduplicated.
   string run_id = 1;
   string task_id = 2;
   int32 artifact_version = 3;
@@ -55,8 +50,6 @@ message UploadLimits {
 
 message ExecuteResponse {
   ExecuteStatus status = 1;
-  // A machine-readable error code (e.g. TARGET_NOT_FOUND,
-  // AMBIGUOUS_TARGET), set when rejected.
   string error_code = 2;
   string error_message = 3;
 }
@@ -67,6 +60,6 @@ enum ExecuteStatus {
   // A run with this run_id was already accepted.
   EXECUTE_STATUS_ALREADY_ACCEPTED = 2;
   EXECUTE_STATUS_REJECTED = 3;
-  // resolve_only: the target matched one integration instance.
+  // resolve_only: the target matched.
   EXECUTE_STATUS_MATCHED = 4;
 }
