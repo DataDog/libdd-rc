@@ -99,6 +99,21 @@ pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
     proptest::prelude::any::<Vec<u8>>().prop_map(Bytes::from)
 }
 
+/// A value generator for the [`Bytes`]-carrying variant of a `oneof`, to
+/// satisfy the [`proptest::arbitrary::Arbitrary`] trait derived on the
+/// generated `oneof` enum.
+///
+/// `derive(Arbitrary)` treats a `#[proptest(strategy = ...)]` attribute placed
+/// on an enum variant (rather than a field) as producing the *whole* enum
+/// value for that variant, so the strategy must construct `v` itself instead
+/// of just the inner [`Bytes`].
+pub(crate) fn arbitrary_bytes_oneof<T>(v: impl Fn(Bytes) -> T + 'static) -> impl Strategy<Value = T>
+where
+    T: core::fmt::Debug,
+{
+    arbitrary_bytes().prop_map(v)
+}
+
 /// A value generator for [`prost_types::Timestamp`] fields (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
 pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<prost_types::Timestamp>> {
