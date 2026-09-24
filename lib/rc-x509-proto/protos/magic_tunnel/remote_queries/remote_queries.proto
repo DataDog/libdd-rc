@@ -4,11 +4,33 @@ package rc.x509.magic_tunnel.remote_queries.v1alpha1;
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
 
 // A service for the Remote Queries team to start query runs on
-// connected clients. The fully-qualified URI to register a handler for is:
+// connected clients. The fully-qualified URIs to register handlers for are:
 //
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/ResolveTarget
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
 service RemoteQueriesService {
+  rpc ResolveTarget(ResolveTargetRequest) returns (ResolveTargetResponse);
   rpc StartRun(StartRunRequest) returns (StartRunResponse);
+}
+
+message ResolveTargetRequest {
+  string connection_id = 1;
+  string reason = 2;
+  string integration = 3;
+  Target target = 4;
+}
+
+message ResolveTargetResponse {
+  ResolveTargetStatus status = 1;
+  string error_message = 2;
+}
+
+enum ResolveTargetStatus {
+  RESOLVE_TARGET_STATUS_UNSPECIFIED = 0;
+  RESOLVE_TARGET_STATUS_MATCHED = 1;
+  RESOLVE_TARGET_STATUS_TARGET_NOT_FOUND = 2;
+  RESOLVE_TARGET_STATUS_AMBIGUOUS_TARGET = 3;
+  RESOLVE_TARGET_STATUS_RESOLUTION_ERROR = 4;
 }
 
 message StartRunRequest {
