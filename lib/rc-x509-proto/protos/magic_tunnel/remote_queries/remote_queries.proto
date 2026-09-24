@@ -3,37 +3,13 @@ package rc.x509.magic_tunnel.remote_queries.v1alpha1;
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
 
-// A service for the Remote Queries team to resolve targets and start query
-// runs on connected clients. The fully-qualified URIs to register handlers for
-// are:
+// A service for the Remote Queries team to start query runs on connected
+// clients. The fully-qualified URI to register a handler for is:
 //
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/ResolveTarget
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
 service RemoteQueriesService {
-  // Resolves the target to one integration instance without running a query.
-  rpc ResolveTarget(ResolveTargetRequest) returns (ResolveTargetResponse);
   // Starts a query run and responds without waiting for it to finish.
   rpc StartRun(StartRunRequest) returns (StartRunResponse);
-}
-
-message ResolveTargetRequest {
-  string connection_id = 1;
-  string reason = 2;
-  string integration = 3;
-  Target target = 4;
-}
-
-message ResolveTargetResponse {
-  ResolveTargetStatus status = 1;
-  string error_message = 2;
-}
-
-enum ResolveTargetStatus {
-  RESOLVE_TARGET_STATUS_UNSPECIFIED = 0;
-  RESOLVE_TARGET_STATUS_MATCHED = 1;
-  RESOLVE_TARGET_STATUS_TARGET_NOT_FOUND = 2;
-  RESOLVE_TARGET_STATUS_AMBIGUOUS_TARGET = 3;
-  RESOLVE_TARGET_STATUS_RESOLUTION_ERROR = 4;
 }
 
 message StartRunRequest {
@@ -45,6 +21,8 @@ message StartRunRequest {
   bool include_schema = 6;
   // Where the client uploads the query results.
   ResultDelivery result_delivery = 7;
+  // Only resolve the target; do not run the query.
+  bool resolve_only = 8;
 }
 
 // The database to run the query against. Carries no credentials.
@@ -78,7 +56,8 @@ message UploadLimits {
 
 message StartRunResponse {
   StartRunStatus status = 1;
-  // A machine-readable error code, set when the run is rejected.
+  // A machine-readable error code (e.g. TARGET_NOT_FOUND,
+  // AMBIGUOUS_TARGET), set when rejected.
   string error_code = 2;
   string error_message = 3;
 }
@@ -89,4 +68,6 @@ enum StartRunStatus {
   // A run with this run_id was already accepted.
   START_RUN_STATUS_ALREADY_ACCEPTED = 2;
   START_RUN_STATUS_REJECTED = 3;
+  // resolve_only: the target matched one integration instance.
+  START_RUN_STATUS_MATCHED = 4;
 }
