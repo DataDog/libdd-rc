@@ -197,7 +197,10 @@ fuzz_target!(|v: (&[u8], &[u8])| {
                     ),
                 },
             };
-            assert_eq!(Vec::from(expected), response_sent_to_server);
+            assert_eq!(
+                tokio_util::bytes::Bytes::from(expected),
+                response_sent_to_server
+            );
         }
         _ => { /* Nothing happens */ }
     }

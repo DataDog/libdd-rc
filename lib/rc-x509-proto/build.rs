@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // implemented for Bytes.
     let bytes_fields = [
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.request",
+        "rc.x509.magic_tunnel.v1.MagicTunnelResponse.response",
         "rc.x509.protocol.v1.Certificate.der",
         "rc.x509.protocol.v1.ClientHello.nonce",
         "rc.x509.protocol.v1.ClientHello.reconnection_data",
@@ -36,9 +37,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.signature.v1.DetachedSignature.cert_id",
         "rc.x509.signature.v1.DetachedSignature.signature",
     ];
+
     for v in bytes_fields {
         config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
     }
+
+    // A `bytes` field nested inside a `oneof` is addressed via the
+    // synthesised oneof enum path (`Message.oneof_name.field_name`), rather
+    // than the plain `Message.field_name` path used by `bytes_fields` above.
+    // `derive(Arbitrary)` also treats a strategy attribute on an enum variant
+    // as producing the whole variant, not just the field, so this uses a
+    // dedicated helper that constructs the variant itself.
+    config.field_attribute(
+        "rc.x509.magic_tunnel.v1.MagicTunnelResponse.result.response",
+        r#"#[proptest(strategy = "crate::arbitrary_bytes_oneof(crate::magic_tunnel::v1::magic_tunnel_response::Result::Response)")]"#,
+    );
 
     // `google.protobuf.Timestamp` is mapped to `prost_types::Timestamp`, which
     // doesn't implement `Arbitrary`, so it needs a manual strategy too.

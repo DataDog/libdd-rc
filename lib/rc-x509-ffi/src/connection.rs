@@ -20,7 +20,7 @@ use std::ffi::c_void;
 use futures::{StreamExt, executor::block_on};
 use rc_x509_proto::decode;
 use tokio::{select, sync::mpsc};
-use tokio_util::sync::CancellationToken;
+use tokio_util::{bytes::Bytes, sync::CancellationToken};
 use tracing::{debug, error, warn};
 
 use rc_x509_client::{
@@ -950,8 +950,8 @@ fn io_task(
         // [`rc_conn_disconnected()`] returning. The FFI host is responsible for
         // and guarantees the callback is valid between these two FFI function
         // calls.
-        let buf = Vec::from(payload);
-        let ret = unsafe { send(buf.as_slice().as_ptr(), buf.len() as u32, user_data.0) };
+        let buf = Bytes::from(payload);
+        let ret = unsafe { send(buf.as_ptr(), buf.len() as u32, user_data.0) };
 
         match ret {
             SendRet::Success => {}
@@ -1271,14 +1271,14 @@ mod tests {
         // the callback. This completes asynchronously, so wait on the channel
         // as a signal for it to occur:
         let got = cb_rx.recv().expect("must see callback payload");
-        assert_eq!(got, Vec::from(ClientToServer::Pong));
+        assert_eq!(got, Bytes::from(ClientToServer::Pong));
 
         // Simulate incoming data.
         let data = rc_x509_proto::encode(&v1::ServerToClient {
             message: Some(v1::server_to_client::Message::Ping(v1::Ping::default())),
         });
         unsafe {
-            rc_conn_recv(conn, data.as_slice().as_ptr(), data.len() as u32);
+            rc_conn_recv(conn, data.as_ptr(), data.len() as u32);
         }
         let got = io
             .take_recv_stream()
@@ -1454,7 +1454,7 @@ mod tests {
         };
         let encoded = rc_x509_proto::encode(&header_wrapped);
         unsafe {
-            rc_conn_recv(conn, encoded.as_slice().as_ptr(), encoded.len() as u32);
+            rc_conn_recv(conn, encoded.as_ptr(), encoded.len() as u32);
         }
 
         // The library should process this dispatch request and then invoke the
