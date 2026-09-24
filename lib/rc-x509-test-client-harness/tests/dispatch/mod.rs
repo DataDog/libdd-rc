@@ -27,15 +27,15 @@ use rc_x509_test_client_harness::{
 };
 use tokio_util::bytes::Bytes;
 
-/// A test that exercises the client dispatch path and dispatch response path,
-/// through a mocked host application.
+const URI: &str = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping";
+
+/// A test that exercises the client dispatch path and dispatch response path.
 #[tokio::test]
 async fn test_dispatch_happy_path() {
     logging::init();
 
     const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
     const APPLICATION_RESPONSE_PAYLOAD: Bytes = Bytes::from_static(&[13, 13, 13, 13]);
-    const URI: &str = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping";
 
     let mut client = TestClient::default();
     let mut conn = client.new_connection().await;
@@ -83,6 +83,62 @@ async fn test_dispatch_happy_path() {
         magic_tunnel_response::Result::Response(v) => v
     );
     assert_eq!(application_response, APPLICATION_RESPONSE_PAYLOAD);
+
+    // Signal the client library shutdown:
+    client.shutdown().await;
+}
+
+/// A test that exercises the client dispatch path when the application reports
+/// a handler error for the dispatch request.
+#[tokio::test]
+async fn test_dispatch_handler_error() {
+    logging::init();
+
+    const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
+    const HANDLER_ERROR: &str = "handler exploded";
+
+    let mut client = TestClient::default();
+    let mut conn = client.new_connection().await;
+
+    // Perform the connection handshake to obtain the connection ID.
+    let connection_id = conn_id_to_proto(conn.perform_handshake().await);
+
+    // 1. The server sends a dispatch request:
+    conn.dispatch_magic_tunnel(CorrelationId::new(42), URI, APPLICATION_REQUEST_PAYLOAD)
+        .await;
+
+    // 2. The application receives the application payload, tagged with the
+    //    correct URI for routing purposes:
+    let dispatch: rc_x509_test_client_harness::client::TestDispatch = {
+        let dispatch = conn.get_application_dispatch().await;
+
+        let (uri, payload) = dispatch.assume_magic_tunnel(&connection_id);
+        assert_eq!(uri, URI);
+        assert_eq!(payload, APPLICATION_REQUEST_PAYLOAD);
+
+        dispatch
+    };
+
+    let correlation_id = dispatch.correlation_id();
+
+    // 3. The application reports a handler error:
+    dispatch
+        .respond_magic_tunnel(magic_tunnel_response::Result::HandlerError(
+            HANDLER_ERROR.to_string(),
+        ))
+        .await;
+
+    // 4. The client must push the handler error to the server, correlated
+    //    with the original request:
+    let result = conn
+        .recv()
+        .await
+        .assume_magic_tunnel_response(correlation_id);
+    let handler_error = assert_matches!(
+        result,
+        magic_tunnel_response::Result::HandlerError(v) => v
+    );
+    assert_eq!(handler_error, HANDLER_ERROR);
 
     // Signal the client library shutdown:
     client.shutdown().await;
