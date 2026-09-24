@@ -3,14 +3,12 @@ package rc.x509.magic_tunnel.remote_queries.v1alpha1;
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
 
-// A service for the Remote Queries team to start and cancel query runs on
-// connected clients. The fully-qualified URIs to register handlers for are:
+// A service for the Remote Queries team to start query runs on
+// connected clients. The fully-qualified URI to register a handler for is:
 //
 //  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/StartRun
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/CancelRun
 service RemoteQueriesService {
   rpc StartRun(StartRunRequest) returns (StartRunResponse);
-  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
 }
 
 message StartRunRequest {
@@ -66,21 +64,4 @@ enum StartRunStatus {
   // A run with this run_id was already accepted.
   START_RUN_STATUS_ALREADY_ACCEPTED = 2;
   START_RUN_STATUS_REJECTED = 3;
-}
-
-message CancelRunRequest {
-  string connection_id = 1;
-  string reason = 2;
-  string run_id = 3;
-}
-
-message CancelRunResponse {
-  CancelRunStatus status = 1;
-}
-
-enum CancelRunStatus {
-  CANCEL_RUN_STATUS_UNSPECIFIED = 0;
-  CANCEL_RUN_STATUS_CANCEL_REQUESTED = 1;
-  // The run is unknown to the client, or already finished.
-  CANCEL_RUN_STATUS_NOT_RUNNING = 2;
 }

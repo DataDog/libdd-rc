@@ -34,26 +34,3 @@ func TestHandleStartRun(t *testing.T) {
 		t.Fatalf("error_code = %q, want %q", got, want)
 	}
 }
-
-func TestHandleCancelRun(t *testing.T) {
-	req := &remotequeriesv1alpha1.CancelRunRequest{
-		ConnectionId: "conn-123",
-		Reason:       "integration test",
-		RunId:        "run-456",
-	}
-	payload, err := proto.Marshal(req)
-	if err != nil {
-		t.Fatalf("marshal request: %v", err)
-	}
-	respBytes, err := handleCancelRun(context.Background(), 1, payload)
-	if err != nil {
-		t.Fatalf("handleCancelRun returned error: %v", err)
-	}
-	var resp remotequeriesv1alpha1.CancelRunResponse
-	if err := proto.Unmarshal(respBytes, &resp); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-	if got, want := resp.GetStatus(), remotequeriesv1alpha1.CancelRunStatus_CANCEL_RUN_STATUS_NOT_RUNNING; got != want {
-		t.Fatalf("status = %v, want %v", got, want)
-	}
-}

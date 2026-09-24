@@ -84,7 +84,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build(&[
             ".rc.x509.magic_tunnel.remote_config.v1.PingRequest",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.StartRunRequest",
-            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.CancelRunRequest",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.Target",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResultDelivery",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.UploadLimits",
