@@ -28,9 +28,8 @@ func callHandler(t *testing.T, h func(context.Context, uint64, []byte) ([]byte, 
 func TestHandleStartRun(t *testing.T) {
 	var resp remotequeriesv1alpha1.StartRunResponse
 	callHandler(t, handleStartRun, &remotequeriesv1alpha1.StartRunRequest{
-		ConnectionId: "conn-123",
-		Reason:       "integration test",
-		Integration:  "postgres",
+		ConnectionId: "conn-123", Reason: "integration test",
+		Integration: "postgres",
 	}, &resp)
 	if got, want := resp.GetStatus(), remotequeriesv1alpha1.StartRunStatus_START_RUN_STATUS_REJECTED; got != want {
 		t.Fatalf("status = %v, want %v", got, want)
@@ -40,9 +39,8 @@ func TestHandleStartRun(t *testing.T) {
 func TestHandleResolveTarget(t *testing.T) {
 	var resp remotequeriesv1alpha1.ResolveTargetResponse
 	callHandler(t, handleResolveTarget, &remotequeriesv1alpha1.ResolveTargetRequest{
-		ConnectionId: "conn-123",
-		Reason:       "integration test",
-		Integration:  "postgres",
+		ConnectionId: "conn-123", Reason: "integration test",
+		Integration: "postgres",
 	}, &resp)
 	if got, want := resp.GetStatus(), remotequeriesv1alpha1.ResolveTargetStatus_RESOLVE_TARGET_STATUS_TARGET_NOT_FOUND; got != want {
 		t.Fatalf("status = %v, want %v", got, want)

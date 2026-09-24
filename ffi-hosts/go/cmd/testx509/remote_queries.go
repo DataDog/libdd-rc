@@ -37,10 +37,9 @@ func handleStartRun(_ context.Context, correlationID uint64, payload []byte) ([]
 	log.Printf("==> received START_RUN (correlation_id=%d) from connection %q: reason=%q run_id=%q integration=%q",
 		correlationID, req.GetConnectionId(), req.GetReason(), req.GetResultDelivery().GetRunId(), req.GetIntegration())
 
-	resp := &remotequeriesv1alpha1.StartRunResponse{
+	return proto.Marshal(&remotequeriesv1alpha1.StartRunResponse{
 		Status:       remotequeriesv1alpha1.StartRunStatus_START_RUN_STATUS_REJECTED,
 		ErrorCode:    "EXECUTION_UNAVAILABLE",
 		ErrorMessage: "testx509 does not execute queries",
-	}
-	return proto.Marshal(resp)
+	})
 }
