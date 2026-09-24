@@ -228,7 +228,7 @@ pub(crate) mod tests {
 
     /// Encode and then decode `v`, returning the result.
     fn round_trip(v: &v1::ServerToClient) -> Result<ServerToClient, DecodingError> {
-        ServerToClient::try_from(rc_x509_proto::encode(v).as_slice())
+        ServerToClient::try_from(rc_x509_proto::encode(v).as_ref())
     }
 
     #[test]

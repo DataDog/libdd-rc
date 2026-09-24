@@ -78,11 +78,11 @@ pub use prost::{DecodeError, Message as Serialisable};
 
 /// Encode an instance of `T` into a byte array that can be decoded with
 /// [`decode()`].
-pub fn encode<T>(value: &T) -> Vec<u8>
+pub fn encode<T>(value: &T) -> Bytes
 where
     T: Serialisable + Default,
 {
-    T::encode_to_vec(value)
+    T::encode_to_vec(value).into()
 }
 
 /// Decode a `T` from `buf`, previously encoded with [`encode()`].
@@ -128,10 +128,10 @@ mod tests {
         };
 
         let got = encode(&payload);
-        assert_eq!(got, WANT);
+        assert_eq!(got, WANT.as_slice());
 
         assert_eq!(
-            decode::<ServerToClient>(got.as_slice()).expect("must round trip"),
+            decode::<ServerToClient>(got).expect("must round trip"),
             payload
         );
     }
@@ -200,7 +200,7 @@ mod tests {
             value in any::<Thing>(),
         ) {
             let encoded = encode(&value);
-            assert_eq!(value, decode(encoded.as_slice()).unwrap())
+            assert_eq!(value, decode(encoded).unwrap())
         }
     }
 }

@@ -123,7 +123,7 @@ pub enum ClientToServer {
 }
 
 /// Serialise this [`ClientToServer`] as a protobuf payload.
-impl From<ClientToServer> for Vec<u8> {
+impl From<ClientToServer> for Bytes {
     fn from(value: ClientToServer) -> Self {
         // Construct the wire type for this `value`.
         let wire = match value {
@@ -219,12 +219,12 @@ mod tests {
             a in any::<ClientToServer>(),
             b in any::<ClientToServer>(),
         ) {
-            let a_out = Vec::from(a.clone());
-            let b_out = Vec::from(b.clone());
+            let a_out = Bytes::from(a.clone());
+            let b_out = Bytes::from(b.clone());
 
             // Invariant: deterministic serialisation.
-            assert_eq!(a_out, Vec::from(a.clone()));
-            assert_eq!(b_out, Vec::from(b.clone()));
+            assert_eq!(a_out, Bytes::from(a.clone()));
+            assert_eq!(b_out, Bytes::from(b.clone()));
 
             // Invariant: if the input message variants are equal (a == b) then
             // the output message variants are equal (a_out == b_out).
