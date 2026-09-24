@@ -148,7 +148,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas".into(), "opaque 1.0.0".into()),
         );
 
         // The initial state is "pre-handshake":
@@ -172,14 +172,16 @@ mod tests {
                 last_closed_connection_duration,
                 reconnection_data,
                 version_info,
-                app_name
+                app_name,
+                app_version,
             }) => {
                 assert_eq!(graceful.as_raw(), 0);
                 assert_eq!(ungraceful.as_raw(), 0);
                 assert_eq!(last_closed_connection_duration.as_seconds(), 0);
                 assert_eq!(reconnection_data, None);
                 assert_eq!(version_info, BuildVersion::from_build());
-                assert_eq!(app_name, "bananas");
+                assert_eq!(app_name.to_string(), "bananas");
+                assert_eq!(app_version.to_string(), "opaque 1.0.0");
                 assert_eq!(client_nonce.len(), 16); // 128 bits of randomness.
 
                 client_nonce

@@ -21,6 +21,7 @@ use rc_x509_proto::{
 use tokio_util::bytes::Bytes;
 
 use crate::{
+    app_info::{AppName, AppVersion},
     build_version::BuildVersion,
     connection::{
         GracefulDisconnectionCount, LastConnectedDuration, ReconnectionData,
@@ -95,8 +96,10 @@ pub enum ClientToServer {
         reconnection_data: Option<ReconnectionData>,
         /// Client build version.
         version_info: BuildVersion,
-        /// A friendly name that describes the host application.
-        app_name: String,
+        /// A friendly name describing (and reported by) the host application.
+        app_name: AppName,
+        /// An opaque version string reported by the host application.
+        app_version: AppVersion,
     },
 
     /// An async response to a [`ServerToClient::Dispatch`] request.
@@ -135,6 +138,7 @@ impl From<ClientToServer> for Bytes {
                 reconnection_data,
                 version_info,
                 app_name,
+                app_version,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
@@ -148,7 +152,8 @@ impl From<ClientToServer> for Bytes {
                 version_patch: version_info.patch(),
                 version_commit: version_info.commit().map(|v| v.to_string()),
                 version_pre: version_info.pre().map(|v| v.to_string()),
-                app_name,
+                app_name: app_name.to_string(),
+                app_version: app_version.to_string(),
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),

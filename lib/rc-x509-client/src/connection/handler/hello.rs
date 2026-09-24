@@ -33,7 +33,8 @@ pub(super) fn build_hello(
             last_closed_connection_duration: metrics.last_conn_duration(),
             reconnection_data: None,
             version_info: metrics.version().clone(),
-            app_name: app_info.name().to_string(),
+            app_name: app_info.name().clone(),       // Refclone
+            app_version: app_info.version().clone(), // Refclone
         },
     )
 }

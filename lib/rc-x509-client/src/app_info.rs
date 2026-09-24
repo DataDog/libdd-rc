@@ -2,8 +2,9 @@ use std::{fmt::Display, sync::Arc};
 
 /// A reference-counted string identifier, for and provided by the host
 /// application (e.g. the Datadog Agent).
-#[derive(Debug, Clone)]
-pub(crate) struct AppName(Arc<str>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct AppName(Arc<str>);
 
 impl Display for AppName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,8 +23,9 @@ where
 
 /// A reference-counted, schemaless string version descriptor, for and provided
 /// by the host application (e.g. the Datadog Agent reporting v1.0.0).
-#[derive(Debug, Clone)]
-pub(crate) struct AppVersion(Arc<str>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub struct AppVersion(Arc<str>);
 
 impl<T> From<T> for AppVersion
 where

@@ -555,13 +555,14 @@ void rc_free(struct Ctx *ctx);
  Initialise a new client [`Ctx`], starting a background thread to drive
  internal execution.
 
- `app_name` and `version` identify the host application, and are reported
- to the backend as part of the connection handshake.
+ `app_name` and `version` identify the host application, and are reported to
+ the backend as part of the connection handshake. Applications SHOULD report
+ semver-compatible version strings.
 
    * Called by: `host runtime`.
    * Ownership: returns ownership of [`Ctx`] to host runtime. `app_name` and
-     `version` are copied into the returned [`Ctx`]; ownership of the
-     buffers backing them is retained by the caller.
+     `version` are copied into the returned [`Ctx`]; ownership of the buffers
+     backing them is retained by the caller.
 
  # Safety
 
