@@ -22,18 +22,21 @@ use crate::{
 /// A [`ServerToClient`] message processor.
 ///
 /// The implementation can dispatch any number of responses to the server via
-/// the `reply` handle.
-pub(super) trait ServerMessageDelegate<IO: SendToServer>: Debug + Send + Sync {
+/// the `reply` handle. Each method consumes `self` and returns the (possibly
+/// different) next delegate state.
+pub(super) trait ServerMessageDelegate<IO: SendToServer>:
+    Debug + Send + Sync + Sized
+{
     /// Send a `ClientHello` handshake message.
-    fn send_hello(&mut self, reply: &mut IO) -> impl Future<Output = ()> + Send + Sync;
+    fn send_hello(self, reply: &mut IO) -> impl Future<Output = Self> + Send + Sync;
 
     /// Process the request in `msg`, raising a protocol error if it could not
     /// be decoded.
     fn process(
-        &mut self,
+        self,
         msg: Result<ServerToClient, DecodingError>,
         reply: &mut IO,
-    ) -> impl Future<Output = ()> + Send + Sync;
+    ) -> impl Future<Output = Self> + Send + Sync;
 }
 
 /// A subtype of a [`Connection`] implementation, capable of sending responses
