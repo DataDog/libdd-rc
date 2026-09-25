@@ -13,13 +13,17 @@
 // limitations under the License.
 
 mod chain;
+mod expired_intermediate;
 mod forged_leaf;
+mod future_valid_intermediate;
 mod missing_intermediate;
 mod pathlen_violation;
 mod valid;
 
 pub(crate) use chain::*;
+pub(crate) use expired_intermediate::*;
 pub(crate) use forged_leaf::*;
+pub(crate) use future_valid_intermediate::*;
 pub(crate) use missing_intermediate::*;
 pub(crate) use pathlen_violation::*;
 pub(crate) use valid::*;

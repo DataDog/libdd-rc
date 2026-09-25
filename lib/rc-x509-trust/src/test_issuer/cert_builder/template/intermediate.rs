@@ -83,4 +83,5 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
     pub(crate) fn set_path_len(&mut self, n: u8) {
         self.template.path_len = Some(n);
     }
+
 }
