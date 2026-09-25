@@ -3,12 +3,9 @@ package rc.x509.magic_tunnel.remote_queries.v1alpha1;
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
 
-// A service for the Remote Queries team to start query runs on connected
-// clients. The fully-qualified URI to register a handler for is:
-//
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute
 service RemoteQueriesService {
   rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc GetResultChunk(GetResultChunkRequest) returns (GetResultChunkResponse);
 }
 
 message ExecuteRequest {
@@ -17,9 +14,11 @@ message ExecuteRequest {
   Target target = 3;
   string query = 4;
   bool include_schema = 5;
-  ResultDelivery result_delivery = 6;
-  // Resolve the target without running the query.
+  string task_id = 6;
   bool resolve_only = 7;
+  string run_id = 8;
+  int64 org_id = 9;
+  ResultLimits limits = 10;
 }
 
 message Target {
@@ -29,16 +28,7 @@ message Target {
   string database_instance = 4;
 }
 
-message ResultDelivery {
-  string run_id = 1;
-  string task_id = 2;
-  int32 artifact_version = 3;
-  string upload_id = 4;
-  string base_url = 5;
-  UploadLimits limits = 6;
-}
-
-message UploadLimits {
+message ResultLimits {
   int64 max_file_bytes = 1;
   int64 max_result_bytes = 2;
   int64 max_row_bytes = 3;
@@ -57,9 +47,41 @@ message ExecuteResponse {
 enum ExecuteStatus {
   EXECUTE_STATUS_UNSPECIFIED = 0;
   EXECUTE_STATUS_ACCEPTED = 1;
-  // A run with this run_id was already accepted.
   EXECUTE_STATUS_ALREADY_ACCEPTED = 2;
   EXECUTE_STATUS_REJECTED = 3;
-  // resolve_only: the target matched.
   EXECUTE_STATUS_MATCHED = 4;
+}
+
+message GetResultChunkRequest {
+  string connection_id = 1;
+  int64 org_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  uint32 page_index = 5;
+  uint64 offset = 6;
+}
+
+message GetResultChunkResponse {
+  ChunkStatus status = 1;
+  string run_id = 2;
+  uint32 page_index = 3;
+  uint64 offset = 4;
+  bytes data = 5;
+  uint64 next_offset = 6;
+  bool page_complete = 7;
+  uint64 page_bytes = 8;
+  uint64 page_rows = 9;
+  uint64 record_offset = 10;
+  uint32 total_pages = 11;
+  string error_code = 12;
+  string error_message = 13;
+}
+
+enum ChunkStatus {
+  CHUNK_STATUS_UNSPECIFIED = 0;
+  CHUNK_STATUS_NOT_READY = 1;
+  CHUNK_STATUS_DATA = 2;
+  CHUNK_STATUS_COMPLETE = 3;
+  CHUNK_STATUS_FAILED = 4;
+  CHUNK_STATUS_NOT_FOUND = 5;
 }

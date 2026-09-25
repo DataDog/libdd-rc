@@ -98,8 +98,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ".rc.x509.magic_tunnel.remote_config.v1.PingRequest",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ExecuteRequest",
             ".rc.x509.magic_tunnel.remote_queries.v1alpha1.Target",
-            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResultDelivery",
-            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.UploadLimits",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.ResultLimits",
+            ".rc.x509.magic_tunnel.remote_queries.v1alpha1.GetResultChunkRequest",
         ])?;
 
     Ok(())
