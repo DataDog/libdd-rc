@@ -35,6 +35,7 @@ sort_by = "Name"
 "SendRet" = "send_ret_t"
 "RecvRet" = "recv_ret_t"
 "LogSinkRet" = "log_sink_ret_t"
+"ConnRet" = "conn_ret_t"
 
 [enum]
 rename_variants = "ScreamingSnakeCase"
