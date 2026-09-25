@@ -24,6 +24,7 @@ use tokio::pin;
 
 use crate::{
     AbortOnDrop, ShutdownSignal,
+    app_info::{AppInfo, AppName, AppVersion},
     connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate},
     host_runtime::Connection,
     metrics::InstanceMetrics,
@@ -57,19 +58,21 @@ pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
 /// [`LibraryEntrypoint`] callable from the FFI layer.
 #[derive(Debug)]
 pub struct Main {
-    /// The name of the host application, reported to the backend in the
-    /// [`ClientToServer::ClientHello`](crate::codec::ClientToServer::ClientHello).
-    app_name: String,
-
-    /// The version of the host application.
-    version: String,
+    /// Reference counted metadata describing the host application, reported to
+    /// the backend in the [`ClientToServer::ClientHello`].
+    ///
+    /// [`ClientToServer::ClientHello`]:
+    ///     crate::codec::ClientToServer::ClientHello
+    app_info: AppInfo,
 }
 
 impl Main {
     /// Construct a new [`Main`] entrypoint, reporting `app_name` and
     /// `version` to the backend as part of the connection handshake.
     pub fn new(app_name: String, version: String) -> Self {
-        Self { app_name, version }
+        let app_info = AppInfo::new(AppName::from(app_name), AppVersion::from(version));
+
+        Self { app_info }
     }
 }
 
@@ -95,8 +98,7 @@ where
             shutdown.clone(),
             conn_events,
             metrics,
-            self.app_name,
-            self.version,
+            self.app_info,
         )));
 
         // Wait forever for the shutdown signal.
@@ -128,8 +130,7 @@ async fn handle_connection_events<IO>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     metrics: Arc<InstanceMetrics>,
-    app_name: String,
-    version: String,
+    app_info: AppInfo,
 ) where
     IO: Connection,
 {
@@ -176,8 +177,7 @@ async fn handle_connection_events<IO>(
                     stop.clone(),
                     Arc::clone(&metrics),
                     dispatch,
-                    app_name.clone(),
-                    version.clone(),
+                    app_info.clone(), // Refclone
                 );
                 let conn = ConnectionActor::new(
                     io,

@@ -12,33 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+//! States of the FSM.
 
-mod abort_on_drop;
-mod app_info;
-mod build_version;
-pub mod codec;
-pub mod connection;
-pub mod dispatch;
-pub mod entrypoint;
-pub mod host_runtime;
-mod metrics;
-mod shutdown_signal;
-
-pub use abort_on_drop::*;
-pub use shutdown_signal::*;
+mod active;
+mod error;
+mod fsm;
+mod handshaking;
+mod pre_handshake;
 
 #[cfg(test)]
-mod mocks;
+pub(super) mod test_helpers;
 
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    use tokio_util::bytes::Bytes;
-
-    pub(crate) fn arbitrary_bytes(
-        size: impl Into<prop::collection::SizeRange>,
-    ) -> impl Strategy<Value = Bytes> {
-        prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
-    }
-}
+pub(super) use super::traits::ServerMessageDelegate;
+pub(super) use active::Active;
+pub(super) use error::Error;
+pub(super) use fsm::*;
+pub(super) use handshaking::Handshaking;
+pub(super) use pre_handshake::PreHandshake;

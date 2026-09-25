@@ -111,7 +111,7 @@ where
         // The first action is to send the connection-opening ClientHello
         // handshake message to begin the protocol. The ClientHelloAck will be
         // handled via the delegate path below.
-        self.delegate.send_hello(&mut self.io).await;
+        self.delegate = self.delegate.send_hello(&mut self.io).await;
 
         pin_mut!(dispatch_ack);
         pin_mut!(server_messages);
@@ -139,7 +139,7 @@ where
 
                 v = server_messages.next() => {
                     match v {
-                        Some(v) => self.server_message(v).await,
+                        Some(v) => self = self.server_message(v).await,
                         None => { debug!("io broker stopped"); return }
                     }
                 }
@@ -147,11 +147,12 @@ where
         }
     }
 
-    async fn server_message(&mut self, msg: Result<ServerToClient, DecodingError>) {
+    async fn server_message(mut self, msg: Result<ServerToClient, DecodingError>) -> Self {
         debug!(?msg, "received message from server");
 
         // Delegate processing of messages to the dedicated handler:
-        self.delegate.process(msg, &mut self.io).await;
+        self.delegate = self.delegate.process(msg, &mut self.io).await;
+        self
     }
 
     async fn dispatch_response(&mut self, v: DispatchResult) {
@@ -185,7 +186,7 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::{
-        codec::ClientToServer, connection::handler::delegate::MessageDelegate,
+        app_info::AppInfo, codec::ClientToServer, connection::handler::delegate::MessageDelegate,
         dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
     };
 
@@ -208,8 +209,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -245,8 +245,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -282,8 +281,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -319,8 +317,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -383,8 +380,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,

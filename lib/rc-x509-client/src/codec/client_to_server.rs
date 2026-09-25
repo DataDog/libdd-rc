@@ -21,6 +21,7 @@ use rc_x509_proto::{
 use tokio_util::bytes::Bytes;
 
 use crate::{
+    app_info::{AppName, AppVersion},
     build_version::BuildVersion,
     connection::{
         GracefulDisconnectionCount, LastConnectedDuration, ReconnectionData,
@@ -95,8 +96,10 @@ pub enum ClientToServer {
         reconnection_data: Option<ReconnectionData>,
         /// Client build version.
         version_info: BuildVersion,
-        /// A friendly name that describes the host application.
-        app_name: String,
+        /// A friendly name describing (and reported by) the host application.
+        app_name: AppName,
+        /// An opaque version string reported by the host application.
+        app_version: AppVersion,
     },
 
     /// An async response to a [`ServerToClient::Dispatch`] request.
@@ -123,7 +126,7 @@ pub enum ClientToServer {
 }
 
 /// Serialise this [`ClientToServer`] as a protobuf payload.
-impl From<ClientToServer> for Vec<u8> {
+impl From<ClientToServer> for Bytes {
     fn from(value: ClientToServer) -> Self {
         // Construct the wire type for this `value`.
         let wire = match value {
@@ -135,6 +138,7 @@ impl From<ClientToServer> for Vec<u8> {
                 reconnection_data,
                 version_info,
                 app_name,
+                app_version,
             } => Message::ClientHello(v1::ClientHello {
                 graceful_disconnection_count: graceful.as_raw(),
                 ungraceful_disconnection_count: ungraceful.as_raw(),
@@ -148,7 +152,8 @@ impl From<ClientToServer> for Vec<u8> {
                 version_patch: version_info.patch(),
                 version_commit: version_info.commit().map(|v| v.to_string()),
                 version_pre: version_info.pre().map(|v| v.to_string()),
-                app_name,
+                app_name: app_name.to_string(),
+                app_version: app_version.to_string(),
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),
@@ -219,12 +224,12 @@ mod tests {
             a in any::<ClientToServer>(),
             b in any::<ClientToServer>(),
         ) {
-            let a_out = Vec::from(a.clone());
-            let b_out = Vec::from(b.clone());
+            let a_out = Bytes::from(a.clone());
+            let b_out = Bytes::from(b.clone());
 
             // Invariant: deterministic serialisation.
-            assert_eq!(a_out, Vec::from(a.clone()));
-            assert_eq!(b_out, Vec::from(b.clone()));
+            assert_eq!(a_out, Bytes::from(a.clone()));
+            assert_eq!(b_out, Bytes::from(b.clone()));
 
             // Invariant: if the input message variants are equal (a == b) then
             // the output message variants are equal (a_out == b_out).

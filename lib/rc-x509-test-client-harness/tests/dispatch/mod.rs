@@ -67,7 +67,7 @@ async fn test_dispatch_happy_path() {
     // 3. The application generates a response:
     dispatch
         .respond_magic_tunnel(magic_tunnel_response::Result::Response(
-            APPLICATION_RESPONSE_PAYLOAD.to_vec(),
+            APPLICATION_RESPONSE_PAYLOAD,
         ))
         .await;
 

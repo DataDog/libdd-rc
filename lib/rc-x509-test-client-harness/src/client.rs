@@ -185,7 +185,7 @@ impl TestConn {
             .clone()
             .expect("handshake must be performed before dispatching");
 
-        let payload = Bytes::from_owner(encode(&v1::DispatchRequestPayload {
+        let payload = encode(&v1::DispatchRequestPayload {
             connection_id: Some(connection_id),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 MagicTunnelRequest {
@@ -193,7 +193,7 @@ impl TestConn {
                     request,
                 },
             )),
-        }));
+        });
 
         self.send(Ok(ServerToClient::Dispatch {
             correlation_id,

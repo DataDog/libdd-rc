@@ -12,33 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+//! This module is responsible for processing [`ServerToClient`] messages from
+//! the backend.
+//!
+//! [`ServerToClient`]: rc_x509_proto::protocol::v1::ServerToClient
 
-mod abort_on_drop;
-mod app_info;
-mod build_version;
-pub mod codec;
-pub mod connection;
-pub mod dispatch;
-pub mod entrypoint;
-pub mod host_runtime;
-mod metrics;
-mod shutdown_signal;
+mod fsm;
+mod message_delegate;
+mod retry;
+mod state;
+mod traits;
 
-pub use abort_on_drop::*;
-pub use shutdown_signal::*;
-
-#[cfg(test)]
-mod mocks;
-
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    use tokio_util::bytes::Bytes;
-
-    pub(crate) fn arbitrary_bytes(
-        size: impl Into<prop::collection::SizeRange>,
-    ) -> impl Strategy<Value = Bytes> {
-        prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
-    }
-}
+pub(crate) use message_delegate::MessageDelegate;
+pub(super) use retry::retry_send;
