@@ -48,6 +48,12 @@ message ClientHello {
   // connecting (e.g. "Datadog Agent").
   string app_name = 10;
 
+  // A opaque version string reported by the host application (e.g. v1.0.0).
+  //
+  // Applications SHOULD report semver-compatible version strings, but
+  // downstream consumers SHOULD NOT assume any specific format.
+  string app_version = 12;
+
   // The duration the most recently closed remained connected, if any.
   uint64 last_closed_connection_duration_seconds = 11;
 }

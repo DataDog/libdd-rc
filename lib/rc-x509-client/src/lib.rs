@@ -15,6 +15,7 @@
 #![doc = "../README.md"]
 
 mod abort_on_drop;
+mod app_info;
 mod build_version;
 pub mod codec;
 pub mod connection;

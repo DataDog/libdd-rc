@@ -186,7 +186,7 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::{
-        codec::ClientToServer, connection::handler::delegate::MessageDelegate,
+        app_info::AppInfo, codec::ClientToServer, connection::handler::delegate::MessageDelegate,
         dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
     };
 
@@ -209,8 +209,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -246,8 +245,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -283,8 +281,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -320,8 +317,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,
@@ -384,8 +380,7 @@ mod tests {
                 stop.clone(),
                 Arc::clone(&metrics),
                 dispatch_publish,
-                "test".to_string(),
-                "0.0.0".to_string(),
+                AppInfo::new("test".into(), "0.0.0".into()),
             ),
             dispatch_stream,
             metrics,

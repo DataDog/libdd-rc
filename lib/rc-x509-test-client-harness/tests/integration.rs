@@ -79,14 +79,16 @@ async fn test_handshake() {
             last_closed_connection_duration,
             reconnection_data,
             version_info,
-            app_name
+            app_name,
+            app_version,
         } => {
             assert_eq!(client_nonce.len(), 16); // 128 bits of randomness
             assert_eq!(graceful.as_raw(), 0);
             assert_eq!(ungraceful.as_raw(), 0);
             assert_eq!(last_closed_connection_duration.as_seconds(), 0);
             assert_eq!(reconnection_data, None);
-            assert_eq!(app_name, "test");
+            assert_eq!(app_name.to_string(), "test");
+            assert_eq!(app_version.to_string(), "0.0.0");
 
             (client_nonce, version_info)
         }
