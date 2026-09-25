@@ -426,13 +426,9 @@ func TestRunSessionShutsDownOnReadClose(t *testing.T) {
 	close(ws.incomingMessages)
 
 	ffiConn := newFakeFFIConnection()
-	client := &Client{
-		ffiCtx: &fakeFFIContext{conn: ffiConn},
-		url:    "ws://example.com",
-		dialer: &fakeWebsocketDialer{conn: ws},
-	}
+	client := &Client{}
 
-	if err := client.runSession(context.Background()); err != nil {
+	if err := client.runSession(context.Background(), ffiConn, ws); err != nil {
 		t.Fatalf("runSession returned unexpected error: %v", err)
 	}
 
@@ -446,26 +442,19 @@ func TestRunSessionShutsDownOnReadClose(t *testing.T) {
 	}
 }
 
-// TestRunSessionHappyPath verifies that runSession
-// establishes a connection exactly once, moves messages in both directions,
-// and fully tears down the FFI connection and websocket once the context is
-// canceled.
+// TestRunSessionHappyPath verifies that runSession moves messages in both
+// directions, and fully tears down the FFI connection and websocket once the
+// context is canceled.
 func TestRunSessionHappyPath(t *testing.T) {
 	ws := newFakeWebsocketConn()
 	ffiConn := newFakeFFIConnection()
-	ffiCtx := &fakeFFIContext{conn: ffiConn}
-	dialer := &fakeWebsocketDialer{conn: ws}
-	client := &Client{
-		ffiCtx: ffiCtx,
-		url:    "ws://example.com",
-		dialer: dialer,
-	}
+	client := &Client{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- client.runSession(ctx)
+		errCh <- client.runSession(ctx, ffiConn, ws)
 	}()
 
 	// Backend -> FFI layer
@@ -501,12 +490,6 @@ func TestRunSessionHappyPath(t *testing.T) {
 		t.Fatal("timeout waiting for runSession to return")
 	}
 
-	if ffiCtx.newConnCalls != 1 {
-		t.Errorf("expected exactly 1 call to NewConnection, got %d", ffiCtx.newConnCalls)
-	}
-	if dialer.dialCount != 1 {
-		t.Errorf("expected exactly 1 dial attempt, got %d", dialer.dialCount)
-	}
 	if ffiConn.disconnectedCalls != 1 {
 		t.Errorf("expected FFI connection to be disconnected exactly once, got %d calls", ffiConn.disconnectedCalls)
 	}
@@ -572,15 +555,11 @@ func TestRunSessionTerminatesOnMessageLoopErrors(t *testing.T) {
 				tt.setup(ffiConn, ws)
 			}
 
-			client := &Client{
-				ffiCtx: &fakeFFIContext{conn: ffiConn},
-				url:    "ws://example.com",
-				dialer: &fakeWebsocketDialer{conn: ws},
-			}
+			client := &Client{}
 
 			errCh := make(chan error, 1)
 			go func() {
-				errCh <- client.runSession(context.Background())
+				errCh <- client.runSession(context.Background(), ffiConn, ws)
 			}()
 
 			tt.trigger(ffiConn, ws)
@@ -617,17 +596,13 @@ func TestRunSessionDropsMessageOnTransientRecvError(t *testing.T) {
 	ffiConn := newFakeFFIConnection()
 	ffiConn.recvErr = errors.New("transient recv failure")
 
-	client := &Client{
-		ffiCtx: &fakeFFIContext{conn: ffiConn},
-		url:    "ws://example.com",
-		dialer: &fakeWebsocketDialer{conn: ws},
-	}
+	client := &Client{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- client.runSession(ctx)
+		errCh <- client.runSession(ctx, ffiConn, ws)
 	}()
 
 	ws.incomingMessages <- message{typ: websocket.MessageBinary, data: []byte("first")}

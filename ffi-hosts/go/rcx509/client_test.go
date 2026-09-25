@@ -1,6 +1,7 @@
 package rcx509
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -51,9 +52,11 @@ func TestValidateURLRejectsInvalidURLs(t *testing.T) {
 func TestStartCloseConcurrentDoesNotOrphanRunLoop(t *testing.T) {
 	ffi := &fakeFFIContext{conn: newFakeFFIConnection()}
 	client := &Client{
-		url:    "ws://example.com",
-		dialer: &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
-		ffiCtx: ffi,
+		url:     "ws://example.com",
+		dialer:  &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
+		ffiCtx:  ffi,
+		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
+		sleep:   sleepCtx,
 	}
 
 	started := make(chan error, 1)
@@ -68,7 +71,8 @@ func TestStartCloseConcurrentDoesNotOrphanRunLoop(t *testing.T) {
 	// Start() may either have run and been stopped by Close() (nil), or
 	// Close() may have completed before Start() even got going
 	// (ErrClientClosed) -- both are legitimate interleavings. What Close()
-	// guarantees is that Start() cannot be left running forever.
+	// guarantees is that Start() cannot be left running forever, even while
+	// waiting out a backoff delay.
 	select {
 	case err := <-started:
 		if err != nil && !errors.Is(err, ErrClientClosed) {
@@ -126,9 +130,11 @@ func TestCloseFreesFFIContextWithoutStart(t *testing.T) {
 func TestCloseFreesFFIContextExactlyOnceAfterStart(t *testing.T) {
 	ffi := &fakeFFIContext{}
 	client := &Client{
-		url:    "ws://example.com",
-		dialer: &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
-		ffiCtx: ffi,
+		url:     "ws://example.com",
+		dialer:  &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
+		ffiCtx:  ffi,
+		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
+		sleep:   sleepCtx,
 	}
 
 	started := make(chan error, 1)
@@ -158,5 +164,100 @@ func TestCloseFreesFFIContextExactlyOnceAfterStart(t *testing.T) {
 	}
 	if ffi.closeCalls != 1 {
 		t.Fatalf("ffiCtx.Close() called %d times after second Close(), want 1", ffi.closeCalls)
+	}
+}
+
+// TestRunBacksOffWithNonDecreasingDelaysOnRepeatedFailures confirms that
+// run() consults its backoff between failed connection attempts, and that
+// the delays it waits out don't shrink across immediate, repeated failures.
+func TestRunBacksOffWithNonDecreasingDelaysOnRepeatedFailures(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	const wantAttempts = 4
+	var delays []time.Duration
+
+	client := &Client{
+		url:     "ws://example.com",
+		dialer:  &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
+		ffiCtx:  &fakeFFIContext{conn: newFakeFFIConnection()},
+		backoff: newBackoff(10*time.Millisecond, time.Second, defaultBackoffMultiplier),
+		sleep: func(_ context.Context, d time.Duration) bool {
+			delays = append(delays, d)
+			if len(delays) >= wantAttempts {
+				cancel()
+				return false
+			}
+			return true
+		},
+	}
+
+	client.run(ctx)
+
+	if len(delays) != wantAttempts {
+		t.Fatalf("got %d backoff delays, want %d", len(delays), wantAttempts)
+	}
+	for i := 1; i < len(delays); i++ {
+		if delays[i] < delays[i-1] {
+			t.Fatalf("delay[%d] = %v is less than delay[%d] = %v; want non-decreasing", i, delays[i], i-1, delays[i-1])
+		}
+	}
+}
+
+// TestRunDoesNotResetBackoffOnSlowFailedDial confirms that a dial which takes
+// longer than resetThreshold to fail is still treated as a failed connection
+// attempt, not a healthy session: the backoff must not be reset, since the
+// clock for resetThreshold only starts once a connection is established.
+func TestRunDoesNotResetBackoffOnSlowFailedDial(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	const wantAttempts = 2
+	var delays []time.Duration
+
+	client := &Client{
+		url:     "ws://example.com",
+		dialer:  &fakeWebsocketDialer{dialErr: errors.New("no backend available"), dialDelay: resetThreshold + 10*time.Millisecond},
+		ffiCtx:  &fakeFFIContext{conn: newFakeFFIConnection()},
+		backoff: newBackoff(10*time.Millisecond, time.Second, defaultBackoffMultiplier),
+		sleep: func(_ context.Context, d time.Duration) bool {
+			delays = append(delays, d)
+			if len(delays) >= wantAttempts {
+				cancel()
+				return false
+			}
+			return true
+		},
+	}
+
+	client.run(ctx)
+
+	if len(delays) != wantAttempts {
+		t.Fatalf("got %d backoff delays, want %d", len(delays), wantAttempts)
+	}
+	if delays[1] < delays[0] {
+		t.Fatalf("delay[1] = %v is less than delay[0] = %v; a slow failed dial must not reset the backoff", delays[1], delays[0])
+	}
+}
+
+// TestShouldResetBackoffAtThreshold checks the boundary of the invariant
+// that a session must persist for the reset threshold before its failure
+// stops being held against the next reconnection attempt.
+func TestShouldResetBackoffAtThreshold(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration time.Duration
+		want     bool
+	}{
+		{name: "well under threshold", duration: 1 * time.Second, want: false},
+		{name: "just under threshold", duration: resetThreshold - time.Millisecond, want: false},
+		{name: "exactly at threshold", duration: resetThreshold, want: true},
+		{name: "well over threshold", duration: resetThreshold + time.Second, want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldResetBackoff(tt.duration); got != tt.want {
+				t.Errorf("shouldResetBackoff(%v) = %v, want %v", tt.duration, got, tt.want)
+			}
+		})
 	}
 }

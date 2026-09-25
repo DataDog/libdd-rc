@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/DataDog/libdd-rc/ffi-hosts/go/internal/libddrcffi"
 )
@@ -36,6 +37,14 @@ type Client struct {
 	// Allows for better unit testing
 	dialer WebsocketDialer
 
+	// backoff tracks the delay before the next reconnection attempt. It is
+	// only ever touched from the run loop, so it needs no locking.
+	backoff *backoff
+
+	// sleep waits out a reconnection delay, returning false if ctx is
+	// canceled first. Allows for better unit testing.
+	sleep func(ctx context.Context, d time.Duration) bool
+
 	wg sync.WaitGroup
 
 	mu      sync.Mutex
@@ -61,7 +70,13 @@ func NewClient(rawURL, appName, version string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{ffiCtx: &ffiContext{ctx}, url: rawURL, dialer: &CoderWebsocketDialer{}}, nil
+	return &Client{
+		ffiCtx:  &ffiContext{ctx},
+		url:     rawURL,
+		dialer:  &CoderWebsocketDialer{},
+		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
+		sleep:   sleepCtx,
+	}, nil
 }
 
 // Start begins the Client's background connection loop: it continuously
@@ -144,9 +159,36 @@ func (c *Client) RegisterHandler(uri string, fn libddrcffi.HandlerFunc) error {
 // the connection lifecycle each time a new one needs to be established. It
 // will only stop when the provided context signals the run loop should terminate
 // either via an error or a done signal.
+//
+// Reconnection attempts are spaced out with an exponential backoff, so a
+// persistently unreachable backend isn't hammered in a tight loop. A session
+// that stays up for at least resetThreshold is treated as healthy enough
+// that its eventual failure shouldn't be held against the next reconnection
+// attempt, so the backoff is reset before it is next consulted.
+//
+// Connection establishment happens here rather than inside runSession so
+// that the clock used for that resetThreshold comparison only starts once a
+// connection has actually been established: a dial that takes a while before
+// failing must not be mistaken for a healthy session.
 func (c *Client) run(ctx context.Context) {
 	for {
-		err := c.runSession(ctx)
+		conn, ws, err := c.establishConnection(ctx)
+		if err != nil {
+			log.Printf("failed to establish connection: %v", err)
+
+			if ctx.Err() != nil {
+				log.Printf("closing run because of context err: %v", ctx.Err())
+				return
+			}
+
+			if !c.sleep(ctx, c.backoff.Next()) {
+				return
+			}
+			continue
+		}
+
+		start := time.Now()
+		err = c.runSession(ctx, conn, ws)
 		if err != nil {
 			log.Printf("session closed: %v", err)
 		}
@@ -154,6 +196,14 @@ func (c *Client) run(ctx context.Context) {
 		// Err handles both errors, and the context being canceled.
 		if ctx.Err() != nil {
 			log.Printf("closing run because of context err: %v", ctx.Err())
+			return
+		}
+
+		if shouldResetBackoff(time.Since(start)) {
+			c.backoff.Reset()
+		}
+
+		if !c.sleep(ctx, c.backoff.Next()) {
 			return
 		}
 	}
@@ -173,4 +223,29 @@ func validateURL(rawURL string) error {
 		return errors.New("rcx509: url must have a non-empty host")
 	}
 	return nil
+}
+
+// shouldResetBackoff reports whether a session that stayed up for
+// sessionDuration was long-lived enough that its eventual failure shouldn't
+// be held against the next reconnection attempt's backoff delay.
+func shouldResetBackoff(sessionDuration time.Duration) bool {
+	return sessionDuration >= resetThreshold
+}
+
+// sleepCtx waits for d to elapse, returning true, or for ctx to be canceled,
+// returning false. A non-positive d returns true immediately.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	if d <= 0 {
+		return true
+	}
+
+	t := time.NewTimer(d)
+	defer t.Stop()
+
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
