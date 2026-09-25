@@ -19,9 +19,6 @@ service RemoteQueriesService {
   rpc Execute(ExecuteRequest) returns (ExecuteResponse);
 
   // Retrieve a bounded chunk of a result page.
-  //
-  // Repeating a request with the same `run_id`, `page_index`, and `offset` MUST
-  // return the same bytes.
   rpc GetResultChunk(GetResultChunkRequest) returns (GetResultChunkResponse);
 }
 
@@ -49,8 +46,6 @@ message ExecuteRequest {
   bool resolve_only = 7;
 
   // A unique ID for this run.
-  //
-  // Retrying `Execute` with the same `run_id` MUST NOT start a second run.
   string run_id = 8;
 
   // The ID of the Datadog organization that owns this run.
