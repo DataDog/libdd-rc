@@ -29,6 +29,9 @@ func TestHandleExecute(t *testing.T) {
 		if err := proto.Unmarshal(respBytes, &resp); err != nil {
 			t.Fatalf("unmarshal response: %v", err)
 		}
+		if got := resp.GetStatus(); got != remotequeriesv1alpha1.ExecuteStatus_EXECUTE_STATUS_REJECTED {
+			t.Fatalf("status = %s, want REJECTED", got)
+		}
 		if got := resp.GetErrorCode(); got != tt.wantCode {
 			t.Fatalf("error_code = %q, want %q", got, tt.wantCode)
 		}
