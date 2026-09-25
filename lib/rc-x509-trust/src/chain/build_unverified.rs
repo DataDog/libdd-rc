@@ -148,8 +148,8 @@ mod tests {
 
     use crate::{
         test_issuer::{
-            CertBuilder, ExpiredIntermediate, ForgedLeaf, FutureValidIntermediate,
-            MissingIntermediate, PathLenViolation, TestCA, TestChain, ValidChain,
+            CertBuilder, ExpiredIntermediate, ExpiredLeaf, ForgedLeaf, FutureValidIntermediate,
+            FutureValidLeaf, MissingIntermediate, PathLenViolation, TestCA, TestChain, ValidChain,
             arbitrary_chain,
         },
         trust_store::MemoryCertCache,
@@ -219,6 +219,8 @@ mod tests {
         prop_oneof![
             arbitrary_chain(ca, n_intermediates.clone(), ForgedLeaf::default()),
             arbitrary_chain(ca, n_intermediates.clone(), PathLenViolation::default()),
+            arbitrary_chain(ca, n_intermediates.clone(), ExpiredLeaf::default()),
+            arbitrary_chain(ca, n_intermediates.clone(), FutureValidLeaf::default()),
             n_intermediates
                 .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
