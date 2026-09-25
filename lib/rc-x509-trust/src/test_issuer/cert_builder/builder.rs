@@ -14,6 +14,7 @@
 
 use rc_crypto::{certificate::Certificate, keys::PrivateKey};
 use rcgen::{CertificateParams, CertifiedIssuer};
+use time::OffsetDateTime;
 
 use crate::test_issuer::Identity;
 
@@ -32,6 +33,12 @@ pub(crate) struct Params {
 
     /// Override for the SKI field value.
     pub(super) cert_id: Option<Vec<u8>>,
+
+    /// Override the `notBefore` validity bound.
+    pub(super) not_before: Option<OffsetDateTime>,
+
+    /// Override the `notAfter` validity bound.
+    pub(super) not_after: Option<OffsetDateTime>,
 }
 
 impl Params {
@@ -45,6 +52,13 @@ impl Params {
         tbs.key_identifier_method = rcgen::KeyIdMethod::PreSpecified(
             self.cert_id.unwrap_or_else(|| generate_ski(&self.key)),
         );
+
+        if let Some(not_before) = self.not_before {
+            tbs.not_before = not_before;
+        }
+        if let Some(not_after) = self.not_after {
+            tbs.not_after = not_after;
+        }
 
         let issuer =
             CertifiedIssuer::signed_by(tbs, self.key, parent.issuer()).expect("signed cert");
@@ -74,6 +88,8 @@ where
                 cn: cn.into(),
                 key: PrivateKey::new(),
                 cert_id: None,
+                not_before: None,
+                not_after: None,
             },
             template,
         }
@@ -88,6 +104,16 @@ where
     pub(crate) fn set_cert_id(mut self, id: impl Into<Vec<u8>>) -> Self {
         self.params.cert_id = Some(id.into());
         self
+    }
+
+    /// Set the `notBefore` validity bound.
+    pub(crate) fn set_not_before(&mut self, not_before: OffsetDateTime) {
+        self.params.not_before = Some(not_before);
+    }
+
+    /// Set the `notAfter` validity bound.
+    pub(crate) fn set_not_after(&mut self, not_after: OffsetDateTime) {
+        self.params.not_after = Some(not_after);
     }
 }
 
