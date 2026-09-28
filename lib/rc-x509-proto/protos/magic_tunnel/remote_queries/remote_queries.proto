@@ -1,0 +1,211 @@
+syntax = "proto3";
+package rc.x509.magic_tunnel.remote_queries.v1alpha1;
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
+
+// A service for running Remote Queries on connected clients and retrieving
+// their results.
+//
+// The fully-qualified URIs to register handlers for are:
+//
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute
+//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/GetResultChunk
+//
+service RemoteQueriesService {
+  // Start a query run, or check whether the client can resolve the target.
+  //
+  // This call only admits the run. Result bytes are retrieved separately with
+  // `GetResultChunk`.
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+
+  // Retrieve a bounded chunk of a result page.
+  rpc GetResultChunk(GetResultChunkRequest) returns (GetResultChunkResponse);
+}
+
+// A request to start a query run.
+message ExecuteRequest {
+  // The Connection ID of the client that should run the query.
+  string connection_id = 1;
+
+  // The integration that should run the query.
+  string integration = 2;
+
+  // The database target the query runs against.
+  Target target = 3;
+
+  // The SQL query to run.
+  string query = 4;
+
+  // Whether the result should include its column schema.
+  bool include_schema = 5;
+
+  // The ID of the task this run belongs to.
+  string task_id = 6;
+
+  // Resolve the target without running the query.
+  bool resolve_only = 7;
+
+  // A unique ID for this run.
+  string run_id = 8;
+
+  // The ID of the Datadog organization that owns this run.
+  int64 org_id = 9;
+
+  // Limits the client MUST enforce while producing the result.
+  ResultLimits limits = 10;
+}
+
+// Identifies the database a query runs against.
+message Target {
+  // The database host.
+  string host = 1;
+
+  // The database port.
+  int32 port = 2;
+
+  // The database name.
+  string dbname = 3;
+
+  // The database instance identifier reported by the integration.
+  string database_instance = 4;
+}
+
+// Limits for a query run and its result.
+message ResultLimits {
+  // The maximum size of one result page, in bytes.
+  int64 max_file_bytes = 1;
+
+  // The maximum size of the complete result, in bytes.
+  int64 max_result_bytes = 2;
+
+  // The maximum size of one result row, in bytes.
+  int64 max_row_bytes = 3;
+
+  // The maximum number of result columns.
+  int64 max_columns = 4;
+
+  // The maximum size of the result schema, in bytes.
+  int64 max_schema_bytes = 5;
+
+  // The maximum number of result pages.
+  int64 max_pages = 6;
+
+  // The maximum query run duration, in milliseconds.
+  int64 timeout_ms = 7;
+}
+
+// The client's response to an `ExecuteRequest`.
+message ExecuteResponse {
+  // The outcome of the request.
+  ExecuteStatus status = 1;
+
+  // A machine-readable reason, set when `status` is
+  // `EXECUTE_STATUS_REJECTED`.
+  string error_code = 2;
+
+  // A sanitized, human-readable reason, set when `status` is
+  // `EXECUTE_STATUS_REJECTED`.
+  string error_message = 3;
+}
+
+// The outcome of an `ExecuteRequest`.
+enum ExecuteStatus {
+  EXECUTE_STATUS_UNSPECIFIED = 0;
+
+  // The run was accepted.
+  EXECUTE_STATUS_ACCEPTED = 1;
+
+  // A run with this `run_id` was already accepted.
+  EXECUTE_STATUS_ALREADY_ACCEPTED = 2;
+
+  // The request was rejected and no run was started.
+  EXECUTE_STATUS_REJECTED = 3;
+
+  // For `resolve_only` requests, the client resolved the target.
+  EXECUTE_STATUS_MATCHED = 4;
+}
+
+// A request for part of a result page.
+message GetResultChunkRequest {
+  // The Connection ID of the client that owns the run.
+  string connection_id = 1;
+
+  // The ID of the Datadog organization that owns the run.
+  int64 org_id = 2;
+
+  // The ID of the task the run belongs to.
+  string task_id = 3;
+
+  // The ID of the run whose result is requested.
+  string run_id = 4;
+
+  // The zero-based index of the requested result page.
+  uint32 page_index = 5;
+
+  // The byte offset within the page at which the chunk starts.
+  uint64 offset = 6;
+}
+
+// A chunk of a result page, or the reason no chunk was returned.
+message GetResultChunkResponse {
+  // The outcome of the request.
+  ChunkStatus status = 1;
+
+  // The `run_id` from the request.
+  string run_id = 2;
+
+  // The `page_index` from the request.
+  uint32 page_index = 3;
+
+  // The `offset` from the request.
+  uint64 offset = 4;
+
+  // The page bytes starting at `offset`, set when `status` is
+  // `CHUNK_STATUS_DATA`.
+  bytes data = 5;
+
+  // The offset to request next for this page.
+  uint64 next_offset = 6;
+
+  // Whether `data` ends the page.
+  bool page_complete = 7;
+
+  // The size of the complete page, in bytes.
+  uint64 page_bytes = 8;
+
+  // The number of rows in the page.
+  uint64 page_rows = 9;
+
+  // The zero-based index of the page's first row within the result.
+  uint64 record_offset = 10;
+
+  // The total number of pages in the result, or 0 if it is not known yet.
+  uint32 total_pages = 11;
+
+  // A machine-readable reason, set when `status` is `CHUNK_STATUS_FAILED`.
+  string error_code = 12;
+
+  // A sanitized, human-readable reason, set when `status` is
+  // `CHUNK_STATUS_FAILED`.
+  string error_message = 13;
+}
+
+// The outcome of a `GetResultChunkRequest`.
+enum ChunkStatus {
+  CHUNK_STATUS_UNSPECIFIED = 0;
+
+  // The requested bytes are not available yet; retry later.
+  CHUNK_STATUS_NOT_READY = 1;
+
+  // The response contains page bytes.
+  CHUNK_STATUS_DATA = 2;
+
+  // The result is complete and has no page at `page_index`.
+  CHUNK_STATUS_COMPLETE = 3;
+
+  // The run failed.
+  CHUNK_STATUS_FAILED = 4;
+
+  // The client has no result for this run.
+  CHUNK_STATUS_NOT_FOUND = 5;
+}
