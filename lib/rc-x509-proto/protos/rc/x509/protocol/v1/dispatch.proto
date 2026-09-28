@@ -3,9 +3,9 @@
 syntax = "proto3";
 package rc.x509.protocol.v1;
 
-import "magic_tunnel/protocol.proto";
-import "protocol/connection_id.proto";
-import "signature.proto";
+import "rc/x509/magic_tunnel/v1/protocol.proto";
+import "rc/x509/protocol/v1/connection_id.proto";
+import "rc/x509/signature/v1/signature.proto";
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 

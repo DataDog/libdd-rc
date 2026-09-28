@@ -126,11 +126,11 @@ where
     arbitrary_bytes().prop_map(v)
 }
 
-/// A value generator for [`prost_types::Timestamp`] fields (to satisfy the
+/// A value generator for [`pbjson_types::Timestamp`] fields (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
-pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<prost_types::Timestamp>> {
+pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<pbjson_types::Timestamp>> {
     proptest::prelude::any::<(i64, i32)>()
-        .prop_map(|(seconds, nanos)| Some(prost_types::Timestamp { seconds, nanos }))
+        .prop_map(|(seconds, nanos)| Some(pbjson_types::Timestamp { seconds, nanos }))
 }
 
 #[cfg(test)]
