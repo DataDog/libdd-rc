@@ -28,6 +28,7 @@ cc,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 cexpr,https://github.com/jethrogb/rust-cexpr,Apache-2.0 OR MIT,Jethro Beekman <jethro@jbeekman.nl>
 cfg-if,https://github.com/rust-lang/cfg-if,MIT OR Apache-2.0,Alex Crichton <alex@alexcrichton.com>
 chacha20,https://github.com/RustCrypto/stream-ciphers,MIT OR Apache-2.0,RustCrypto Developers
+chrono,https://github.com/chronotope/chrono,MIT OR Apache-2.0,N/A
 clang-sys,https://github.com/KyleMayes/clang-sys,Apache-2.0,Kyle Mayes <kyle@mayeses.com>
 clap,https://github.com/clap-rs/clap,MIT OR Apache-2.0,N/A
 clap_builder,https://github.com/clap-rs/clap,MIT OR Apache-2.0,N/A
@@ -99,6 +100,7 @@ parking_lot,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'A
 parking_lot_core,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 pbjson,https://github.com/influxdata/pbjson,MIT,N/A
 pbjson-build,https://github.com/influxdata/pbjson,MIT,N/A
+pbjson-types,https://github.com/influxdata/pbjson,MIT,N/A
 pem,https://github.com/jcreekmore/pem-rs.git,MIT,Jonathan Creekmore <jonathan@thecreekmores.org>
 petgraph,https://github.com/petgraph/petgraph,MIT OR Apache-2.0,bluss, mitchmindtree
 pin-project,https://github.com/taiki-e/pin-project,Apache-2.0 OR MIT,N/A
