@@ -132,4 +132,5 @@ git push origin "$TAG"
 echoe "creating GitHub release"
 gh release create "$TAG" --title "$TAG" --generate-notes
 
-echoe "DONE"
+echoe "publish complete - switching to workflow view"
+gh run watch "$(gh run list -w publish --limit 1 --json databaseId -q '.[0].databaseId')" --exit-status
