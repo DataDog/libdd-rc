@@ -5,11 +5,11 @@ syntax = "proto3";
 // of RC).
 package rc.x509.protocol.v1;
 
-import "protocol/chain.proto";
-import "protocol/dispatch.proto";
-import "protocol/handshake.proto";
-import "protocol/ping.proto";
-import "protocol/protocol_error.proto";
+import "rc/x509/protocol/v1/chain.proto";
+import "rc/x509/protocol/v1/dispatch.proto";
+import "rc/x509/protocol/v1/handshake.proto";
+import "rc/x509/protocol/v1/ping.proto";
+import "rc/x509/protocol/v1/protocol_error.proto";
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
