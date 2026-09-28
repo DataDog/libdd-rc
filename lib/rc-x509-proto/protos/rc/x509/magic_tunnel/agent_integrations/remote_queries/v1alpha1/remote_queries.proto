@@ -1,15 +1,15 @@
 syntax = "proto3";
-package rc.x509.magic_tunnel.remote_queries.v1alpha1;
+package rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1;
 
-option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_queries;remotequeriesv1alpha1";
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/agent_integrations/remote_queries;remotequeriesv1alpha1";
 
 // A service for running Remote Queries on connected clients and retrieving
 // their results.
 //
 // The fully-qualified URIs to register handlers for are:
 //
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/Execute
-//  rc.x509.magic_tunnel.remote_queries.v1alpha1.RemoteQueriesService/GetResultChunk
+//  rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.RemoteQueriesService/Execute
+//  rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.RemoteQueriesService/GetResultChunk
 //
 service RemoteQueriesService {
   // Start a query run, or check whether the client can resolve the target.

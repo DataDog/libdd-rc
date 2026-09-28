@@ -45,16 +45,18 @@ pub(crate) mod rc {
                     ));
                 }
             }
-            pub mod remote_queries {
-                pub mod v1alpha1 {
-                    include!(concat!(
-                        env!("OUT_DIR"),
-                        "/rc.x509.magic_tunnel.remote_queries.v1alpha1.rs"
-                    ));
-                    include!(concat!(
-                        env!("OUT_DIR"),
-                        "/rc.x509.magic_tunnel.remote_queries.v1alpha1.serde.rs"
-                    ));
+            pub mod agent_integrations {
+                pub mod remote_queries {
+                    pub mod v1alpha1 {
+                        include!(concat!(
+                            env!("OUT_DIR"),
+                            "/rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.rs"
+                        ));
+                        include!(concat!(
+                            env!("OUT_DIR"),
+                            "/rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.serde.rs"
+                        ));
+                    }
                 }
             }
         }
