@@ -48,3 +48,12 @@ missing_docs = "warn"                  # We should document our code for humans.
 unreachable_pub = "warn"               # Visibility is part of communicating with humans
 missing_debug_implementations = "warn" # Frequently used bound on data structures
 unused_crate_dependencies = "warn"     # Warn for unused dependencies
+
+[workspace.dependencies]
+rc-crypto = { version = "0.1.1", path = "lib/rc-crypto" }
+rc-x509-client = { version = "0.2.0", path = "lib/rc-x509-client" }
+rc-x509-ffi = { version = "0.1.0", path = "lib/rc-x509-ffi" }
+rc-x509-proto = { version = "0.3", path = "lib/rc-x509-proto" }
+rc-x509-roots = { version = "1.0.0", path = "lib/rc-x509-roots" }
+rc-x509-test-helpers = { version = "0.1.1", path = "lib/rc-x509-test-helpers" }
+rc-x509-trust = { version = "0.2.0", path = "lib/rc-x509-trust" }

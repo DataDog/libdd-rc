@@ -21,11 +21,13 @@ lint:
   use:
     - STANDARD
   except:
+    # DO NOT MODIFY OR OVERRIDE THESE LINTING RULES.
     - PACKAGE_DIRECTORY_MATCH # Excessive for single package protos
   ignore_only:
     DIRECTORY_SAME_PACKAGE: # Break out if >1 file per package.
       - lib/rc-x509-proto/protos/protocol.proto
       - lib/rc-x509-proto/protos/signature.proto
+  # DO NOT MODIFY OR OVERRIDE THESE LINTING RULES.
 
 # https://buf.build/docs/breaking/
 breaking:
