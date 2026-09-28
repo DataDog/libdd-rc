@@ -24,6 +24,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // This configures the field type, and adds a manual impl of Arbitrary to
     // avoid compilation errors caused by derive(Arbitrary) not being
     // implemented for Bytes.
+    //
+    // Integrations don't need to change these values - only protocol dev.
     let bytes_fields = [
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.request",
         "rc.x509.magic_tunnel.v1.MagicTunnelResponse.response",
@@ -65,6 +67,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "#[derive(serde::Serialize, serde::Deserialize)]",
     );
 
+    // `google.protobuf.Timestamp` is mapped to the `pbjson_types::Timestamp`
+    // rust repr instead of `prost_types::Timestamp` - the former has a
+    // serde::Serialise impl.
+    config.extern_path(".google.protobuf.Timestamp", "::pbjson_types::Timestamp");
+
     // Discover all the protobuf files.
     let mut protos = vec![];
     for entry in glob("protos/**/*.proto").expect("invalid glob") {
@@ -87,20 +94,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
 
-    // `PingRequest` is passed to policy evaluation by callers, which requires
-    // a protobuf-JSON-compliant `Serialize` impl (e.g. `payload`'s `bytes`
-    // must serialize as a base64 string, not a byte array, to match what the
-    // OPA policy expects).
+    // Magic tunnel request payloads are passed to policy evaluation by callers,
+    // which requires a `Serialize` impl for eval.
     let descriptor_bytes = std::fs::read(&descriptor_path)?;
     pbjson_build::Builder::new()
         .register_descriptors(&descriptor_bytes)?
-        .build(&[
-            ".rc.x509.magic_tunnel.remote_config.v1.PingRequest",
-            ".rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.ExecuteRequest",
-            ".rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.Target",
-            ".rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.ResultLimits",
-            ".rc.x509.magic_tunnel.agent_integrations.remote_queries.v1alpha1.GetResultChunkRequest",
-        ])?;
+        .build(&[".rc.x509.magic_tunnel"])?;
 
     Ok(())
 }
