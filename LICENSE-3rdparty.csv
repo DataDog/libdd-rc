@@ -39,6 +39,7 @@ cpufeatures,https://github.com/RustCrypto/utils,MIT OR Apache-2.0,RustCrypto Dev
 data-encoding,https://github.com/ia0/data-encoding,MIT,N/A
 der-parser,https://github.com/rusticata/der-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 deranged,https://github.com/jhpratt/deranged,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
+derive_arbitrary,https://github.com/rust-fuzz/arbitrary,MIT OR Apache-2.0,The Rust-Fuzz Project Developers, Nick Fitzgerald <fitzgen@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>, Andre Bogus <bogusandre@gmail.com>, Corey Farwell <coreyf@rwell.org>
 displaydoc,https://github.com/yaahc/displaydoc,MIT OR Apache-2.0,Jane Lusby <jlusby@yaah.dev>
 dunce,https://gitlab.com/kornelski/dunce,CC0-1.0 OR MIT-0 OR Apache-2.0,Kornel <kornel@geekhood.net>
 either,https://github.com/rayon-rs/either,MIT OR Apache-2.0,N/A
@@ -131,6 +132,7 @@ rand_core,https://github.com/rust-random/rand,MIT OR Apache-2.0,The Rand Project
 rand_xorshift,https://github.com/rust-random/rngs,MIT OR Apache-2.0,The Rand Project Developers, The Rust Project Developers
 rc-crypto,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-client,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
+rc-x509-client-fuzz,N/A,Apache-2.0,N/A
 rc-x509-ffi,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
 rc-x509-ffi-fuzz,N/A,Apache-2.0,N/A
 rc-x509-proto,https://github.com/DataDog/libdd-rc,Apache-2.0,N/A
