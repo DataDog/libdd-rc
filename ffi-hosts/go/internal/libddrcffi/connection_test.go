@@ -101,6 +101,21 @@ func TestConnectionConnectedTwice(t *testing.T) {
 	}
 }
 
+// TestConnectionConnectedPropagatesNativeError verifies that a failure
+// reported by the underlying nativeConn's connected() call is surfaced all
+// the way through Connection.Connected() to its caller, rather than being
+// swallowed.
+func TestConnectionConnectedPropagatesNativeError(t *testing.T) {
+	wantErr := errors.New("boom")
+	fake := &fakeConn{connectedErr: wantErr}
+	conn := newFakeConnection(fake)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	if err := conn.Connected(); !errors.Is(err, wantErr) {
+		t.Fatalf("Connected() = %v, want %v", err, wantErr)
+	}
+}
+
 type dispatchError struct {
 	correlationID uint64
 	errorCode     int

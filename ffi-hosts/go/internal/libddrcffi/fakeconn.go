@@ -36,12 +36,16 @@ type fakeConn struct {
 
 	// recvErr, if set, is returned by every recv call instead of nil.
 	recvErr error
+
+	// connectedErr, if set, is returned by every connected call instead of nil.
+	connectedErr error
 }
 
-func (f *fakeConn) connected() {
+func (f *fakeConn) connected() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.connectedCalls++
+	return f.connectedErr
 }
 
 func (f *fakeConn) recv(data []byte) error {

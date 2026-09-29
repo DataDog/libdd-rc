@@ -42,7 +42,7 @@ const (
 // library.
 type nativeConn interface {
 	// connected reports the connection as established to rc-x509-client.
-	connected()
+	connected() error
 
 	// recv passes data received from the RC delivery backend into
 	// rc-x509-client. data must be non-empty.
@@ -87,10 +87,12 @@ func newCgoConn(ctxPtr *C.Ctx, userData unsafe.Pointer) (*cgoConn, error) {
 	return &cgoConn{ptr: ptr}, nil
 }
 
-func (c *cgoConn) connected() {
+func (c *cgoConn) connected() error {
 	if ret := C.rc_conn_connected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
 		log.Printf("ddrc: rc_conn_connected returned %v", ret)
+		return fmt.Errorf("ddrc: rc_conn_connected returned %v", ret)
 	}
+	return nil
 }
 
 func (c *cgoConn) recv(data []byte) error {

@@ -442,6 +442,25 @@ func TestRunSessionShutsDownOnReadClose(t *testing.T) {
 	}
 }
 
+// TestRunSessionPropagatesConnectedError verifies that a failure reported by
+// the FFI layer's Connected() call surfaces all the way out of runSession,
+// rather than being swallowed by establishConnection.
+func TestRunSessionPropagatesConnectedError(t *testing.T) {
+	connectedErr := errors.New("connected boom")
+	ffiConn := newFakeFFIConnection()
+	ffiConn.connectedErr = connectedErr
+	ws := newFakeWebsocketConn()
+	client := &Client{
+		ffiCtx: &fakeFFIContext{conn: ffiConn},
+		url:    "ws://example.com",
+		dialer: &fakeWebsocketDialer{conn: ws},
+	}
+
+	if err := client.runSession(context.Background()); !errors.Is(err, connectedErr) {
+		t.Fatalf("runSession() = %v, want %v", err, connectedErr)
+	}
+}
+
 // TestRunSessionHappyPath verifies that runSession moves messages in both
 // directions, and fully tears down the FFI connection and websocket once the
 // context is canceled.
