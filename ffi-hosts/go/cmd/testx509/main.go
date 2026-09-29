@@ -15,12 +15,17 @@ const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/
 func main() {
 	enableLogging()
 
+	apiKey := os.Getenv("DD_API_KEY")
+	if apiKey == "" {
+		log.Fatal("DD_API_KEY environment variable must be set")
+	}
+
 	// Connect to the Datadog DC, reporting this application as:
 	//
 	//  Name: testx509-poc
 	//  Version: 0.0.1
 	//
-	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws", "testx509-poc", "0.0.1")
+	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws", "testx509-poc", "0.0.1", rcx509.WithAPIKey(apiKey))
 	if err != nil {
 		log.Fatal(err)
 	}

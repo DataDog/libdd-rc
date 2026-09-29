@@ -53,6 +53,19 @@ type Client struct {
 	cancel  context.CancelFunc
 }
 
+type options struct {
+	apiKey string
+}
+
+// Option configures optional Client behaviour.
+type Option func(*options)
+
+// WithAPIKey sends key in the DD-API-KEY HTTP header when dialing the
+// backend. An empty key sends no header.
+func WithAPIKey(key string) Option {
+	return func(o *options) { o.apiKey = key }
+}
+
 // NewClient initializes a new Client backed by its own instance of the
 // rc-x509-client subsystem. The connection is not started until explicited
 // requested by the user.
@@ -61,7 +74,12 @@ type Client struct {
 //
 // appName and version identify the host application, and are reported to the
 // backend as part of the connection handshake.
-func NewClient(rawURL, appName, version string) (*Client, error) {
+func NewClient(rawURL, appName, version string, opts ...Option) (*Client, error) {
+	var cfg options
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	if err := validateURL(rawURL); err != nil {
 		return nil, err
 	}
@@ -73,7 +91,7 @@ func NewClient(rawURL, appName, version string) (*Client, error) {
 	return &Client{
 		ffiCtx:  &ffiContext{ctx},
 		url:     rawURL,
-		dialer:  &CoderWebsocketDialer{},
+		dialer:  &CoderWebsocketDialer{APIKey: cfg.apiKey},
 		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
 		sleep:   sleepCtx,
 	}, nil
