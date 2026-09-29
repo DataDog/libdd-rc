@@ -48,6 +48,8 @@ jobs:
             dir: lib/rc-x509-ffi
           - name: "dispatch"
             dir: lib/rc-x509-ffi
+          - name: "message_delivery"
+            dir: lib/rc-x509-client
 
     runs-on: ubuntu-latest
     container:
