@@ -81,8 +81,10 @@ where
                 State::PreHandshake(self)
             }
 
-            ServerToClient::CertificatePush(..) => unimplemented!(),
-            ServerToClient::SetReconnectionData(..) => unimplemented!(),
+            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+                // TODO: implement.
+                State::PreHandshake(self)
+            }
 
             // The client has not yet sent the HELLO, so an ACK is a protocol
             // violation.

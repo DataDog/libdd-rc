@@ -21,3 +21,17 @@ pub mod trust_store;
 
 #[cfg(test)]
 pub(crate) mod test_issuer;
+
+#[cfg(feature = "fuzzing")]
+mod fuzzing {
+    use arbitrary::Arbitrary;
+    use bytes::Bytes;
+
+    /// Generate arbitrary [`Bytes`] for fuzzing byte payloads.
+    ///
+    /// While similarly named, this is a distinct trait / impl from proptest
+    /// `Arbitrary` impls.
+    pub(crate) fn arbitrary_bytes(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Bytes> {
+        Ok(Vec::<u8>::arbitrary(u)?.into())
+    }
+}

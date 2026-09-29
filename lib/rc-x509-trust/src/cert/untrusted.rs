@@ -23,7 +23,10 @@ use valuable::Valuable;
 /// wire as untrusted. Use [`UntrustedCertBytes::parse()`] to attempt to parse
 /// these raw bytes into an [`UntrustedCert`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct UntrustedCertBytes(Bytes);
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
+pub struct UntrustedCertBytes(
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))] Bytes,
+);
 
 impl UntrustedCertBytes {
     /// Wrap `der` bytes obtained from an untrusted source, without parsing

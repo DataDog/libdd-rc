@@ -20,6 +20,7 @@ package.license = "Apache-2.0"
 members = [
 	"lib/rc-crypto",
 	"lib/rc-x509-client",
+	"lib/rc-x509-client/fuzz",
 	"lib/rc-x509-ffi",
 	"lib/rc-x509-ffi/fuzz",
 	"lib/rc-x509-proto",
@@ -48,6 +49,9 @@ missing_docs = "warn"                  # We should document our code for humans.
 unreachable_pub = "warn"               # Visibility is part of communicating with humans
 missing_debug_implementations = "warn" # Frequently used bound on data structures
 unused_crate_dependencies = "warn"     # Warn for unused dependencies
+
+# `cfg(fuzzing)` is used by cargo fuzz - do not warn about it.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.dependencies]
 rc-crypto = { version = "0.1.1", path = "lib/rc-crypto" }

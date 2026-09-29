@@ -82,9 +82,12 @@ impl LastConnectedDuration {
 /// Immutable opaque data sent by the server, to be reflected back in any
 /// subsequent reconnection handshake.
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct ReconnectionData(
-    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes(0..1028)"))] Bytes,
+    #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_bytes(0..1028)"))]
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
+    Bytes,
 );
 
 impl ReconnectionData {

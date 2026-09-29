@@ -53,8 +53,10 @@ where
                 State::Active(self)
             }
 
-            ServerToClient::CertificatePush(..) => unimplemented!(),
-            ServerToClient::SetReconnectionData(..) => unimplemented!(),
+            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+                // TODO: implement.
+                State::Active(self)
+            }
 
             ServerToClient::Dispatch {
                 correlation_id,

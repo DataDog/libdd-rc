@@ -24,6 +24,7 @@ repository = "https://github.com/DataDog/libdd-rc"
 workspace = true
 
 [dependencies]
+arbitrary = { version = "1", optional = true, features = ["derive"] }
 aws-lc-rs = { version = "1", default-features = false, features = ["alloc"] }
 bytes = "1"
 thiserror = "2"
@@ -50,6 +51,7 @@ rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.1" }
 [features]
 default = ["fips"]
 fips = ["aws-lc-rs/fips", "rcgen/aws_lc_rs", "rcgen/fips", "x509-parser/verify-aws"]
+fuzzing = ["dep:arbitrary"]
 
 # Flags specifically required for dd-source compatibility, with default=false.
 dd-source = ["x509-parser/verify"]

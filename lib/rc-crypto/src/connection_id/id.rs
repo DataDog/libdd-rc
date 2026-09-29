@@ -81,8 +81,11 @@ impl Display for ConnectionId {
 /// The unverified [`ConnectionId`], and the input parameters needed to verify
 /// it was derived from the client nonce provided to the server.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub struct UntrustedConnectionId {
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
     server_nonce: Bytes,
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
     id: Bytes,
 }
 
@@ -104,6 +107,22 @@ impl UntrustedConnectionId {
         }
 
         Ok(derived)
+    }
+
+    /// Accept this [`UntrustedConnectionId`] as trusted without verifying it
+    /// was derived from a client nonce.
+    ///
+    /// This MUST NOT be used in production code, and is only available when
+    /// `cfg(fuzzing)`.
+    #[cfg(fuzzing)]
+    pub fn skip_verification(self) -> ConnectionId {
+        #[cfg(not(fuzzing))]
+        panic!("skip_verification() only used for fuzzing");
+
+        let mut id = [0u8; 16];
+        let n = self.id.len().min(16);
+        id[..n].copy_from_slice(&self.id[..n]);
+        ConnectionId::from_unverified(id)
     }
 }
 

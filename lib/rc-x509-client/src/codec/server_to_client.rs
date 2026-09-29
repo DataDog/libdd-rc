@@ -55,18 +55,22 @@ pub enum DecodingError {
 /// This is untrusted input - the application is responsible for verifying
 /// `signature` against `cert_id` before trusting the dispatched payload.
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub struct DetachedSignature {
     /// The Subject Key Identifier (SKI) of the certificate that produced
     /// `signature`.
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
     pub cert_id: Bytes,
 
     /// The signature bytes covering the dispatched payload.
+    #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
     pub signature: Bytes,
 }
 
 /// All possible messages originating from the RC delivery backend, to an RC
 /// client.
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub enum ServerToClient {
     /// The server has requested an immediate PONG response.
     Ping,
@@ -86,6 +90,7 @@ pub enum ServerToClient {
         /// The payload to dispatch to the host.
         ///
         /// This is a serialised [`v1::DispatchRequestPayload`].
+        #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
         payload: Bytes,
 
         /// The detached signature covering `payload`, if the server provided

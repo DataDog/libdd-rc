@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rc_crypto::connection_id::IdNonce;
+use std::fmt::Debug;
+
+use rc_crypto::connection_id::{ConnectionId, ConnectionIdInvalid, IdNonce, UntrustedConnectionId};
 use tracing::{debug, error};
 
 use crate::{
@@ -49,8 +51,10 @@ where
                 State::Handshaking(self)
             }
 
-            ServerToClient::CertificatePush(..) => unimplemented!(),
-            ServerToClient::SetReconnectionData(..) => unimplemented!(),
+            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+                // TODO: implement.
+                State::Handshaking(self)
+            }
 
             ServerToClient::ClientHelloAck {
                 connection_id: proposed_id,
@@ -63,7 +67,11 @@ where
                 let id_nonce = std::mem::take(&mut self.state.0);
 
                 // Verify the connection ID was derived from the client nonce.
-                let connection_id = match proposed_id.verify(id_nonce) {
+                //
+                // Under fuzzing, this is skipped so exploration can reach the
+                // `Active` state without needing to forge a nonce-derived ID,
+                // which the fuzzer has a low chance of succeeding at.
+                let connection_id = match verify(proposed_id, id_nonce) {
                     Ok(v) => v,
                     Err(e) => {
                         error!(error=%e, "connection ID verification failure");
@@ -95,4 +103,21 @@ where
             }
         }
     }
+}
+
+#[cfg(not(fuzzing))]
+fn verify(
+    proposed_id: UntrustedConnectionId,
+    client_nonce: IdNonce,
+) -> Result<ConnectionId, ConnectionIdInvalid> {
+    proposed_id.verify(client_nonce)
+}
+
+#[cfg(fuzzing)]
+fn verify(
+    proposed_id: UntrustedConnectionId,
+    client_nonce: IdNonce,
+) -> Result<ConnectionId, ConnectionIdInvalid> {
+    let _ = client_nonce;
+    Ok(proposed_id.skip_verification())
 }
