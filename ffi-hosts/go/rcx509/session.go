@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -72,13 +73,25 @@ func (f *ffiContext) NewConnection() (FFIConnection, error) {
 	return f.X509Context.NewConnection()
 }
 
-type CoderWebsocketDialer struct{}
+// apiKeyHeader is the HTTP header carrying the API key on the dial request.
+const apiKeyHeader = "DD-API-KEY"
+
+type CoderWebsocketDialer struct {
+	// APIKey, when non-empty, is sent in the DD-API-KEY header.
+	APIKey string
+}
 
 func (cwd *CoderWebsocketDialer) Dial(ctx context.Context, url string, dialTimeout time.Duration) (WebsocketConnection, error) {
 	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
 
-	ws, _, err := websocket.Dial(dialCtx, url, nil)
+	var opts *websocket.DialOptions
+	if cwd.APIKey != "" {
+		opts = &websocket.DialOptions{HTTPHeader: http.Header{}}
+		opts.HTTPHeader.Set(apiKeyHeader, cwd.APIKey)
+	}
+
+	ws, _, err := websocket.Dial(dialCtx, url, opts)
 	if err != nil {
 		return nil, fmt.Errorf("rcx509: failed to dial %s: %w", url, err)
 	}

@@ -12,6 +12,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/DataDog/libdd-rc/ffi-hosts/go/rcx509"
 )
@@ -19,7 +20,9 @@ import (
 const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
 func main() {
-	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws", "my-app", "0.0.1")
+	// WithAPIKey is optional; when set, the key is sent in the DD-API-KEY
+	// header on every connection attempt.
+	client, err := rcx509.NewClient("wss://config.datad0g.com/api/v2/ws", "my-app", "0.0.1", rcx509.WithAPIKey(os.Getenv("DD_API_KEY")))
 	if err != nil {
 		log.Fatal(err)
 	}
