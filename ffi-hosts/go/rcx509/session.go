@@ -90,7 +90,17 @@ func (cwd *CoderWebsocketDialer) Dial(ctx context.Context, url string, dialTimeo
 
 	var opts *websocket.DialOptions
 	if cwd.HTTPClient != nil {
-		opts = &websocket.DialOptions{HTTPClient: cwd.HTTPClient}
+		httpClient := cwd.HTTPClient
+		if httpClient.Timeout > 0 {
+			clonedClient := *httpClient
+			clonedClient.Timeout = 0
+			httpClient = &clonedClient
+
+			var timeoutCancel context.CancelFunc
+			dialCtx, timeoutCancel = context.WithTimeout(dialCtx, cwd.HTTPClient.Timeout)
+			defer timeoutCancel()
+		}
+		opts = &websocket.DialOptions{HTTPClient: httpClient}
 	}
 	if cwd.APIKey != "" {
 		if opts == nil {

@@ -70,7 +70,8 @@ func WithAPIKey(key string) Option {
 
 // WithHTTPClient uses client for WebSocket connection attempts. This allows
 // users to optionally supply an HTTP client with custom proxy, TLS, dialer,
-// or timeout configurations.
+// or timeout configurations. A non-zero client timeout bounds the WebSocket
+// handshake, not the lifetime of the established connection.
 func WithHTTPClient(client *http.Client) Option {
 	return func(o *options) { o.httpClient = client }
 }

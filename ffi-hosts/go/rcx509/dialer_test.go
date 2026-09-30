@@ -59,7 +59,9 @@ func TestDialerUsesHTTPClientWithAPIKey(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	d := &CoderWebsocketDialer{APIKey: "secret", HTTPClient: srv.Client()}
+	httpClient := srv.Client()
+	httpClient.Timeout = time.Second
+	d := &CoderWebsocketDialer{APIKey: "secret", HTTPClient: httpClient}
 	conn, err := d.Dial(context.Background(), "wss"+strings.TrimPrefix(srv.URL, "https"), 5*time.Second)
 	if err != nil {
 		t.Fatalf("Dial() error = %v", err)
