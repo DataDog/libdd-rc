@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -54,7 +55,8 @@ type Client struct {
 }
 
 type options struct {
-	apiKey string
+	apiKey     string
+	httpClient *http.Client
 }
 
 // Option configures optional Client behaviour.
@@ -64,6 +66,14 @@ type Option func(*options)
 // backend. An empty key sends no header.
 func WithAPIKey(key string) Option {
 	return func(o *options) { o.apiKey = key }
+}
+
+// WithHTTPClient uses client for WebSocket connection attempts. This allows
+// users to optionally supply an HTTP client with custom proxy, TLS, dialer,
+// or timeout configurations. A non-zero client timeout bounds the WebSocket
+// handshake, not the lifetime of the established connection.
+func WithHTTPClient(client *http.Client) Option {
+	return func(o *options) { o.httpClient = client }
 }
 
 // NewClient initializes a new Client backed by its own instance of the
@@ -91,7 +101,7 @@ func NewClient(rawURL, appName, version string, opts ...Option) (*Client, error)
 	return &Client{
 		ffiCtx:  &ffiContext{ctx},
 		url:     rawURL,
-		dialer:  &CoderWebsocketDialer{APIKey: cfg.apiKey},
+		dialer:  &CoderWebsocketDialer{APIKey: cfg.apiKey, HTTPClient: cfg.httpClient},
 		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
 		sleep:   sleepCtx,
 	}, nil

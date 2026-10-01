@@ -79,6 +79,9 @@ const apiKeyHeader = "DD-API-KEY"
 type CoderWebsocketDialer struct {
 	// APIKey, when non-empty, is sent in the DD-API-KEY header.
 	APIKey string
+
+	// HTTPClient, when non-nil, is used for WebSocket connection attempts.
+	HTTPClient *http.Client
 }
 
 func (cwd *CoderWebsocketDialer) Dial(ctx context.Context, url string, dialTimeout time.Duration) (WebsocketConnection, error) {
@@ -86,8 +89,24 @@ func (cwd *CoderWebsocketDialer) Dial(ctx context.Context, url string, dialTimeo
 	defer cancel()
 
 	var opts *websocket.DialOptions
+	if cwd.HTTPClient != nil {
+		httpClient := cwd.HTTPClient
+		if httpClient.Timeout > 0 {
+			clonedClient := *httpClient
+			clonedClient.Timeout = 0
+			httpClient = &clonedClient
+
+			var timeoutCancel context.CancelFunc
+			dialCtx, timeoutCancel = context.WithTimeout(dialCtx, cwd.HTTPClient.Timeout)
+			defer timeoutCancel()
+		}
+		opts = &websocket.DialOptions{HTTPClient: httpClient}
+	}
 	if cwd.APIKey != "" {
-		opts = &websocket.DialOptions{HTTPHeader: http.Header{}}
+		if opts == nil {
+			opts = &websocket.DialOptions{}
+		}
+		opts.HTTPHeader = http.Header{}
 		opts.HTTPHeader.Set(apiKeyHeader, cwd.APIKey)
 	}
 
