@@ -44,3 +44,14 @@ mod signer;
 
 pub use signature::*;
 pub use signer::*;
+
+#[cfg(feature = "fuzzing")]
+pub(crate) mod fuzzing {
+    use arbitrary::Arbitrary;
+    use bytes::Bytes;
+
+    /// Generate arbitrary [`Bytes`] for fuzzing byte payloads.
+    pub(crate) fn arbitrary_bytes(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Bytes> {
+        Ok(Vec::<u8>::arbitrary(u)?.into())
+    }
+}

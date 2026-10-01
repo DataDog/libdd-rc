@@ -93,6 +93,9 @@ name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
 
 [[package]]
 name = "asn1-rs"
@@ -551,6 +554,17 @@ name = "deranged"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "displaydoc"
@@ -1467,6 +1481,7 @@ dependencies = [
 name = "rc-crypto"
 version = "0.1.6"
 dependencies = [
+ "arbitrary",
  "assert_matches",
  "aws-lc-rs",
  "bytes",
@@ -1491,6 +1506,7 @@ dependencies = [
 name = "rc-x509-client"
 version = "0.2.0"
 dependencies = [
+ "arbitrary",
  "assert_matches",
  "futures",
  "pin-project",
@@ -1504,6 +1520,18 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "rc-x509-client-fuzz"
+version = "0.0.0"
+dependencies = [
+ "arbitrary",
+ "futures",
+ "libfuzzer-sys",
+ "rc-x509-client",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -1586,6 +1614,7 @@ dependencies = [
 name = "rc-x509-trust"
 version = "0.2.0"
 dependencies = [
+ "arbitrary",
  "assert_matches",
  "bytes",
  "hashbrown 0.17.1",

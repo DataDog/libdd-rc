@@ -20,6 +20,7 @@ use std::fmt::Display;
 /// connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 pub struct CorrelationId(u64);
 
 impl CorrelationId {

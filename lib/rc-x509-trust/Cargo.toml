@@ -21,6 +21,7 @@ description = "Trust and attestation library for the RC X509 platform"
 repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
+arbitrary = { version = "1", optional = true, features = ["derive"] }
 bytes = "1.11.1"
 hashbrown = "0.17"
 rc-crypto.workspace = true
@@ -38,3 +39,6 @@ time = "0.3"
 
 [lints]
 workspace = true
+
+[features]
+fuzzing = ["dep:arbitrary"]

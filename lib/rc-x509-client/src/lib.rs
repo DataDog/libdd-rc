@@ -42,3 +42,17 @@ mod tests {
         prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
     }
 }
+
+#[cfg(feature = "fuzzing")]
+mod fuzzing {
+    use arbitrary::Arbitrary;
+    use tokio_util::bytes::Bytes;
+
+    /// Generate arbitrary [`Bytes`] for fuzzing byte payloads.
+    ///
+    /// While similarly named, this is a distinct trait / impl from proptest
+    /// `Arbitrary` impls.
+    pub(crate) fn arbitrary_bytes(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Bytes> {
+        Ok(Vec::<u8>::arbitrary(u)?.into())
+    }
+}
