@@ -31,6 +31,32 @@
 #include <stdlib.h>
 
 /*
+ Result of a [`FFIConnection`] lifecycle call (e.g.
+ [`rc_conn_connected()`], [`rc_conn_disconnected()`],
+ [`rc_conn_send_callback()`], [`rc_conn_free()`]) made by the host runtime.
+ */
+enum conn_ret_t
+#if __STDC_VERSION__ >= 202311L
+  : int32_t
+#endif // __STDC_VERSION__ >= 202311L
+ {
+    /*
+     The call completed successfully.
+     */
+    CONN_RET_T_SUCCESS = 0,
+    /*
+     The connection was not in a valid state for this call, e.g. it was
+     called out of the expected lifecycle order. The call had no effect.
+     */
+    CONN_RET_T_INVALID_STATE = 1,
+};
+#if __STDC_VERSION__ >= 202311L
+typedef enum conn_ret_t conn_ret_t;
+#else
+typedef int32_t conn_ret_t;
+#endif // __STDC_VERSION__ >= 202311L
+
+/*
  Errors an FFI host can report for a dispatched message via
  [`rc_conn_dispatch_error()`], in place of a call to
  [`rc_conn_dispatch_result()`].
@@ -104,6 +130,12 @@ enum recv_ret_t
      The message was successfully passed.
      */
     RECV_RET_T_SUCCESS = 0,
+    /*
+     The connection was not in a state where it could accept incoming
+     data (e.g. not yet connected, or already disconnected). The payload
+     was dropped.
+     */
+    RECV_RET_T_INVALID_STATE = 1,
 };
 #if __STDC_VERSION__ >= 202311L
 typedef enum recv_ret_t recv_ret_t;
@@ -340,9 +372,9 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *u
 /*
  Mark the connection as established.
 
- The caller MUST have made a previous call to [`rc_conn_send_callback()`],
- else this call will return an error and the connection will not be marked as
- available internally.
+ The caller MUST have made a previous call to [`rc_conn_send_callback()`].
+ Calling this out of order is a debug-build panic; release builds instead
+ return [`ConnRet::InvalidState`] and leave the connection unchanged.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
@@ -352,7 +384,7 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *u
 
  This call is not concurrency safe.
  */
-void rc_conn_connected(struct FFIConnection *conn);
+conn_ret_t rc_conn_connected(struct FFIConnection *conn);
 
 /*
  Mark the connection as closed.
@@ -367,6 +399,10 @@ void rc_conn_connected(struct FFIConnection *conn);
  internal I/O task exists cleanly, after which time it is guaranteed no more
  calls to the [`SendCb`] will be made.
 
+ Calling this on a connection that is not currently connected is a
+ debug-build panic; release builds instead return
+ [`ConnRet::InvalidState`] and leave the connection unchanged.
+
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
      library for the duration of the call.
@@ -375,7 +411,7 @@ void rc_conn_connected(struct FFIConnection *conn);
 
  This call is not concurrency safe.
  */
-void rc_conn_disconnected(struct FFIConnection *conn);
+conn_ret_t rc_conn_disconnected(struct FFIConnection *conn);
 
 /*
  Report an error for a previously dispatched message, in place of a
@@ -435,8 +471,16 @@ void rc_conn_dispatch_result(struct FFIConnection *conn,
 
  The `conn` MUST be marked as disconnected ([`rc_conn_disconnected()`]) prior
  to freeing the connection.
+
+ Freeing a still-connected connection is a debug-build panic; release
+ builds instead log the violation and return [`ConnRet::InvalidState`],
+ leaving `conn` valid and unchanged: resources are only released once this
+ call returns [`ConnRet::Success`]. A caller that retries after a
+ [`ConnRet::InvalidState`] return without first calling
+ [`rc_conn_disconnected()`] gets [`ConnRet::InvalidState`] again rather
+ than a use-after-free.
  */
-void rc_conn_free(struct FFIConnection *conn);
+conn_ret_t rc_conn_free(struct FFIConnection *conn);
 
 /*
  Initialise a new client connection state.
@@ -479,6 +523,10 @@ struct FFIConnection *rc_conn_new(const struct Ctx *ctx,
  The `conn` MUST have previously been marked as ready using
  [`rc_conn_connected()`], and the provided `data` MUST be valid for a read of
  `length` bytes for the duration of this function call.
+
+ Calling this before the connection is ready is a debug-build panic;
+ release builds instead return [`RecvRet::InvalidState`] and drop the
+ payload.
  */
 recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, uint32_t length);
 
@@ -502,8 +550,12 @@ recv_ret_t rc_conn_recv(const struct FFIConnection *conn, const uint8_t *data, u
  This call MUST provide a `cb` that is valid and safe to call concurrently at
  all times after [`rc_conn_connected()`] is called for `conn`, until a
  subsequent [`rc_conn_disconnected()`] for the same `conn` returns.
+
+ Calling this while connected, or after disconnecting, is a debug-build
+ panic; release builds instead return [`ConnRet::InvalidState`] and leave
+ the connection unchanged.
  */
-void rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *user_data);
+conn_ret_t rc_conn_send_callback(struct FFIConnection *conn, SendCb cb, const void *user_data);
 
 /*
  Install `fd` as a sink for `tracing` events emitted by the client library.

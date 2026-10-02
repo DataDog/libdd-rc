@@ -23,6 +23,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"log"
 	"runtime/cgo"
 	"unsafe"
 
@@ -41,7 +42,7 @@ const (
 // library.
 type nativeConn interface {
 	// connected reports the connection as established to rc-x509-client.
-	connected()
+	connected() error
 
 	// recv passes data received from the RC delivery backend into
 	// rc-x509-client. data must be non-empty.
@@ -79,13 +80,19 @@ func newCgoConn(ctxPtr *C.Ctx, userData unsafe.Pointer) (*cgoConn, error) {
 
 	// Our send callback is generic, so we can go ahead and set this for the
 	// newly established connection.
-	C.rc_conn_send_callback(ptr, C.SendCb(C.goSendCb), userData)
+	if ret := C.rc_conn_send_callback(ptr, C.SendCb(C.goSendCb), userData); ret != C.CONN_RET_T_SUCCESS {
+		log.Printf("ddrc: rc_conn_send_callback returned %v", ret)
+	}
 
 	return &cgoConn{ptr: ptr}, nil
 }
 
-func (c *cgoConn) connected() {
-	C.rc_conn_connected(c.ptr)
+func (c *cgoConn) connected() error {
+	if ret := C.rc_conn_connected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
+		log.Printf("ddrc: rc_conn_connected returned %v", ret)
+		return fmt.Errorf("ddrc: rc_conn_connected returned %v", ret)
+	}
+	return nil
 }
 
 func (c *cgoConn) recv(data []byte) error {
@@ -96,7 +103,9 @@ func (c *cgoConn) recv(data []byte) error {
 }
 
 func (c *cgoConn) disconnected() {
-	C.rc_conn_disconnected(c.ptr)
+	if ret := C.rc_conn_disconnected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
+		log.Printf("ddrc: rc_conn_disconnected returned %v", ret)
+	}
 }
 
 func (c *cgoConn) dispatchResult(correlationID uint64, encoded []byte) {
@@ -112,7 +121,9 @@ func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
 }
 
 func (c *cgoConn) free() {
-	C.rc_conn_free(c.ptr)
+	if ret := C.rc_conn_free(c.ptr); ret != C.CONN_RET_T_SUCCESS {
+		log.Printf("ddrc: rc_conn_free returned %v", ret)
+	}
 }
 
 // goDispatchCb is the DispatchCb registered with rc_conn_new. It MUST NOT

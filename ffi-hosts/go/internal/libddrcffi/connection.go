@@ -116,7 +116,9 @@ func (c *Connection) Connected() error {
 	if err := c.lifecycle.markConnected(); err != nil {
 		return err
 	}
-	c.state.conn.connected()
+	if err := c.state.conn.connected(); err != nil {
+		return err
+	}
 
 	return nil
 }
