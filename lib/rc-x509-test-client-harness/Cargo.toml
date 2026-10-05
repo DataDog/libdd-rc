@@ -19,7 +19,7 @@ name = "rc-x509-test-client-harness"
 #
 # Keeping them in-sync will let us target specific client versions when
 # importing this library in other systems.
-version = "0.2.0"
+version = "0.3.0"
 
 edition.workspace = true
 license.workspace = true
@@ -31,7 +31,7 @@ workspace = true
 
 [dependencies]
 # Keep the '=' prefix in the version, pinning to an exact version.
-rc-x509-client = { version = "=0.2.0", path = "../rc-x509-client" }
+rc-x509-client = { version = "=0.3.0", path = "../rc-x509-client" }
 
 assert_matches = "1.5.0"
 rc-crypto.workspace = true

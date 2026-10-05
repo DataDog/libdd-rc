@@ -54,10 +54,10 @@ unused_crate_dependencies = "warn"     # Warn for unused dependencies
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.dependencies]
-rc-crypto = { version = "0.1.1", path = "lib/rc-crypto" }
-rc-x509-client = { version = "0.2.0", path = "lib/rc-x509-client" }
+rc-crypto = { version = "0.2.0", path = "lib/rc-crypto" }
+rc-x509-client = { version = "0.3.0", path = "lib/rc-x509-client" }
 rc-x509-ffi = { version = "0.1.0", path = "lib/rc-x509-ffi" }
-rc-x509-proto = { version = "0.3", path = "lib/rc-x509-proto" }
-rc-x509-roots = { version = "1.0.0", path = "lib/rc-x509-roots" }
+rc-x509-proto = { version = "0.4", path = "lib/rc-x509-proto" }
+rc-x509-roots = { version = "2.0.0", path = "lib/rc-x509-roots" }
 rc-x509-test-helpers = { version = "0.1.1", path = "lib/rc-x509-test-helpers" }
-rc-x509-trust = { version = "0.2.0", path = "lib/rc-x509-trust" }
+rc-x509-trust = { version = "0.3.0", path = "lib/rc-x509-trust" }
