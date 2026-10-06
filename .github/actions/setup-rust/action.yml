@@ -22,8 +22,11 @@ description: Install build dependencies and configure cargo caching.
 
 inputs:
   cache-key-prefix:
-    description: Prefix for the cargo cache key (e.g. "dev", "release", "fuzz")
-    required: true
+    description: >
+      Prefix for the cargo cache key (e.g. "dev", "release", "fuzz"). If
+      omitted, caching is disabled entirely.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -32,6 +35,7 @@ runs:
     # builds (ignores the cache-key-prefix).
     - name: Cargo cache
       id: cargo-cache
+      if: inputs.cache-key-prefix != ''
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -47,6 +51,7 @@ runs:
     # per-build-type, specified by the cache-key-prefix input.
     - name: Build cache
       id: build-cache
+      if: inputs.cache-key-prefix != ''
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -61,6 +66,7 @@ runs:
     # but not the extracted sources, causing stale path errors on restore.
     # Cleaning the package forces CMake to re-configure from scratch.
     - name: Clean stale aws-lc build state
+      if: inputs.cache-key-prefix != ''
       shell: bash
       run: cargo clean -p aws-lc-fips-sys -p aws-lc-sys 2>/dev/null || true
 
