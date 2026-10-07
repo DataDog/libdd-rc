@@ -1504,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-client"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "arbitrary",
  "assert_matches",

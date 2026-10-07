@@ -31,7 +31,7 @@ workspace = true
 
 [dependencies]
 # Keep the '=' prefix in the version, pinning to an exact version.
-rc-x509-client = { version = "=0.2.1", path = "../rc-x509-client" }
+rc-x509-client = { version = "=0.2.2", path = "../rc-x509-client" }
 
 assert_matches = "1.5.0"
 rc-crypto.workspace = true
