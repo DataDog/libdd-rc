@@ -19,7 +19,7 @@ name = "rc-x509-test-client-harness"
 #
 # Keeping them in-sync will let us target specific client versions when
 # importing this library in other systems.
-version = "0.2.1"
+version = "0.2.2"
 
 edition.workspace = true
 license.workspace = true
