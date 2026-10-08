@@ -150,8 +150,7 @@ mod tests {
         test_issuer::{
             CertBuilder, ExpiredIntermediate, ExpiredLeaf, ForgedIntermediate, ForgedLeaf,
             FutureValidIntermediate, FutureValidLeaf, MissingIntermediate, PathLenViolation,
-            TestCA, TestChain, ValidChain,
-            arbitrary_chain,
+            TestCA, TestChain, ValidChain, arbitrary_chain,
         },
         trust_store::MemoryCertCache,
     };
