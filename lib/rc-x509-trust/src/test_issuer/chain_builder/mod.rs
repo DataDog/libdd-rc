@@ -15,6 +15,7 @@
 mod chain;
 mod expired_intermediate;
 mod expired_leaf;
+mod forged_intermediate;
 mod forged_leaf;
 mod future_valid_intermediate;
 mod future_valid_leaf;
@@ -25,6 +26,7 @@ mod valid;
 pub(crate) use chain::*;
 pub(crate) use expired_intermediate::*;
 pub(crate) use expired_leaf::*;
+pub(crate) use forged_intermediate::*;
 pub(crate) use forged_leaf::*;
 pub(crate) use future_valid_intermediate::*;
 pub(crate) use future_valid_leaf::*;
