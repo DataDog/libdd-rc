@@ -191,7 +191,7 @@ mod tests {
             .allowed_domain("itsallbroken.com")
             .build();
 
-            cache.insert(intermediate.cert().clone());
+            cache.insert(UntrustedCert::from(intermediate.cert().clone()));
             last = Some(intermediate);
         }
 
@@ -316,7 +316,7 @@ mod tests {
 
         // Cache contains only the legitimate intermediate.
         let mut cache = MemoryCertCache::default();
-        cache.insert(legit_intermediate.cert().clone());
+        cache.insert(UntrustedCert::from(legit_intermediate.cert().clone()));
 
         // Evil CA: its root's SKI matches the legitimate intermediate's SKI,
         // so any leaf it issues will have AKI = INTERMEDIATE_SKI.
@@ -356,7 +356,7 @@ mod tests {
 
             // Populate the cache with all the intermediate certificates.
             for identity in &chain.intermediates {
-                cache.insert(identity.cert().clone());
+                cache.insert(UntrustedCert::from(identity.cert().clone()));
             }
 
             // Add a random extra intermediate that should not appear in the
@@ -366,7 +366,8 @@ mod tests {
                     .allowed_domain("itsallbroken.com")
                     .build()
                     .cert()
-                    .clone(),
+                    .clone()
+                    .into(),
             );
 
             // Build a chain that connects leaf to root.
@@ -404,7 +405,7 @@ mod tests {
             // Populate the cache with the remaining intermediates (one was
             // already removed by the MissingIntermediate mutator).
             for identity in chain.intermediates.iter() {
-                cache.insert(identity.cert().clone());
+                cache.insert(UntrustedCert::from(identity.cert().clone()));
             }
 
             let err = build_unverified_chain_for(
@@ -441,7 +442,7 @@ mod tests {
 
             // Populate the cache with the legitimate intermediates.
             for identity in &chain.intermediates {
-                cache.insert(identity.cert().clone());
+                cache.insert(UntrustedCert::from(identity.cert().clone()));
             }
 
             // Chain building succeeds because it cannot verify the mutations
