@@ -19,11 +19,13 @@ publish = false
 edition = "2024"
 license = "Apache-2.0"
 
+[lints]
+workspace = true
+
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "1", features = ["derive"] }
 futures = "0.3.32"
 libfuzzer-sys = "0.4"
 rc-x509-client = { version = "0.2.0", path = "..", features = ["fuzzing"] }
