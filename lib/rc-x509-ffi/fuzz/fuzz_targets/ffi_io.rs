@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #![no_main]
+#![allow(unsafe_code, unused_crate_dependencies)]
 
 //! This fuzzer drives the FFI interface to verify:
 //!

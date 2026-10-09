@@ -1526,7 +1526,6 @@ dependencies = [
 name = "rc-x509-client-fuzz"
 version = "0.0.0"
 dependencies = [
- "arbitrary",
  "futures",
  "libfuzzer-sys",
  "rc-x509-client",

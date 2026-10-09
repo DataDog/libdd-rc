@@ -40,6 +40,7 @@
 //! [`rc_conn_dispatch_result`]: rc_x509_ffi::rc_conn_dispatch_result
 
 #![no_main]
+#![allow(unsafe_code, unused_crate_dependencies)]
 
 use std::{ffi::c_void, slice};
 
