@@ -13,7 +13,10 @@
 // limitations under the License.
 
 use bytes::Bytes;
-use rc_crypto::certificate::{Certificate, Fingerprint, InvalidDer, id::IssuerCertId};
+use rc_crypto::certificate::{
+    Certificate, Fingerprint, InvalidDer,
+    id::{CertId, IssuerCertId},
+};
 use valuable::Valuable;
 
 /// Raw DER bytes for a certificate received from the RC delivery server, not
@@ -41,12 +44,13 @@ impl UntrustedCertBytes {
     }
 }
 
-/// An [`UntrustedCert`] is a [`Certificate`] that has been received from the RC
-/// delivery server, but not yet verified by the client to chain to the root.
+/// An [`UntrustedCert`] is a [`Certificate`] with a reduced API surface, that
+/// has been received from the RC delivery server.
 ///
-/// A [`Certificate`] can be obtained from an [`UntrustedCert`] by validating it
+/// Any [`Certificate`] can be downgraded to an [`UntrustedCert`], but a
+/// [`Certificate`] can be obtained from an [`UntrustedCert`] by validating it
 /// chains to the root certificate.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UntrustedCert(Certificate);
 
 impl PartialEq for UntrustedCert {
@@ -66,6 +70,11 @@ impl UntrustedCert {
     /// underlying [`Certificate`].
     pub fn fingerprint(&self) -> &Fingerprint {
         self.0.fingerprint()
+    }
+
+    /// Return the [`CertId`] for this certificate.
+    pub fn cert_id(&self) -> &CertId {
+        self.0.cert_id()
     }
 
     /// Return the [`IssuerCertId`] that claims to have signed this certificate.

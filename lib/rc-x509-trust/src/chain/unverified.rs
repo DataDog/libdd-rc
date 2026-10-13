@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use rc_crypto::certificate::Certificate;
+use crate::cert::UntrustedCert;
 use valuable::Valuable;
 
 /// An unverified candidate chain for some leaf [`Certificate`]. to some root.
@@ -37,17 +37,17 @@ use valuable::Valuable;
 /// [`UntrustedChain`] and must be provided alongside it for any trust
 /// operations.
 #[derive(Debug)]
-pub(crate) struct UntrustedChain(Vec<Arc<Certificate>>);
+pub(crate) struct UntrustedChain(Vec<Arc<UntrustedCert>>);
 
 impl UntrustedChain {
     /// Borrow the chain content.
-    pub(crate) fn as_slice(&self) -> &[Arc<Certificate>] {
+    pub(crate) fn as_slice(&self) -> &[Arc<UntrustedCert>] {
         &self.0
     }
 }
 
-impl From<Vec<Arc<Certificate>>> for UntrustedChain {
-    fn from(value: Vec<Arc<Certificate>>) -> Self {
+impl From<Vec<Arc<UntrustedCert>>> for UntrustedChain {
+    fn from(value: Vec<Arc<UntrustedCert>>) -> Self {
         Self(value)
     }
 }
@@ -82,8 +82,8 @@ mod tests {
         let int_b = CertBuilder::new_intermediate("B", &int_a).build();
 
         let chain = UntrustedChain::from(vec![
-            Arc::new(int_a.cert().clone()),
-            Arc::new(int_b.cert().clone()),
+            Arc::new(UntrustedCert::from(int_a.cert().clone())),
+            Arc::new(UntrustedCert::from(int_b.cert().clone())),
         ]);
 
         assert_valuable_repr(

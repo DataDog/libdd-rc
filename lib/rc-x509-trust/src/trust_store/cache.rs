@@ -19,22 +19,19 @@ use std::sync::Arc;
 
 use hashbrown::HashMap;
 
-use rc_crypto::certificate::{
-    Certificate,
-    id::{CertId, DangerousComparableId},
-};
+use rc_crypto::certificate::id::{CertId, DangerousComparableId};
 
-use crate::trust_store::CertCache;
+use crate::{cert::UntrustedCert, trust_store::CertCache};
 
 /// Stores [`Certificate`] instances in memory, providing a [`CertCache`]
 /// implementation.
 #[derive(Debug, Default)]
 pub struct MemoryCertCache {
-    certs: HashMap<DangerousComparableId<'static, CertId>, Arc<Certificate>>,
+    certs: HashMap<DangerousComparableId<'static, CertId>, Arc<UntrustedCert>>,
 }
 
 impl CertCache for MemoryCertCache {
-    fn insert(&mut self, cert: Certificate) {
+    fn insert(&mut self, cert: UntrustedCert) {
         let cert_id = cert.cert_id().as_dangerous_comparable().into_owned();
         let cert = Arc::new(cert);
 
@@ -50,7 +47,7 @@ impl CertCache for MemoryCertCache {
         );
     }
 
-    fn get<'a>(&self, cert_id: &CertId) -> Option<Arc<Certificate>> {
+    fn get<'a>(&self, cert_id: &CertId) -> Option<Arc<UntrustedCert>> {
         let got = self.certs.get(cert_id).map(Arc::clone);
 
         if let Some(cert) = &got {
@@ -132,7 +129,7 @@ mod tests {
 
     #[derive(Debug, Clone)]
     enum Op {
-        Insert(Box<Certificate>),
+        Insert(Box<UntrustedCert>),
         Get(CertId),
         Delete(CertId),
     }
@@ -143,7 +140,7 @@ mod tests {
         certs.prop_flat_map(|v| {
             prop_oneof![
                 // Operations on certs that may match an entry.
-                3 => Just(Op::Insert(Box::new(v.cert().clone()))),
+                3 => Just(Op::Insert(Box::new(UntrustedCert::from(v.cert().clone())))),
                 3 => Just(Op::Get(v.cert().cert_id().to_owned())),
                 3 => Just(Op::Delete(v.cert().cert_id().to_owned())),
 
