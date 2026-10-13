@@ -147,10 +147,9 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::{
+        chain::tests::arbitrary_invalid_chain_spuriously_built,
         test_issuer::{
-            CertBuilder, ExpiredIntermediate, ExpiredLeaf, ForgedIntermediate, ForgedLeaf,
-            FutureValidIntermediate, FutureValidLeaf, MissingIntermediate, PathLenViolation,
-            TestCA, TestChain, ValidChain, arbitrary_chain,
+            CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
         },
         trust_store::MemoryCertCache,
     };
@@ -208,35 +207,6 @@ mod tests {
         .expect_err("chain too long");
 
         assert_matches!(err, ChainBuildError::ExcessivelyLongChain);
-    }
-
-    /// Chain mutations that result in an invalid chain being accepted and
-    /// returned to the caller (needing further verification).
-    fn arbitrary_invalid_chain_spurious(
-        ca: &'static TestCA,
-        n_intermediates: impl Strategy<Value = u8> + Clone + 'static,
-    ) -> impl Strategy<Value = TestChain> {
-        prop_oneof![
-            arbitrary_chain(ca, n_intermediates.clone(), ForgedLeaf::default()),
-            arbitrary_chain(ca, n_intermediates.clone(), PathLenViolation::default()),
-            arbitrary_chain(ca, n_intermediates.clone(), ExpiredLeaf::default()),
-            arbitrary_chain(ca, n_intermediates.clone(), FutureValidLeaf::default()),
-            n_intermediates
-                .clone()
-                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(ca, n, ForgedIntermediate::new(seed))),
-            n_intermediates
-                .clone()
-                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(ca, n, ExpiredIntermediate::new(seed))),
-            n_intermediates
-                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(
-                    ca,
-                    n,
-                    FutureValidIntermediate::new(seed),
-                )),
-        ]
     }
 
     /// Demonstrate the untrusted nature of the [`UntrustedChain`] produced by
@@ -436,7 +406,7 @@ mod tests {
         /// not detected until later verification.
         #[test]
         fn prop_spuriously_accepted_invalid_chains(
-            chain in arbitrary_invalid_chain_spurious(&CA, 2..5_u8),
+            chain in arbitrary_invalid_chain_spuriously_built(&CA, 2..5_u8),
         ) {
             let mut cache = MemoryCertCache::default();
 

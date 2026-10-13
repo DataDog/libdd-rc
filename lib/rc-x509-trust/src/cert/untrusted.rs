@@ -66,6 +66,11 @@ impl UntrustedCert {
         Certificate::from_der(der).map(Self)
     }
 
+    /// Return the DER bytes as a borrowed slice.
+    pub fn as_der_slice(&self) -> &[u8] {
+        self.0.as_der_slice()
+    }
+
     /// Return the (unforgeable) [`Fingerprint`] that uniquely identifies the
     /// underlying [`Certificate`].
     pub fn fingerprint(&self) -> &Fingerprint {
@@ -80,6 +85,11 @@ impl UntrustedCert {
     /// Return the [`IssuerCertId`] that claims to have signed this certificate.
     pub fn issuer_cert_id(&self) -> &IssuerCertId {
         self.0.issuer_cert_id()
+    }
+
+    /// Unwrap the [`UntrustedCert`], marking it as trusted at the type level.
+    pub(crate) fn into_trusted(self) -> Certificate {
+        self.0
     }
 }
 

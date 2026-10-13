@@ -171,6 +171,13 @@ impl Certificate {
         self.der.clone() // ref copy
     }
 
+    /// Return the DER bytes as a borrowed slice.
+    ///
+    /// To obtain an owned copy, use [`Self::as_der()`] instead.
+    pub fn as_der_slice(&self) -> &[u8] {
+        self.der.as_ref()
+    }
+
     /// Return this [`Certificate`] as a PEM string.
     pub fn generate_pem(&self) -> String {
         let pem = pem_crate::Pem::new("CERTIFICATE", self.der.as_ref());
