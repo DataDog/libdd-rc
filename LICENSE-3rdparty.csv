@@ -149,6 +149,7 @@ rustc-hash,https://github.com/rust-lang/rustc-hash,Apache-2.0 OR MIT,The Rust Pr
 rusticata-macros,https://github.com/rusticata/rusticata-macros.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
 rustix,https://github.com/bytecodealliance/rustix,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com>
 rustls-pki-types,https://github.com/rustls/pki-types,MIT OR Apache-2.0,N/A
+rustls-webpki,https://github.com/rustls/webpki,ISC,N/A
 rusty-fork,https://github.com/altsysrq/rusty-fork,MIT OR Apache-2.0,Jason Lingle
 scopeguard,https://github.com/bluss/scopeguard,MIT OR Apache-2.0,bluss
 serde,https://github.com/serde-rs/serde,MIT OR Apache-2.0,Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>
@@ -187,6 +188,7 @@ tracing-subscriber,https://github.com/tokio-rs/tracing,MIT,Eliza Weisman <eliza@
 twox-hash,https://github.com/shepmaster/twox-hash,MIT,Jake Goulding <jake.goulding@gmail.com>
 unarray,https://github.com/cameron1024/unarray,MIT OR Apache-2.0,N/A
 unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unicode-3.0,David Tolnay <dtolnay@gmail.com>
+untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 utf8parse,https://github.com/alacritty/vte,Apache-2.0 OR MIT,Joe Wilm <joe@jwilm.com>, Christian Duerr <contact@christianduerr.com>
 uuid,https://github.com/uuid-rs/uuid,Apache-2.0 OR MIT,Ashley Mannix<ashleymannix@live.com.au>, Dylan DPC<dylan.dpc@gmail.com>, Hunar Roop Kahlon<hunar.roop@gmail.com>
