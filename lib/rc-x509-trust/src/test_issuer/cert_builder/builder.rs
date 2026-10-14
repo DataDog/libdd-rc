@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use rc_crypto::{certificate::Certificate, keys::PrivateKey};
-use rcgen::{CertificateParams, CertifiedIssuer};
+use rcgen::{CertificateParams, CertifiedIssuer, ExtendedKeyUsagePurpose};
 use time::OffsetDateTime;
 
 use crate::test_issuer::Identity;
@@ -39,6 +39,9 @@ pub(crate) struct Params {
 
     /// Override the `notAfter` validity bound.
     pub(super) not_after: Option<OffsetDateTime>,
+
+    /// Override the Extended Key Usages.
+    pub(super) extended_key_usages: Option<Vec<ExtendedKeyUsagePurpose>>,
 }
 
 impl Params {
@@ -58,6 +61,9 @@ impl Params {
         }
         if let Some(not_after) = self.not_after {
             tbs.not_after = not_after;
+        }
+        if let Some(ekus) = self.extended_key_usages {
+            tbs.extended_key_usages = ekus;
         }
 
         let issuer =
@@ -90,6 +96,7 @@ where
                 cert_id: None,
                 not_before: None,
                 not_after: None,
+                extended_key_usages: None,
             },
             template,
         }
@@ -114,6 +121,11 @@ where
     /// Set the `notAfter` validity bound.
     pub(crate) fn set_not_after(&mut self, not_after: OffsetDateTime) {
         self.params.not_after = Some(not_after);
+    }
+
+    /// Set the Extended Key Usages for the certificate.
+    pub(crate) fn set_extended_key_usages(&mut self, ekus: Vec<ExtendedKeyUsagePurpose>) {
+        self.params.extended_key_usages = Some(ekus);
     }
 }
 
