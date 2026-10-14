@@ -109,15 +109,15 @@ impl ChainMutator for ForgedIntermediate {
         };
 
         // Create an evil CA whose SKI matches the legitimate parent's SKI.
-        let evil_root = CertBuilder::new_root("Evil CA")
-            .set_cert_id(
-                parent_cert
-                    .cert_id()
-                    .as_dangerous_comparable()
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .build();
+        let mut evil_root_builder = CertBuilder::new_root("Evil CA");
+        evil_root_builder.set_cert_id(
+            parent_cert
+                .cert_id()
+                .as_dangerous_comparable()
+                .as_bytes()
+                .to_vec(),
+        );
+        let evil_root = evil_root_builder.build();
 
         // Issue an evil intermediate from the evil CA — its AKI will match
         // the legitimate parent's SKI.
