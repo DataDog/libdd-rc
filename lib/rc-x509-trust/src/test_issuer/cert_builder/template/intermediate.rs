@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rc_crypto::certificate::csr::CertificateSigningRequest;
+use rc_crypto::certificate::{Certificate, csr::CertificateSigningRequest};
 use rcgen::{BasicConstraints, GeneralSubtree, IsCa, NameConstraints};
 
 use crate::test_issuer::{
@@ -82,5 +82,10 @@ impl<'a> CertBuilder<IntermediateTemplate<'a>> {
     /// [`ChainMutator`] implementations.
     pub(crate) fn set_path_len(&mut self, n: u8) {
         self.template.path_len = Some(n);
+    }
+
+    /// Return the parent (issuer) certificate.
+    pub(crate) fn parent_cert(&self) -> &Certificate {
+        self.template.parent.cert()
     }
 }

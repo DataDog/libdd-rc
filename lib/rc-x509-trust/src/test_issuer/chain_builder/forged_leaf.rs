@@ -98,15 +98,15 @@ impl ChainMutator for ForgedLeaf {
             .unwrap_or(chain.root.cert());
 
         // Create an evil CA whose SKI matches the last intermediate's SKI.
-        let evil_root = CertBuilder::new_root("Evil CA")
-            .set_cert_id(
-                last_cert
-                    .cert_id()
-                    .as_dangerous_comparable()
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .build();
+        let mut evil_root_builder = CertBuilder::new_root("Evil CA");
+        evil_root_builder.set_cert_id(
+            last_cert
+                .cert_id()
+                .as_dangerous_comparable()
+                .as_bytes()
+                .to_vec(),
+        );
+        let evil_root = evil_root_builder.build();
 
         // Issue an evil leaf from the evil CA. The evil leaf's AKI will
         // equal the legitimate intermediate's SKI.

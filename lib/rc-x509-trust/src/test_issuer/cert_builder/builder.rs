@@ -108,9 +108,8 @@ where
     }
 
     /// Override the cert ID / SKI value specified in the final certificate.
-    pub(crate) fn set_cert_id(mut self, id: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn set_cert_id(&mut self, id: impl Into<Vec<u8>>) {
         self.params.cert_id = Some(id.into());
-        self
     }
 
     /// Set the `notBefore` validity bound.

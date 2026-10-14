@@ -278,11 +278,12 @@ mod tests {
 
         // Construct the legitimate chain.
         let legit_root = CertBuilder::new_root("Legitimate CA").build();
-        let legit_intermediate =
-            CertBuilder::new_intermediate("Legitimate Intermediate", &legit_root)
-                .set_cert_id(INTERMEDIATE_SKI)
-                .allowed_domain("itsallbroken.com")
-                .build();
+        let legit_intermediate = {
+            let mut v = CertBuilder::new_intermediate("Legitimate Intermediate", &legit_root)
+                .allowed_domain("itsallbroken.com");
+            v.set_cert_id(INTERMEDIATE_SKI);
+            v.build()
+        };
 
         // Cache contains only the legitimate intermediate.
         let mut cache = MemoryCertCache::default();
@@ -290,9 +291,11 @@ mod tests {
 
         // Evil CA: its root's SKI matches the legitimate intermediate's SKI,
         // so any leaf it issues will have AKI = INTERMEDIATE_SKI.
-        let evil_root = CertBuilder::new_root("Evil CA")
-            .set_cert_id(INTERMEDIATE_SKI)
-            .build();
+        let evil_root = {
+            let mut v = CertBuilder::new_root("Evil CA");
+            v.set_cert_id(INTERMEDIATE_SKI);
+            v.build()
+        };
         let evil_leaf = CertBuilder::new_leaf("Evil Leaf", &evil_root)
             .san("itsallbroken.com")
             .build();

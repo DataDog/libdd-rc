@@ -38,7 +38,8 @@ pub(crate) mod tests {
 
     use crate::test_issuer::{
         ExpiredIntermediate, ExpiredLeaf, ForgedIntermediate, ForgedLeaf, FutureValidIntermediate,
-        FutureValidLeaf, MissingIntermediate, PathLenViolation, TestCA, TestChain, arbitrary_chain,
+        FutureValidLeaf, MissingIntermediate, PathLenViolation, SelfReferentialCertIds, TestCA,
+        TestChain, arbitrary_chain,
     };
 
     /// A set of chain mutations that result in an invalid chain being produced,
@@ -89,6 +90,11 @@ pub(crate) mod tests {
             // Plus test cases that are not spuriously accepted during chain
             // building, but MUST be rejected either during chain building or
             // verification.
+            arbitrary_chain(
+                ca,
+                n_intermediates.clone(),
+                SelfReferentialCertIds::default()
+            ),
             n_intermediates
                 .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
