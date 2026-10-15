@@ -22,6 +22,7 @@ mod future_valid_leaf;
 mod missing_intermediate;
 mod pathlen_violation;
 mod self_referential_cert_ids;
+mod set_ekus;
 mod valid;
 
 pub(crate) use chain::*;
@@ -34,4 +35,5 @@ pub(crate) use future_valid_leaf::*;
 pub(crate) use missing_intermediate::*;
 pub(crate) use pathlen_violation::*;
 pub(crate) use self_referential_cert_ids::*;
+pub(crate) use set_ekus::*;
 pub(crate) use valid::*;
