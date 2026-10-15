@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![doc = "../README.md"]
+#![doc = include_str!("../README.md")]
 
 mod abort_on_drop;
 mod app_info;

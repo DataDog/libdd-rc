@@ -1,13 +1,12 @@
 # rc-x509-client
 
-This library implements the canonical Remote Config client for the X509-based
-delivery platform.
+This library implements the Remote Config client for the X509-based delivery
+platform. It handles the low-level networking protocol and security checks,
+while delegating message processing to the host application.
 
 ## Design Goals
 
-* Secure cryptographic attestation of messages from the X509 platform.
-* Provide a clean, hard-to-misuse FFI API suitable for use across all languages
-  supported by Datadog.
+* Low overhead connection management and message attestation.
+* Reusable public API, wrapped in a simple FFI API (see `rc-x509-ffi`).
 * Fully encapsulate all RPC protocol messaging and logic, but not the actual I/O
   (delegated to host language runtime).
-
