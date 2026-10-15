@@ -24,7 +24,13 @@ pub(crate) struct ValidChain {}
 
 impl ChainMutator for ValidChain {
     fn leaf<'a>(&self, _builder: &mut CertBuilder<LeafTemplate<'a>>) {}
-    fn intermediate<'a>(&self, _builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {}
+    fn intermediate<'a>(
+        &self,
+        _builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
+    }
     fn complete(&self, chain: TestChain) -> TestChain {
         chain
     }
