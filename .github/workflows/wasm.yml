@@ -1,0 +1,72 @@
+# Copyright 2026-Present Datadog, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Verify the FFI interface still compiles to WebAssembly.
+#
+# This builds rc-x509-ffi for wasm32-wasip1-threads with the non-FIPS crypto
+# backend (aws-lc-fips-sys cannot target wasm); see ffi-hosts/wasm/README.md
+# for what the target requires and what it rules out.
+#
+# This is a compile check only - the resulting module is not executed, as
+# running it needs a wasi-threads capable runtime, which wasmtime dropped in
+# v49.
+
+name: wasm
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  merge_group:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key-prefix: wasm
+
+      # LLVM_DIR and WASI_SYSROOT are baked into the CI image; build.sh falls
+      # back to homebrew paths for local macOS builds.
+      - name: Build rc-x509-ffi for wasm
+        run: ./ffi-hosts/wasm/build.sh
+
+      - name: Check FFI symbols are exported
+        run: |
+          # Naming the package with -p resolves it in the root workspace, so the
+          # artifacts land in the top-level target dir, not ffi-hosts/wasm.
+          module="target/wasm32-wasip1-threads/release/rc_x509_ffi.wasm"
+
+          for symbol in rc_init rc_free rc_conn_new rc_conn_connected \
+            rc_conn_disconnected rc_conn_free rc_conn_recv \
+            rc_conn_send_callback rc_conn_dispatch_result \
+            rc_conn_dispatch_error rc_enable_log_sink; do
+            if ! llvm-nm --defined-only "${module}" | grep -qw "${symbol}"; then
+              echo "::error::${symbol} missing from ${module}"
+              exit 1
+            fi
+          done
+
+          echo "all FFI symbols present in ${module}"

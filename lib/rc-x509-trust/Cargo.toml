@@ -45,4 +45,5 @@ workspace = true
 [features]
 fuzzing = ["dep:arbitrary"]
 default = ["fips"]
-fips = ["rustls-webpki/aws-lc-rs-fips"]
+fips = ["rustls-webpki/aws-lc-rs-fips", "rc-crypto/fips", "rc-x509-roots/fips"]
+non-fips = ["rustls-webpki/aws-lc-rs", "rc-crypto/non-fips", "rc-x509-roots/non-fips"]

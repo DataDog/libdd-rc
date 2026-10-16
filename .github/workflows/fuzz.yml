@@ -88,8 +88,11 @@ jobs:
 
       - name: Save corpus cache
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        # If the fuzzer finds a crash, we definitely want to upload the corpus.
-        if: always()
+        # Only keep main branch caches, to avoid needless cache entries that
+        # aren't reused after the merge.
+        #
+        # always() so that a crash-producing corpus is still saved on main.
+        if: always() && github.ref == 'refs/heads/main'
         with:
           enableCrossOsArchive: true
           key: fuzz-corpus-${{ matrix.fuzzer.name }}-${{ github.run_id }}

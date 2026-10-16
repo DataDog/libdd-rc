@@ -46,7 +46,11 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
+          # Shares the release build cache with the rust workflow's release job.
           cache-key-prefix: release
+          # That job builds the whole workspace; this one builds only
+          # rc-x509-ffi, so would only ever shrink the cache.
+          cache-save: false
 
       - name: Add Go bin to PATH
         run: echo "/root/go/bin" >> "$GITHUB_PATH"

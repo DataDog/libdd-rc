@@ -127,7 +127,9 @@ mod imp {
         let _ = writeln!(f, "it's still bananas");
     }
 
-    #[cfg(unix)]
+    // WASI has file descriptors, and exposes them through the same std::os::fd
+    // interface as unix, but is not cfg(unix).
+    #[cfg(any(unix, target_os = "wasi"))]
     unsafe fn raw_to_file(fd: std::ffi::c_int) -> File {
         use std::os::fd::FromRawFd;
         unsafe { File::from_raw_fd(fd) }

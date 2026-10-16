@@ -22,17 +22,29 @@ description = "FFI interface to rc-x509-client"
 repository = "https://github.com/DataDog/libdd-rc"
 
 [lib]
+# The WASM build additionally produces a cdylib (a standalone .wasm module) by
+# overriding this list on the command line; see ffi-hosts/wasm/build.sh.
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
 futures = "0.3.32"
 rc-x509-client.workspace = true
 rc-x509-proto.workspace = true
-tokio = { version = "1.52.3", features = ["macros", "parking_lot", "rt", "sync", "time"] }
+tokio = { version = "1.52.3", features = ["macros", "rt", "sync", "time"] }
 tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
+
+# parking_lot's thread parker is unimplemented on wasm targets (it panics at
+# runtime), so enable it everywhere else only.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { version = "1.52.3", features = ["parking_lot"] }
+
+[features]
+default = ["fips"]
+fips = ["rc-x509-client/fips"]
+non-fips = ["rc-x509-client/non-fips"]
 
 [lints]
 workspace = true

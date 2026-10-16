@@ -34,18 +34,37 @@ jobs:
     strategy:
       matrix:
         include:
+          # "test" populates the debug cache: it builds everything a debug build
+          # compiles, but also all the dev-dependencies needed for tests.
           - name: dev
-            cmd: cargo build --workspace --all-features
+            cmd: cargo build --workspace
+            cache: debug
+            save: false
           - name: release
-            cmd: cargo build --workspace --all-features --release
+            cmd: cargo build --workspace --release
+            cache: release
           - name: benchmarks
-            cmd: cargo test --workspace --all-features --benches --no-run
+            cmd: cargo test --workspace --benches --no-run
+            cache: debug
+            save: false
           - name: clippy
-            cmd: cargo clippy --workspace --all-features -- -D warnings
-          - name: test
-            cmd: cargo test --workspace --all-features
+            cmd: cargo clippy --workspace -- -D warnings
+            cache: clippy
+          - name: test # Saves the debug cacle.
+            cmd: cargo test --workspace
+            cache: debug
           - name: fmt
             cmd: cargo fmt --check
+            cache: ""
+          # As above, "non-fips test" populates the non-fips cache.
+          - name: non-fips build
+            cmd: cargo build --workspace --no-default-features --features=non-fips
+            cache: non-fips
+            save: false
+          - name: non-fips test
+            cmd: cargo test --workspace --no-default-features --features=non-fips
+            cache: non-fips # Saves the non-fips cache
+
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1
@@ -56,7 +75,9 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: ${{ matrix.name }}
+          cache-key-prefix: ${{ matrix.cache }}
+          # Empty for most jobs; anything but "false" saves.
+          cache-save: ${{ matrix.save }}
 
       - name: ${{ matrix.name }}
         run: ${{ matrix.cmd }}
