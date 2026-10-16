@@ -44,6 +44,9 @@ tokio = { version = "1.52.3", features = ["test-util"] }
 
 [features]
 fuzzing = ["dep:arbitrary", "rc-x509-trust/fuzzing", "rc-crypto/fuzzing"]
+default = ["fips"]
+fips = ["rc-x509-trust/fips", "rc-crypto/fips"]
+non-fips = ["rc-x509-trust/non-fips", "rc-crypto/non-fips"]
 
 [package.metadata.docs.rs]
 rustc-args = ["--cfg", "tracing_unstable"]

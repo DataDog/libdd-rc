@@ -29,6 +29,7 @@ rc-crypto = { version = "0.1.1", path = "../rc-crypto", default-features = false
 # dd-source.
 default = ["fips"]
 fips = ["rc-crypto/fips"]
+non-fips = ["rc-crypto/non-fips"]
 dd-source = ["rc-crypto/dd-source"]
 
 [lints]
