@@ -38,7 +38,8 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: dev
+          # Shares the debug build cache with the rust workflow's dev/test jobs.
+          cache-key-prefix: debug
 
       - name: Save committed header
         run: cp include/libdd_rc.h include/libdd_rc.h.committed

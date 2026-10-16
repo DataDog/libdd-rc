@@ -14,6 +14,11 @@
 
 # Common setup for Rust CI jobs running in a Rust container image.
 #
+# The short version is "cache compilation artefacts on main, reuse in PRs".
+# Because the compilation artefacts differ depending on the feature set /
+# release mode, a "cache key" is accepted from the caller to differentiate
+# between them.
+#
 # The repository must already be checked out before using this action (the
 # action is referenced via a local path, so it must exist on disk).
 
@@ -31,11 +36,25 @@ inputs:
 runs:
   using: composite
   steps:
+    # Disable incremental compilation of dirty crates; clean crates are not
+    # rebuilt.
+    - name: Disable incremental compilation
+      shell: bash
+      run: echo "CARGO_INCREMENTAL=0" >> "$GITHUB_ENV"
+
+    ############################################################################
+    # Caches are only saved on the main branch.
+    #
+    # This reduces cache usage by reusing the vast majority of compilation
+    # artefacts from main in most PRs, without creating an entry-per-PR that
+    # causes cache churn.
+    #
+
     # The cargo cache holds the crates.io index state, and is reused across all
     # builds (ignores the cache-key-prefix).
     - name: Cargo cache
       id: cargo-cache
-      if: inputs.cache-key-prefix != ''
+      if: inputs.cache-key-prefix != '' && github.ref == 'refs/heads/main'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -47,15 +66,41 @@ runs:
           ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock') }}
           ${{ runner.os }}-cargo-cache-
 
-    # The build cache holds the incremental compilation artefacts and is
-    # per-build-type, specified by the cache-key-prefix input.
+    - name: Cargo cache (restore only)
+      if: inputs.cache-key-prefix != '' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          /usr/local/cargo/registry/index
+          /usr/local/cargo/registry/cache
+          /usr/local/cargo/git/db
+        key: ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-cargo-cache-
+
+    # The build cache holds the compilation artefacts and is per-build-flavour,
+    # specified by the cache-key-prefix input.
     - name: Build cache
       id: build-cache
-      if: inputs.cache-key-prefix != ''
+      if: inputs.cache-key-prefix != '' && github.ref == 'refs/heads/main'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
           **/target
+          !**/target/**/incremental
+        key: ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-
+
+    - name: Build cache (restore only)
+      if: inputs.cache-key-prefix != '' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          **/target
+          !**/target/**/incremental
         key: ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
         restore-keys: |
           ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/Cargo.lock') }}
