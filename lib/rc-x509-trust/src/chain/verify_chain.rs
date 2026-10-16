@@ -66,6 +66,10 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
     fn validate(&self, iter: webpki::KeyPurposeIdIter<'_, '_>) -> Result<(), webpki::Error> {
         match self {
             // When required, delegate to the webpki KeyUsage validator.
+            //
+            // `required_if_present` requires codeSigning when the EKU
+            // extension exists, but allows certs that omit EKU entirely
+            // (e.g. intermediates that don't constrain EKU).
             Self::RequireCodeSigning => {
                 KeyUsage::required_if_present(EKU_CODE_SIGNING_BYTES).validate(iter)
             }
@@ -136,10 +140,14 @@ pub(crate) fn verify_chain(
 mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
+    use rcgen::ExtendedKeyUsagePurpose;
 
     use crate::{
         chain::{build_unverified_chain_for, tests::arbitrary_invalid_chain},
-        test_issuer::{CertBuilder, TestCA, TestChain, ValidChain, arbitrary_chain},
+        test_issuer::{
+            CertBuilder, ChainEKUConfig, SetEKUs, TestCA, TestChain, ValidChain, arbitrary_chain,
+            arbitrary_eku_apply_to,
+        },
         trust_store::{CertCache, MemoryCertCache},
     };
 
@@ -172,6 +180,21 @@ mod tests {
             input in arbitrary_invalid_chain(&CA, 2..=5_u8),
         ) {
             test_prop_invalid_chain(input);
+        }
+
+        /// Randomise the set of EKUs on the chain certificates and assert:
+        ///
+        /// * [`EKUPolicy::RequireCodeSigning`] rejects a non-empty EKU set
+        ///   that does not include codeSigning on any checked certificate.
+        /// * [`EKUPolicy::RequireCodeSigning`] accepts any combination of EKUs
+        ///   iff every certificate with an EKU extension includes codeSigning.
+        ///
+        #[test]
+        fn prop_eku_policy(
+            ekus in arbitrary_eku_apply_to(),
+            n_intermediates in 0..=5_u8,
+        ) {
+            test_prop_eku_policy(ekus, n_intermediates);
         }
     }
 
@@ -211,6 +234,134 @@ mod tests {
         .expect("successfully validated chain");
 
         assert_eq!(got.fingerprint(), input.leaf.cert().fingerprint());
+    }
+
+    /// Process a chain with randomised EKUs, asserting the EKU policy
+    /// properties.
+    fn test_prop_eku_policy(ekus: ChainEKUConfig, n_intermediates: u8) {
+        // Generate the chain.
+        let chain = TestChain::build(&CA, n_intermediates, SetEKUs::new(ekus.clone()));
+
+        // When there are no intermediates, intermediate EKU configs are never
+        // applied to any certificate — normalise to match the effective state.
+        let ekus = if n_intermediates == 0 {
+            match ekus {
+                ChainEKUConfig::IntermediatesOnly(_) => ChainEKUConfig::IntermediatesOnly(vec![]),
+                ChainEKUConfig::IntermediatesAndLeaf { leaf, .. } => ChainEKUConfig::LeafOnly(leaf),
+                other => other,
+            }
+        } else {
+            ekus
+        };
+
+        // Populate the cache.
+        let mut cache = MemoryCertCache::default();
+        for identity in &chain.intermediates {
+            cache.insert(UntrustedCert::from(identity.cert().clone()));
+        }
+
+        let root_cert = CA.root_cert();
+        let untrusted_leaf = UntrustedCert::from(chain.leaf.cert().clone());
+
+        // Build the candidate chain from the cache, which ignores EKUs.
+        let candidate_chain = build_unverified_chain_for(
+            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+            &untrusted_leaf,
+            &cache,
+        )
+        .expect("valid chain structure");
+
+        // Invariant 1 & 2: RequireCodeSigning requires the codeSigning EKU when
+        // the EKU extension IS present, but allows certs that omit EKU entirely
+        // (RFC 5280 § 4.2.1.12 states this means the cert is unconstrained).
+        //
+        // The chain is accepted iff each and EVERY certificate in the chain has
+        // EITHER:
+        //
+        //   * A codeSigning EKU, or
+        //   * No specified EKUs (empty set == unconstrained).
+        //
+        let result = verify_chain(
+            &root_cert,
+            untrusted_leaf,
+            candidate_chain,
+            EKUPolicy::RequireCodeSigning,
+        );
+
+        // A helper to check if an EKU is codeSigning or not, used below.
+        let is_codesign = |v: &ExtendedKeyUsagePurpose| *v == ExtendedKeyUsagePurpose::CodeSigning;
+        let is_not_codesign =
+            |v: &ExtendedKeyUsagePurpose| *v != ExtendedKeyUsagePurpose::CodeSigning;
+
+        //
+        // Assert the desired outcome for the specific random configuration.
+        //
+
+        // If all the certificates have no explicit EKU constrains, then they
+        // are all unconstrained and should pass.
+        if ekus.union().count() == 0 {
+            assert_matches!(result, Ok(_));
+            return;
+        }
+
+        // All options below this point involve an EKU constraint on some or all
+        // of the chain.
+
+        // If ALL parts of the chain contain the codeSigning EKU constraint, the
+        // check passes.
+        if ekus.leaf().any(is_codesign) && ekus.intermediates().any(is_codesign) {
+            assert_matches!(result, Ok(_));
+            return;
+        }
+
+        // If the codeSigning constraint is on the leaf only, then it is allowed
+        // iff the intermediates are not constrained.
+        if ekus.leaf().any(is_codesign) {
+            if ekus.intermediates().count() == 0 {
+                // Unconstrained intermediates.
+                assert_matches!(result, Ok(_));
+                return;
+            }
+
+            // Otherwise the intermediates are constrained without the
+            // codeSigning EKU, because the "all certs have codeSigning" case
+            // was checked earlier. Every certificate in the path must satisfy
+            // the policy, so an intermediate that declares EKUs while omitting
+            // codeSigning rejects the chain regardless of what the leaf says.
+            assert!(ekus.intermediates().all(is_not_codesign)); // Test state assertion.
+            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            return;
+        }
+
+        // If the codeSigning constraint is on the intermediates only, then it
+        // is allowed iff the leaf is not constrained.
+        if ekus.intermediates().any(is_codesign) {
+            if ekus.leaf().count() == 0 {
+                // Unconstrained leaf.
+                assert_matches!(result, Ok(_));
+                return;
+            }
+
+            // Otherwise the leaf is constrained without the codeSigning EKU,
+            // because the "all certs have codeSigning" case was checked
+            // earlier. The leaf must satisfy the policy itself.
+            assert!(ekus.leaf().all(is_not_codesign)); // Test state assertion.
+            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            return;
+        }
+
+        // Then the only remaining case is that either the leaf, or the
+        // intermediate is constrained, but lacks a codeSigning EKU.
+        if ekus.leaf().count() > 0 && ekus.leaf().all(is_not_codesign) {
+            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            return;
+        }
+        if ekus.intermediates().count() > 0 && ekus.intermediates().all(is_not_codesign) {
+            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            return;
+        }
+
+        unreachable!("all permutations are covered by checks above");
     }
 
     /// Process an invalid chain, expecting an error.

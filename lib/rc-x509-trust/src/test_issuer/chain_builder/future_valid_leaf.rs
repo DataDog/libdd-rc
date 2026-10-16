@@ -28,7 +28,13 @@ use crate::test_issuer::{
 pub(crate) struct FutureValidLeaf {}
 
 impl ChainMutator for FutureValidLeaf {
-    fn intermediate<'a>(&self, _builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {}
+    fn intermediate<'a>(
+        &self,
+        _builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
+    }
 
     fn leaf<'a>(&self, builder: &mut CertBuilder<LeafTemplate<'a>>) {
         builder.set_not_before(date_time_ymd(4000, 1, 1));

@@ -49,7 +49,12 @@ use crate::test_issuer::{
 pub(crate) struct PathLenViolation {}
 
 impl ChainMutator for PathLenViolation {
-    fn intermediate<'a>(&self, builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {
+    fn intermediate<'a>(
+        &self,
+        builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
         builder.set_path_len(0);
     }
 
