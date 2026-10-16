@@ -30,11 +30,16 @@ rc-x509-proto.workspace = true
 rc-x509-trust.workspace = true
 rc-crypto.workspace = true
 thiserror = "2.0.18"
-tokio = { version = "1.52.3", features = ["macros", "parking_lot", "rt", "sync", "time"] }
+tokio = { version = "1.52.3", features = ["macros", "rt", "sync", "time"] }
 tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
 tracing = "0.1.44"
 pin-project = "1.1.13"
+
+# parking_lot's thread parker is unimplemented on wasm targets (it panics at
+# runtime), so enable it everywhere else only.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { version = "1.52.3", features = ["parking_lot"] }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
