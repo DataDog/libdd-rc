@@ -33,6 +33,15 @@ inputs:
     required: false
     default: ""
 
+  cache-save:
+    description: >
+      Whether this job may populate the cache for its key, as opposed to only
+      reading it. Set to "false" for jobs that share a key with a job building
+      a superset of their artefacts: the jobs race to save, and the first to
+      finish wins, so the loser's extra artefacts would never be cached.
+    required: false
+    default: "true"
+
 runs:
   using: composite
   steps:
@@ -54,7 +63,7 @@ runs:
     # builds (ignores the cache-key-prefix).
     - name: Cargo cache
       id: cargo-cache
-      if: inputs.cache-key-prefix != '' && github.ref == 'refs/heads/main'
+      if: inputs.cache-key-prefix != '' && inputs.cache-save != 'false' && github.ref == 'refs/heads/main'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -67,7 +76,7 @@ runs:
           ${{ runner.os }}-cargo-cache-
 
     - name: Cargo cache (restore only)
-      if: inputs.cache-key-prefix != '' && github.ref != 'refs/heads/main'
+      if: inputs.cache-key-prefix != '' && (inputs.cache-save == 'false' || github.ref != 'refs/heads/main')
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -83,7 +92,7 @@ runs:
     # specified by the cache-key-prefix input.
     - name: Build cache
       id: build-cache
-      if: inputs.cache-key-prefix != '' && github.ref == 'refs/heads/main'
+      if: inputs.cache-key-prefix != '' && inputs.cache-save != 'false' && github.ref == 'refs/heads/main'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -95,7 +104,7 @@ runs:
           ${{ runner.os }}-target-cache-${{ inputs.cache-key-prefix }}-
 
     - name: Build cache (restore only)
-      if: inputs.cache-key-prefix != '' && github.ref != 'refs/heads/main'
+      if: inputs.cache-key-prefix != '' && (inputs.cache-save == 'false' || github.ref != 'refs/heads/main')
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
