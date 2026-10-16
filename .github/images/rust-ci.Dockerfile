@@ -60,6 +60,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     cmake \
     golang-go \
+    # wasm builds compile the aws-lc C sources with clang's WebAssembly
+    # backend; llvm provides the matching llvm-ar to archive the objects.
+    llvm \
     # rc-x509-proto -> prost deps
     #
     # libprotobuf-dev provides the well-known-types .proto sources (e.g.
@@ -80,7 +83,25 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
 RUN rustup component add clippy rustfmt \
     && rustup toolchain install nightly \
-    && rustup +nightly component add miri
+    && rustup +nightly component add miri \
+    && rustup target add wasm32-wasip1-threads
+
+# wasi-libc sysroot, needed to compile the aws-lc C sources for wasm targets.
+#
+# Consumed by ffi-hosts/wasm/build.sh via the WASI_SYSROOT / LLVM_DIR vars set
+# below; LLVM_DIR points at the apt-installed clang / llvm-ar in /usr/bin.
+RUN VERSION="34" && \
+    SHA256="9d813544eeebe38b7b8f2244ed591de46b6db812c6dd1a257ff9f0d2a905a2be" && \
+    curl -sSL \
+    "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${VERSION}/wasi-sysroot-${VERSION}.0.tar.gz" \
+    -o /tmp/wasi-sysroot.tar.gz && \
+    echo "${SHA256}  /tmp/wasi-sysroot.tar.gz" | sha256sum -c - && \
+    mkdir -p /opt && \
+    tar -xzf /tmp/wasi-sysroot.tar.gz -C /opt && \
+    mv "/opt/wasi-sysroot-${VERSION}.0" /opt/wasi-sysroot && \
+    rm /tmp/wasi-sysroot.tar.gz
+ENV WASI_SYSROOT="/opt/wasi-sysroot"
+ENV LLVM_DIR="/usr"
 
 RUN cargo install cargo-fuzz --all-features \
     && cargo install --git https://github.com/EmbarkStudios/cargo-deny --rev 8e63a579d8ac61faa6e00d3d4ecde495bf138540 cargo-deny
