@@ -34,6 +34,11 @@ rc-x509-proto.workspace = true
 tokio = { version = "1.52.3", features = ["macros", "parking_lot", "rt", "sync", "time"] }
 tokio-util = "0.7.18"
 
+[features]
+default = ["fips"]
+fips = ["rc-x509-client/fips", "rc-x509-ffi/fips"]
+non-fips = ["rc-x509-client/non-fips", "rc-x509-ffi/non-fips"]
+
 [build-dependencies]
 twox-hash = "2.1.2"
 rc-x509-proto.workspace = true

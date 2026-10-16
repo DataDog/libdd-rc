@@ -35,17 +35,21 @@ jobs:
       matrix:
         include:
           - name: dev
-            cmd: cargo build --workspace --all-features
+            cmd: cargo build --workspace
           - name: release
-            cmd: cargo build --workspace --all-features --release
+            cmd: cargo build --workspace --release
           - name: benchmarks
-            cmd: cargo test --workspace --all-features --benches --no-run
+            cmd: cargo test --workspace --benches --no-run
           - name: clippy
-            cmd: cargo clippy --workspace --all-features -- -D warnings
+            cmd: cargo clippy --workspace -- -D warnings
           - name: test
-            cmd: cargo test --workspace --all-features
+            cmd: cargo test --workspace
           - name: fmt
             cmd: cargo fmt --check
+          - name: non-fips build
+            cmd: cargo build --workspace --no-default-features --features=non-fips
+          - name: non-fips test
+            cmd: cargo test --workspace --no-default-features --features=non-fips
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/datadog/libdd-rc/rust-ci:1.97.1

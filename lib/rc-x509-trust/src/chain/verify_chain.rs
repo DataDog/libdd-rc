@@ -148,6 +148,7 @@ mod tests {
     static CA: TestCA = TestCA::new();
 
     #[test]
+    #[cfg(feature = "fips")]
     fn test_all_algos_are_fips() {
         for v in ALLOWED_SIGNATURE_ALGORITHMS {
             assert!(v.fips());

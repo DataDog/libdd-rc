@@ -28,9 +28,14 @@ cargo-fuzz = true
 [dependencies]
 futures = "0.3.32"
 libfuzzer-sys = "0.4"
-rc-x509-client = { version = "0.2.0", path = "..", features = ["fuzzing"] }
+rc-x509-client = { version = "0.2.0", path = "..", default-features = false, features = ["fuzzing"] }
 tokio = { version = "1.52.3", features = ["macros", "parking_lot", "rt", "sync", "time"] }
 tokio-stream = "0.1.18"
+
+[features]
+default = ["fips"]
+fips = ["rc-x509-client/fips"]
+non-fips = ["rc-x509-client/non-fips"]
 
 [[bin]]
 name = "message_delivery"

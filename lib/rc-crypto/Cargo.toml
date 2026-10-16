@@ -51,6 +51,7 @@ rc-x509-test-helpers = { path = "../rc-x509-test-helpers", version = "0.1.1" }
 [features]
 default = ["fips"]
 fips = ["aws-lc-rs/fips", "rcgen/aws_lc_rs", "rcgen/fips", "x509-parser/verify-aws"]
+non-fips = ["aws-lc-rs/non-fips", "rcgen/aws_lc_rs", "x509-parser/verify-aws"]
 fuzzing = ["dep:arbitrary"]
 
 # Flags specifically required for dd-source compatibility, with default=false.
