@@ -15,7 +15,7 @@
 use rc_crypto::certificate::id::IssuerCertId;
 use rc_x509_roots::RootCertificate;
 use thiserror::Error;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace};
 use valuable::Valuable;
 
 use crate::{cert::UntrustedCert, chain::UntrustedChain, trust_store::CertCache};
@@ -116,17 +116,17 @@ where
 
         let issuer_cert = match cache.get(next_cert_id.as_cert_id()) {
             Some(v) => {
-                debug!(
+                trace!(
                     issuer = v.as_value(),
                     for_cert_id = next_cert_id.as_value(),
-                    "found issuer cert in local cache"
+                    "found intermediate cert in local cache"
                 );
                 v
             }
             None => {
-                warn!(
+                debug!(
                     for_cert_id = next_cert_id.as_value(),
-                    "no issuer cert in local cache"
+                    "no intermediate cert in local cache"
                 );
                 return Err(ChainBuildError::MissingIntermediate(
                     next_cert_id.to_owned(),
