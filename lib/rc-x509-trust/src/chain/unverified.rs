@@ -100,6 +100,8 @@ mod tests {
     {cert_a_cert_id}
 - issuer_cert_id:
     {cert_a_issuer_cert_id}
+- is_ca:
+    {cert_a_is_ca}
 - serial_number:
     {cert_b_serial}
 - fingerprint:
@@ -110,17 +112,21 @@ mod tests {
     {cert_b_cert_id}
 - issuer_cert_id:
     {cert_b_issuer_cert_id}
+- is_ca:
+    {cert_b_is_ca}
 ",
                 cert_a_serial = int_a.cert().serial_number().as_hex_str(),
                 cert_a_fingerprint = int_a.cert().fingerprint().as_hex_str(),
                 cert_a_validity = int_a.cert().validity(),
                 cert_a_cert_id = int_a.cert().cert_id(),
                 cert_a_issuer_cert_id = int_a.cert().issuer_cert_id(),
+                cert_a_is_ca = int_a.cert().is_ca(),
                 cert_b_serial = int_b.cert().serial_number().as_hex_str(),
                 cert_b_fingerprint = int_b.cert().fingerprint().as_hex_str(),
                 cert_b_validity = int_b.cert().validity(),
                 cert_b_cert_id = int_b.cert().cert_id(),
                 cert_b_issuer_cert_id = int_b.cert().issuer_cert_id(),
+                cert_b_is_ca = int_b.cert().is_ca(),
             )
             .as_str(),
         );
