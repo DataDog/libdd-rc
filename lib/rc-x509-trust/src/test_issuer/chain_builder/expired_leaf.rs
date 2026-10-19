@@ -28,7 +28,13 @@ use crate::test_issuer::{
 pub(crate) struct ExpiredLeaf {}
 
 impl ChainMutator for ExpiredLeaf {
-    fn intermediate<'a>(&self, _builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {}
+    fn intermediate<'a>(
+        &self,
+        _builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
+    }
 
     fn leaf<'a>(&self, builder: &mut CertBuilder<LeafTemplate<'a>>) {
         builder.set_not_after(date_time_ymd(2020, 1, 1));

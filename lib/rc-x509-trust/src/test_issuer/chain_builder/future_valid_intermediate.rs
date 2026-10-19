@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cell::Cell;
-
 use rcgen::date_time_ymd;
 
 use crate::test_issuer::{
@@ -30,25 +28,23 @@ use crate::test_issuer::{
 #[derive(Debug, Clone)]
 pub(crate) struct FutureValidIntermediate {
     seed: u8,
-    call_index: Cell<u8>,
 }
 
 impl FutureValidIntermediate {
     pub(crate) fn new(seed: u8) -> Self {
-        Self {
-            seed,
-            call_index: Cell::new(0),
-        }
+        Self { seed }
     }
 }
 
 impl ChainMutator for FutureValidIntermediate {
-    fn intermediate<'a>(&self, builder: &mut CertBuilder<IntermediateTemplate<'a>>, total: u8) {
-        let idx = self.call_index.get();
-        self.call_index.set(idx + 1);
-
+    fn intermediate<'a>(
+        &self,
+        builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        index: u8,
+        total: u8,
+    ) {
         let target = self.seed % total;
-        if idx == target {
+        if index == target {
             // Set notBefore to a date far in the future.
             builder.set_not_before(date_time_ymd(4000, 1, 1));
         }

@@ -26,11 +26,15 @@ use crate::test_issuer::{
 pub(crate) trait ChainMutator: Clone + std::fmt::Debug {
     /// Modify the [`ChainBuilder`] for an intermediate.
     ///
-    /// `total` specifies the total number of intermediates / calls to this
-    /// function for this chain.
-    ///
-    /// Calls are ordered from root to leaf.
-    fn intermediate<'a>(&self, builder: &mut CertBuilder<IntermediateTemplate<'a>>, total: u8);
+    /// `index` is the 0-based position of this intermediate (ordered root to
+    /// leaf) and `total` is the 1-indexed total number of intermediates in the
+    /// chain.
+    fn intermediate<'a>(
+        &self,
+        builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        index: u8,
+        total: u8,
+    );
 
     /// Called once to allow modification of the chain leaf [`CertBuilder`].
     fn leaf<'a>(&self, builder: &mut CertBuilder<LeafTemplate<'a>>);
@@ -84,7 +88,7 @@ impl TestChain {
             )
             .allowed_domain("itsallbroken.com");
 
-            mutator.intermediate(&mut builder, n_intermediates);
+            mutator.intermediate(&mut builder, i - 1, n_intermediates);
             intermediates.push(builder.build());
         }
 

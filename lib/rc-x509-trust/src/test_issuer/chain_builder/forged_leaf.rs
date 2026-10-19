@@ -86,7 +86,13 @@ use crate::test_issuer::{
 pub(crate) struct ForgedLeaf {}
 
 impl ChainMutator for ForgedLeaf {
-    fn intermediate<'a>(&self, _builder: &mut CertBuilder<IntermediateTemplate<'a>>, _total: u8) {}
+    fn intermediate<'a>(
+        &self,
+        _builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
+    }
 
     fn leaf<'a>(&self, _builder: &mut CertBuilder<LeafTemplate<'a>>) {}
 
