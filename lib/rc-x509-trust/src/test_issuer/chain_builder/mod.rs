@@ -23,6 +23,8 @@ mod missing_intermediate;
 mod pathlen_violation;
 mod self_referential_cert_ids;
 mod set_ekus;
+mod set_leaf_sans;
+mod set_name_constraints;
 mod valid;
 
 pub(crate) use chain::*;
@@ -36,4 +38,6 @@ pub(crate) use missing_intermediate::*;
 pub(crate) use pathlen_violation::*;
 pub(crate) use self_referential_cert_ids::*;
 pub(crate) use set_ekus::*;
+pub(crate) use set_leaf_sans::*;
+pub(crate) use set_name_constraints::*;
 pub(crate) use valid::*;

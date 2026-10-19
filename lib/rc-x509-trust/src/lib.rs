@@ -17,7 +17,10 @@
 
 pub mod cert;
 pub mod chain;
+mod endpoint_hostname;
 pub mod trust_store;
+
+pub use endpoint_hostname::*;
 
 #[cfg(test)]
 pub(crate) mod test_issuer;
