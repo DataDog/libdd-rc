@@ -116,6 +116,9 @@ pub struct Certificate {
 
     /// The Authority Key Identity value in the certificate.
     issuer_cert_id: IssuerCertId,
+
+    /// True if the certificate contains a `basicConstraint` of `CA:TRUE`.
+    is_ca: bool,
 }
 
 impl Certificate {
@@ -151,6 +154,7 @@ impl Certificate {
         let validity = Validity::try_from(&cert)?;
         let cert_id = CertId::try_from(&cert)?;
         let issuer_cert_id = IssuerCertId::try_from(&cert)?;
+        let is_ca = cert.is_ca();
 
         // Extract the raw public key DER bytes.
         let public_key_der = Bytes::from(cert.public_key().subject_public_key.data.to_vec());
@@ -163,6 +167,7 @@ impl Certificate {
             validity,
             cert_id,
             issuer_cert_id,
+            is_ca,
         })
     }
 
@@ -232,6 +237,13 @@ impl Certificate {
             .expect("valid DER: already parsed at construction");
         cert.subject().to_string()
     }
+
+    /// Returns `true` if this certificate is a CA certificate (root /
+    /// intermediate), else returns `false` if this certificate is a leaf
+    /// certificate.
+    pub fn is_ca(&self) -> bool {
+        self.is_ca
+    }
 }
 
 impl From<rcgen::Certificate> for Certificate {
@@ -300,16 +312,23 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
 
     /// Return a [`Certificate`] from [`CERT_PEM_DATA`].
     pub(crate) fn cert_fixture() -> Certificate {
-        let pem =
-            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----");
+        let pem = format!(
+            "-----BEGIN CERTIFICATE-----
+{CERT_PEM_DATA}
+-----END CERTIFICATE-----"
+        );
 
         Certificate::from_pem(pem.as_bytes()).expect("valid PEM")
     }
 
     #[test]
     fn test_fixture() {
-        let pem =
-            format!("-----BEGIN CERTIFICATE-----\n{CERT_PEM_DATA}\n-----END CERTIFICATE-----\n");
+        let pem = format!(
+            "-----BEGIN CERTIFICATE-----
+{CERT_PEM_DATA}
+-----END CERTIFICATE-----
+"
+        );
 
         let cert = Certificate::from_pem(pem.as_bytes()).expect("valid PEM");
 
@@ -346,6 +365,8 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             cert.issuer_cert_id().as_hex_str(),
             "20:6c:8e:cf:e4:21:a7:ff:ed:23:c8:3d:37:0f:77:81:84:71:0e:15"
         );
+
+        assert!(!cert.is_ca());
     }
 
     #[test]
@@ -376,7 +397,8 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
             dc:8d:b6:27:52:78:58:4c:fd:a2:43:db:cb:2b:e0:57:68:6e:2b:8e
         - issuer_cert_id:
             20:6c:8e:cf:e4:21:a7:ff:ed:23:c8:3d:37:0f:77:81:84:71:0e:15
-",
+        - is_ca:
+            false",
         );
     }
 
@@ -460,8 +482,14 @@ YxZ1HPGBZ43mYEaEdMR47YlQlNwwK+43yTDBRgd7\
     impl Display for PemPart {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                PemPart::Start => f.write_str("-----BEGIN CERTIFICATE-----\n"),
-                PemPart::End => f.write_str("-----END CERTIFICATE-----\n"),
+                PemPart::Start => f.write_str(
+                    "-----BEGIN CERTIFICATE-----
+",
+                ),
+                PemPart::End => f.write_str(
+                    "-----END CERTIFICATE-----
+",
+                ),
                 PemPart::RandomData(s) => f.write_str(s),
                 PemPart::ValidCertData => f.write_str(CERT_PEM_DATA),
             }
