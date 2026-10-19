@@ -40,7 +40,11 @@ impl CertCache for MemoryCertCache {
 
         // Invariant: if a cert previously existed under the provided key_id, it
         // MUST be the same certificate (as indicated by matching fingerprints).
-        assert!(
+        //
+        // NOTE: this cannot be enforced in release builds, as an attacker can
+        // forge a certificate that contains a duplicate SKI (the value used as
+        // cert IDs).
+        debug_assert!(
             removed
                 .map(|v| v.fingerprint() == cert.fingerprint())
                 .unwrap_or(true)
@@ -52,7 +56,7 @@ impl CertCache for MemoryCertCache {
 
         if let Some(cert) = &got {
             // Invariant: any returned certificate MUST have the same cert ID as
-            // the query value.
+            // the query value, else this mapping is invalid.
             assert_eq!(
                 cert.cert_id().as_dangerous_comparable(),
                 cert_id.as_dangerous_comparable()
@@ -67,7 +71,7 @@ impl CertCache for MemoryCertCache {
 
         if let Some(cert) = &removed {
             // Invariant: any removed certificate MUST have the same cert ID as
-            // the query value.
+            // the query value, else this mapping is invalid.
             assert_eq!(
                 cert.cert_id().as_dangerous_comparable(),
                 cert_id.as_dangerous_comparable()
