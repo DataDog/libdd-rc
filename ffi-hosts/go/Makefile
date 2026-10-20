@@ -23,7 +23,7 @@ $(FFI_LIB): $(FFI_SRC)
 	./scripts/copy_fips_lib.sh
 
 # Compile the Go PoC binary.
-$(POC_BIN): generate $(FFI_LIB) $(POC_SRC)
+$(POC_BIN): $(FFI_LIB) $(POC_SRC)
 	rm -rf $<
 	CGO_ENABLED=1 go build -ldflags="$(FFI_LIB_GO_LDFLAGS)" -o $(POC_BIN) $(POC_SRC)
 
@@ -33,13 +33,13 @@ $(POC_BIN): generate $(FFI_LIB) $(POC_SRC)
 generate:
 	cd ../.. && buf generate
 
-build: generate $(FFI_LIB)
+build: $(FFI_LIB)
 	CGO_ENABLED=1 go build -ldflags="$(FFI_LIB_GO_LDFLAGS)" ./...
 
-test: generate $(FFI_LIB)
+test: $(FFI_LIB)
 	CGO_ENABLED=1 go test -ldflags="$(FFI_LIB_GO_LDFLAGS)" ./...
 
-vet: generate
+vet:
 	CGO_ENABLED=1 go vet ./...
 
 runtest: $(POC_BIN)
