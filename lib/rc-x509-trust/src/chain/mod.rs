@@ -59,17 +59,21 @@ pub(crate) mod tests {
             n_intermediates
                 .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(ca, n, ForgedIntermediate::new(seed))),
+                .prop_map(move |(n, seed)| TestChain::build(ca, n, &ForgedIntermediate::new(seed))),
             n_intermediates
                 .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(ca, n, ExpiredIntermediate::new(seed))),
+                .prop_map(move |(n, seed)| TestChain::build(
+                    ca,
+                    n,
+                    &ExpiredIntermediate::new(seed)
+                )),
             n_intermediates
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
                 .prop_map(move |(n, seed)| TestChain::build(
                     ca,
                     n,
-                    FutureValidIntermediate::new(seed),
+                    &FutureValidIntermediate::new(seed),
                 )),
         ]
     }
@@ -98,7 +102,11 @@ pub(crate) mod tests {
             n_intermediates
                 .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
-                .prop_map(move |(n, seed)| TestChain::build(ca, n, MissingIntermediate::new(seed))),
+                .prop_map(move |(n, seed)| TestChain::build(
+                    ca,
+                    n,
+                    &MissingIntermediate::new(seed)
+                )),
         ]
     }
 }
