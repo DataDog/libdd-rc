@@ -22,7 +22,7 @@ use webpki::{
     ExtendedKeyUsageValidator, KeyPurposeId, KeyUsage, anchor_from_trusted_cert, aws_lc_rs,
 };
 
-use crate::{cert::UntrustedCert, chain::UntrustedChain};
+use crate::{cert::UntrustedCert, chain::UntrustedChain, endpoint_hostname::EndpointHostname};
 
 /// Signature algorithms that are accepted when validating the signatures within
 /// a certificate.
@@ -77,28 +77,53 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
     }
 }
 
+/// Failures to verify a certificate chain.
 #[derive(Debug, Error)]
 pub(crate) enum ChainVerifyError {
+    /// The leaf certificate contains invalid DER.
+    ///
+    /// This should not be possible, but is returned as an error (instead of
+    /// panic) due to the fact it is parsing untrusted input - any discrepancies
+    /// between the X509 parses would present as a DoS vector otherwise.
     #[error("failed to read leaf cert in chain")]
     ReadLeaf(webpki::Error),
 
+    /// The candidate chain could not be verified to be trusted.
+    ///
+    /// This likely means a certificate is expired, an EKU constraint was not
+    /// satisfied, a name constraint ("DNS pin") was violated, or an attacker
+    /// has inserted a malicious certificate into client state.
     #[error("untrusted chain rejected: {0}")]
     RejectedChain(webpki::Error),
+
+    /// The leaf certificate has a `dNSName` SAN value that does not match the
+    /// [`EndpointHostname`].
+    #[error("name constraint mismatch: {0}")]
+    NameMismatch(webpki::Error),
 }
 
 /// Attempt to verify the validity of `cert`, using the candidate `chain` to
 /// `root`.
 ///
-/// If it is proven that `cert` descends from `root` via `chain`, the trusted
-/// [`Certificate`] is returned. If trust cannot be established, the
+/// If it is proven that `cert` descends from `root` via a valid `chain`, the
+/// trusted [`Certificate`] is returned. If trust cannot be established, the
 /// [`UntrustedCert`] input is consumed.
 ///
+/// Any (optional) name constraints (see [RFC 5280 § 4.2.1.10]) on the
+/// intermediates are applied during verification to enforce any configured "DNS
+/// pins" that tie the certificates / signatures of one DC to a DNS name,
+/// preventing their reuse in other DCs.
+///
 /// The full chain is checked for validity against the current system clock.
+///
+/// [RFC 5280 § 4.2.1.10]:
+///     https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.10
 pub(crate) fn verify_chain(
     root: &RootCertificate,
     cert: UntrustedCert,
     chain: UntrustedChain,
     eku_policy: EKUPolicy,
+    dns_name: &EndpointHostname,
 ) -> Result<Certificate, ChainVerifyError> {
     let leaf_cert = CertificateDer::from(cert.as_der_slice());
 
@@ -111,6 +136,7 @@ pub(crate) fn verify_chain(
         .map(|v| CertificateDer::from(v.as_der_slice()))
         .collect::<Vec<_>>();
 
+    // Verify the validity of the candidate chain.
     let ee = webpki::EndEntityCert::try_from(&leaf_cert).map_err(ChainVerifyError::ReadLeaf)?;
     let _path = ee
         .verify_for_usage(
@@ -124,14 +150,17 @@ pub(crate) fn verify_chain(
         )
         .map_err(ChainVerifyError::RejectedChain)?;
 
+    // Ensure any DNS name constraints on the intermediates (used to "pin" a
+    // certificate to a DC) are valid for the leaf's DNS SAN value.
+    ee.verify_is_valid_for_subject_name(dns_name.as_server_name())
+        .map_err(ChainVerifyError::NameMismatch)?;
+
     debug!(
         root = root.as_value(),
         leaf = cert.as_value(),
         intermediates = chain.as_value(),
         "accepted certificate as valid"
     );
-
-    // TODO(dom): verify subject name pin
 
     Ok(cert.into_trusted())
 }
@@ -145,8 +174,10 @@ mod tests {
     use crate::{
         chain::{build_unverified_chain_for, tests::arbitrary_invalid_chain},
         test_issuer::{
-            CertBuilder, ChainEKUConfig, SetEKUs, TestCA, TestChain, ValidChain, arbitrary_chain,
-            arbitrary_eku_apply_to,
+            CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
+            NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
+            arbitrary_chain, arbitrary_eku_apply_to, arbitrary_leaf_san_scenario,
+            arbitrary_name_constraint_scenario,
         },
         trust_store::{CertCache, MemoryCertCache},
     };
@@ -154,6 +185,9 @@ mod tests {
     use super::*;
 
     static CA: TestCA = TestCA::new();
+
+    /// The default leaf SAN used in [`TestChain::build`].
+    const DEFAULT_LEAF_SAN: &str = "leaf.itsallbroken.com";
 
     #[test]
     #[cfg(feature = "fips")]
@@ -196,6 +230,29 @@ mod tests {
         ) {
             test_prop_eku_policy(ekus, n_intermediates);
         }
+
+        /// Randomise the name constraint configuration of intermediate
+        /// certificates, and the dNSName SAN set of the leaf, and assert:
+        ///
+        /// * A chain is accepted when the intermediate name constraint permits
+        ///   all leaf dNSName SANs and the DNS name input matches one of them.
+        /// * A chain is rejected when an intermediate name constraint does NOT
+        ///   permit a leaf dNSName SAN.
+        /// * A chain is rejected when no leaf dNSName SAN matches the connected
+        ///   endpoint.
+        ///
+        #[test]
+        fn prop_dc_pin(
+            connected_endpoint in prop_oneof![
+                    Just("bananas.itsallbroken.com"),
+                    Just(LEAF_ENDPOINT_HOSTNAME)
+                ],
+            ns_scenario in arbitrary_name_constraint_scenario(),
+            san_scenario in arbitrary_leaf_san_scenario(),
+            n_intermediates in 1..=5_u8, // Name constrains require an intermediate
+        ) {
+            test_prop_dc_pin(connected_endpoint, ns_scenario, san_scenario, n_intermediates);
+        }
     }
 
     /// Process a valid chain, expecting success.
@@ -225,11 +282,13 @@ mod tests {
         )
         .expect("valid chain");
 
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let got = verify_chain(
             &CA.root_cert(),
             UntrustedCert::from(input.leaf.cert().clone()),
             chain,
             EKUPolicy::RequireCodeSigning,
+            &dns_name,
         )
         .expect("successfully validated chain");
 
@@ -281,11 +340,13 @@ mod tests {
         //   * A codeSigning EKU, or
         //   * No specified EKUs (empty set == unconstrained).
         //
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let result = verify_chain(
             &root_cert,
             untrusted_leaf,
             candidate_chain,
             EKUPolicy::RequireCodeSigning,
+            &dns_name,
         );
 
         // A helper to check if an EKU is codeSigning or not, used below.
@@ -364,6 +425,64 @@ mod tests {
         unreachable!("all permutations are covered by checks above");
     }
 
+    /// Assert the name constraint ("DC pin") and leaf SAN scenarios produce the
+    /// expected outcome.
+    fn test_prop_dc_pin(
+        connected_endpoint: &str,
+        ns_scenario: NameConstraintScenario,
+        san_scenario: LeafSanScenario,
+        n_intermediates: u8,
+    ) {
+        let mutator =
+            SetNameConstraints::new(ns_scenario.clone()).with_leaf_sans(san_scenario.clone());
+        let chain = TestChain::build(&CA, n_intermediates, mutator);
+
+        let mut cache = MemoryCertCache::default();
+        for identity in &chain.intermediates {
+            cache.insert(UntrustedCert::from(identity.cert().clone()));
+        }
+
+        let candidate_chain = build_unverified_chain_for(
+            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+            &UntrustedCert::from(chain.leaf.cert().clone()),
+            &cache,
+        )
+        .expect("valid chain structure");
+
+        let dns_name = EndpointHostname::try_from(connected_endpoint.to_owned()).unwrap();
+        let result = verify_chain(
+            &CA.root_cert(),
+            UntrustedCert::from(chain.leaf.cert().clone()),
+            candidate_chain,
+            EKUPolicy::RequireCodeSigning,
+            &dns_name,
+        );
+
+        // Every leaf SAN must be permitted by the intermediate name
+        // constraints, else the chain itself is invalid.
+        if !san_scenario.sans().iter().all(|v| ns_scenario.permits(v)) {
+            assert_matches!(
+                result,
+                Err(ChainVerifyError::RejectedChain(_)),
+                "chain with mismatched name constraint must be rejected"
+            );
+            return;
+        }
+
+        // The chain configuration is valid, so the leaf must match the identity
+        // of the endpoint the client connected to to succeed.
+        if !san_scenario.sans().contains(&connected_endpoint) {
+            assert_matches!(
+                result,
+                Err(ChainVerifyError::NameMismatch(_)),
+                "leaf that does not assert the connected endpoint must be rejected"
+            );
+            return;
+        }
+
+        result.expect("chain with valid name constraints and leaf SAN must be accepted");
+    }
+
     /// Process an invalid chain, expecting an error.
     fn test_prop_invalid_chain(input: TestChain) {
         let mut cache = MemoryCertCache::default();
@@ -391,11 +510,13 @@ mod tests {
             }
         };
 
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let err = verify_chain(
             &CA.root_cert(),
             UntrustedCert::from(input.leaf.cert().clone()),
             chain,
             EKUPolicy::RequireCodeSigning,
+            &dns_name,
         )
         .expect_err("invalid chain must be rejected");
 
