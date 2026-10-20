@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Verify that Go protobuf bindings can be generated from the rc-x509-proto
-# schema and that the resulting ffi-hosts/go/rcproto package compiles cleanly
-# with the rest of the Go host. The generated bindings are not committed
-# (see buf.gen.yaml), so this replaces a generate-then-diff check with a
-# generate-then-build one.
+# Verify that committed Go protobuf bindings match the rc-x509-proto schema and
+# that ffi-hosts/go compiles and tests cleanly with those bindings.
 
 name: ffi-go
 permissions:
@@ -54,6 +51,23 @@ jobs:
 
       - name: Add Go bin to PATH
         run: echo "/root/go/bin" >> "$GITHUB_PATH"
+
+      - name: Install protoc-gen-go
+        working-directory: ffi-hosts/go
+        run: |
+          version="$(go list -m -f '{{.Version}}' google.golang.org/protobuf)"
+          go install "google.golang.org/protobuf/cmd/protoc-gen-go@${version}"
+
+      - name: Verify committed Go protobuf bindings
+        working-directory: ffi-hosts/go
+        run: |
+          make generate
+          if [ -n "$(git status --porcelain --untracked-files=all -- rcproto)" ]; then
+            git diff -- rcproto
+            git status --short --untracked-files=all -- rcproto
+            echo "Generated Go protobuf bindings are out of sync; run 'buf generate' and commit ffi-hosts/go/rcproto."
+            exit 1
+          fi
 
       - name: Run go vet + tests
         working-directory: ffi-hosts/go
