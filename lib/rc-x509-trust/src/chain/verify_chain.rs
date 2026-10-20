@@ -299,7 +299,7 @@ mod tests {
     /// properties.
     fn test_prop_eku_policy(ekus: ChainEKUConfig, n_intermediates: u8) {
         // Generate the chain.
-        let chain = TestChain::build(&CA, n_intermediates, SetEKUs::new(ekus.clone()));
+        let chain = TestChain::build(&CA, n_intermediates, &SetEKUs::new(ekus.clone()));
 
         // When there are no intermediates, intermediate EKU configs are never
         // applied to any certificate — normalise to match the effective state.
@@ -435,7 +435,7 @@ mod tests {
     ) {
         let mutator =
             SetNameConstraints::new(ns_scenario.clone()).with_leaf_sans(san_scenario.clone());
-        let chain = TestChain::build(&CA, n_intermediates, mutator);
+        let chain = TestChain::build(&CA, n_intermediates, &mutator);
 
         let mut cache = MemoryCertCache::default();
         for identity in &chain.intermediates {

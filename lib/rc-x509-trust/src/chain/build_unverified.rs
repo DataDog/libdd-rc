@@ -370,9 +370,10 @@ mod tests {
             seed in any::<u8>(),
         ) {
             let mutator = MissingIntermediate::new(seed);
-            let drop_idx = mutator.will_remove_idx(n_intermediates as usize);
 
-            let chain = TestChain::build(&CA, n_intermediates, mutator);
+            let chain = TestChain::build(&CA, n_intermediates, &mutator);
+            let dropped = mutator.take_dropped().unwrap();
+
             let mut cache = MemoryCertCache::default();
 
             // Populate the cache with the remaining intermediates (one was
@@ -388,17 +389,10 @@ mod tests {
             )
             .expect_err("invalid chain");
 
-            let original_len = chain.intermediates.len() + 1;
-            let want = if drop_idx == original_len - 1 {
-                chain.leaf.cert().issuer_cert_id()
-            } else {
-                chain.intermediates[drop_idx].cert().issuer_cert_id()
-            };
-
             assert_matches!(err, ChainBuildError::MissingIntermediate(ref got) => {
                 assert_eq!(
                     got.as_dangerous_comparable(),
-                    want.as_dangerous_comparable(),
+                    dropped.cert().cert_id().as_dangerous_comparable(),
                 );
             });
         }
