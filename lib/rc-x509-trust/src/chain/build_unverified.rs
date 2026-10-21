@@ -161,7 +161,7 @@ mod tests {
     /// The root always chains to itself.
     #[test]
     fn test_root_chain_root() {
-        let cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(10);
 
         let got = build_unverified_chain_for(
             &CA.root_cert(),
@@ -178,7 +178,7 @@ mod tests {
     /// error.
     #[test]
     fn test_excessively_long_chain_dos() {
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(MAX_CHAIN_LEN as u64 + 2);
 
         // Generate a chain of N-1 intermediates in the cache.
         let mut last = None;
@@ -286,7 +286,7 @@ mod tests {
         };
 
         // Cache contains only the legitimate intermediate.
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(10);
         cache.insert(UntrustedCert::from(legit_intermediate.cert().clone()));
 
         // Evil CA: its root's SKI matches the legitimate intermediate's SKI,
@@ -325,7 +325,7 @@ mod tests {
         fn prop_valid_chain_building(
             chain in arbitrary_chain(&CA, 0..5_u8, ValidChain::default()),
         ) {
-            let mut cache = MemoryCertCache::default();
+            let cache = MemoryCertCache::new(10);
 
             // Populate the cache with all the intermediate certificates.
             for identity in &chain.intermediates {
@@ -374,7 +374,7 @@ mod tests {
             let chain = TestChain::build(&CA, n_intermediates, &mutator);
             let dropped = mutator.take_dropped().unwrap();
 
-            let mut cache = MemoryCertCache::default();
+            let cache = MemoryCertCache::new(10);
 
             // Populate the cache with the remaining intermediates (one was
             // already removed by the MissingIntermediate mutator).
@@ -405,7 +405,7 @@ mod tests {
         fn prop_spuriously_accepted_invalid_chains(
             chain in arbitrary_invalid_chain_spuriously_built(&CA, 2..5_u8),
         ) {
-            let mut cache = MemoryCertCache::default();
+            let cache = MemoryCertCache::new(10);
 
             // Populate the cache with the legitimate intermediates.
             for identity in &chain.intermediates {
