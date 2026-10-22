@@ -34,15 +34,13 @@ use crate::cert::UntrustedCert;
 pub trait CertCache: Send + Sync + std::fmt::Debug + 'static {
     /// Insert `cert`, making it available to subsequent queries using its
     /// [`CertId`].
-    fn insert(&mut self, cert: UntrustedCert);
+    fn insert(&self, cert: UntrustedCert);
 
     /// Retrieve a [`Certificate`] by the [`CertId`], if previously inserted.
     fn get(&self, cert_id: &CertId) -> Option<Arc<UntrustedCert>>;
 
-    /// Remove the [`Certificate`] which has the specified [`CertId`], returning
-    /// true on success, or false if there is not matching [`Certificate`]
-    /// stored.
+    /// Remove the [`Certificate`] which has the specified [`CertId`].
     ///
     /// [`Certificate`]: rc_crypto::certificate::Certificate
-    fn remove(&mut self, cert_id: &CertId) -> bool;
+    fn remove(&self, cert_id: &CertId);
 }
