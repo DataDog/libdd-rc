@@ -257,7 +257,7 @@ mod tests {
 
     /// Process a valid chain, expecting success.
     fn test_prop_valid_chain(input: TestChain) {
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(input.len() as _);
 
         // Populate the cache with all the intermediate certificates.
         for identity in &input.intermediates {
@@ -299,7 +299,7 @@ mod tests {
     /// properties.
     fn test_prop_eku_policy(ekus: ChainEKUConfig, n_intermediates: u8) {
         // Generate the chain.
-        let chain = TestChain::build(&CA, n_intermediates, SetEKUs::new(ekus.clone()));
+        let chain = TestChain::build(&CA, n_intermediates, &SetEKUs::new(ekus.clone()));
 
         // When there are no intermediates, intermediate EKU configs are never
         // applied to any certificate — normalise to match the effective state.
@@ -314,7 +314,7 @@ mod tests {
         };
 
         // Populate the cache.
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(chain.len() as _);
         for identity in &chain.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
@@ -435,9 +435,9 @@ mod tests {
     ) {
         let mutator =
             SetNameConstraints::new(ns_scenario.clone()).with_leaf_sans(san_scenario.clone());
-        let chain = TestChain::build(&CA, n_intermediates, mutator);
+        let chain = TestChain::build(&CA, n_intermediates, &mutator);
 
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(chain.len() as _);
         for identity in &chain.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
@@ -485,7 +485,7 @@ mod tests {
 
     /// Process an invalid chain, expecting an error.
     fn test_prop_invalid_chain(input: TestChain) {
-        let mut cache = MemoryCertCache::default();
+        let cache = MemoryCertCache::new(input.len() as _);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }

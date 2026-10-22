@@ -12,24 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Mutex;
+
 use crate::test_issuer::{
-    CertBuilder, ChainMutator, TestChain,
+    CertBuilder, ChainMutator, Identity, TestChain,
     template::{intermediate::IntermediateTemplate, leaf::LeafTemplate},
 };
 
 /// Produces a [`TestChain`] with a missing intermediate.
-#[derive(Debug, Clone)]
-pub(crate) struct MissingIntermediate(u8);
+#[derive(Debug)]
+pub(crate) struct MissingIntermediate {
+    seed: u8,
+    dropped: Mutex<Option<Identity>>,
+}
 
 impl MissingIntermediate {
     pub(crate) fn new(seed: u8) -> Self {
-        Self(seed)
+        Self {
+            seed,
+            dropped: Mutex::new(None),
+        }
     }
 
-    /// Return the 0-based index of the intermediate that will be removed given
-    /// an original chain of `n_intermediates`.
-    pub(crate) fn will_remove_idx(&self, n_intermediates: usize) -> usize {
-        self.0 as usize % n_intermediates
+    /// Obtain the [`Identity`] that was removed from the chain by this mutator.
+    pub(crate) fn take_dropped(&self) -> Option<Identity> {
+        self.dropped.lock().unwrap().take()
     }
 }
 
@@ -51,8 +58,12 @@ impl ChainMutator for MissingIntermediate {
         );
 
         // Pick a random entry to remove.
-        let idx = self.will_remove_idx(chain.intermediates.len());
-        chain.intermediates.remove(idx);
+        let idx = self.seed as usize % chain.intermediates.len();
+        let dropped = chain.intermediates.remove(idx);
+
+        // Retain the dropped cert for later asserts.
+        *self.dropped.lock().unwrap() = Some(dropped);
+
         chain
     }
 }

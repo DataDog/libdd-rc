@@ -23,11 +23,11 @@ repository = "https://github.com/DataDog/libdd-rc"
 [dependencies]
 arbitrary = { version = "1", optional = true, features = ["derive"] }
 bytes = "1.11.1"
-hashbrown = "0.17"
+mini-moka = "0.10.3"
 rc-crypto.workspace = true
 rc-x509-roots.workspace = true
 rustls-pki-types = { version = "1.14.0", features = ["std"] }
-rustls-webpki = "0.103.13"
+rustls-webpki = "0.103.16"
 thiserror = "2.0.18"
 tracing = { version = "0.1.44", features = ["valuable"] }
 valuable = "0.1.1"

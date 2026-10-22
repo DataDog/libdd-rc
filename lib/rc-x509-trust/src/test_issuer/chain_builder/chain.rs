@@ -15,6 +15,7 @@
 use std::sync::Arc;
 
 use proptest::prelude::*;
+use rc_x509_roots::RootCertificate;
 
 use crate::test_issuer::{
     CertBuilder, Identity, TestCA,
@@ -23,7 +24,7 @@ use crate::test_issuer::{
 
 /// Hooks in [`arbitrary_chain()`] to enable implementations to modify the CSRs
 /// of each certificate during chain issuance.
-pub(crate) trait ChainMutator: Clone + std::fmt::Debug {
+pub(crate) trait ChainMutator: std::fmt::Debug {
     /// Modify the [`ChainBuilder`] for an intermediate.
     ///
     /// `index` is the 0-based position of this intermediate (ordered root to
@@ -52,10 +53,7 @@ pub(crate) fn arbitrary_chain<'a>(
     n_intermediates: impl Strategy<Value = u8> + 'a,
     mutator: impl ChainMutator + 'a,
 ) -> impl Strategy<Value = TestChain> + 'a {
-    n_intermediates.prop_map(move |n| {
-        let mutator = mutator.clone();
-        TestChain::build(ca, n, mutator)
-    })
+    n_intermediates.prop_map(move |n| TestChain::build(ca, n, &mutator))
 }
 
 /// A generated chain for testing.
@@ -76,7 +74,7 @@ impl TestChain {
     pub(crate) fn build<'a>(
         ca: &'a TestCA,
         n_intermediates: u8,
-        mutator: impl ChainMutator + 'a,
+        mutator: &'a impl ChainMutator,
     ) -> Self {
         let mut intermediates = Vec::with_capacity(n_intermediates as _);
 
@@ -108,5 +106,14 @@ impl TestChain {
             intermediates,
             leaf,
         })
+    }
+
+    pub(crate) fn root(&self) -> RootCertificate {
+        RootCertificate::from_trusted_cert(self.root.cert().clone())
+    }
+
+    /// Return the length of the chain, including roots.
+    pub(crate) fn len(&self) -> usize {
+        self.intermediates.len() + 2
     }
 }
