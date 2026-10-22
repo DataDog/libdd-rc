@@ -20,9 +20,9 @@
 #   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 #   buf generate
 #
-# Generated output (ffi-hosts/go/rcproto) is not committed: it's regenerated
-# on demand, either directly via the commands above or as a prerequisite of
-# `make build`/`make test`/`make vet` in ffi-hosts/go.
+# Generated output is committed under ffi-hosts/go/rcproto so the published Go
+# module contains every package imported by ffi-hosts/go. Regenerate and commit
+# the bindings whenever the rc-x509-proto schema changes.
 version: v2
 plugins:
   - local: protoc-gen-go

@@ -1,5 +1,3 @@
-.PHONY: generate build test vet runtest ffi-lib
-
 # FFI library output (compiled library):
 FFI_LIB := ../../target/release/librc_x509_ffi.a
 
@@ -14,6 +12,8 @@ FFI_LIB_GO_LDFLAGS = -X github.com/DataDog/libdd-rc/ffi-hosts/go/internal/libddr
 # The path to the PoC.
 POC_BIN := cmd/bin/testx509
 POC_SRC := $(shell find cmd/testx509 -name '*.go')
+
+.PHONY: generate build test vet runtest ffi-lib $(POC_BIN)
 
 ################################################################################
 # Build targets.
@@ -30,8 +30,8 @@ ffi-lib:
 	./scripts/copy_fips_lib.sh
 
 # Compile the Go PoC binary.
-$(POC_BIN): generate ffi-lib $(POC_SRC)
-	rm -rf $(POC_BIN)
+$(POC_BIN): ffi-lib $(POC_SRC)
+	rm -rf $@
 	CGO_ENABLED=1 go build -ldflags="$(FFI_LIB_GO_LDFLAGS)" -o $(POC_BIN) $(POC_SRC)
 
 ################################################################################
@@ -40,13 +40,13 @@ $(POC_BIN): generate ffi-lib $(POC_SRC)
 generate:
 	cd ../.. && buf generate
 
-build: generate ffi-lib
+build: ffi-lib
 	CGO_ENABLED=1 go build -ldflags="$(FFI_LIB_GO_LDFLAGS)" ./...
 
-test: generate ffi-lib
+test: ffi-lib
 	CGO_ENABLED=1 go test -ldflags="$(FFI_LIB_GO_LDFLAGS)" ./...
 
-vet: generate
+vet:
 	CGO_ENABLED=1 go vet ./...
 
 runtest: $(POC_BIN)
