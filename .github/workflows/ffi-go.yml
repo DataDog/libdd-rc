@@ -61,6 +61,7 @@ jobs:
       - name: Verify committed Go protobuf bindings
         working-directory: ffi-hosts/go
         run: |
+          rm -rf rcproto
           make generate
           if [ -n "$(git status --porcelain --untracked-files=all -- rcproto)" ]; then
             git diff -- rcproto

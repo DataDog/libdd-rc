@@ -1,5 +1,3 @@
-.PHONY: generate build test vet runtest
-
 # FFI library source code.
 FFI_SRC := $(shell find ../../lib -name '*.rs' -o -name Cargo.toml) ../../Cargo.lock
 
@@ -14,6 +12,8 @@ FFI_LIB_GO_LDFLAGS = -X github.com/DataDog/libdd-rc/ffi-hosts/go/internal/libddr
 POC_BIN := cmd/bin/testx509
 POC_SRC := $(shell find cmd/testx509 -name '*.go')
 
+.PHONY: generate build test vet runtest $(POC_BIN)
+
 ################################################################################
 # Build targets.
 
@@ -24,7 +24,7 @@ $(FFI_LIB): $(FFI_SRC)
 
 # Compile the Go PoC binary.
 $(POC_BIN): $(FFI_LIB) $(POC_SRC)
-	rm -rf $<
+	rm -rf $@
 	CGO_ENABLED=1 go build -ldflags="$(FFI_LIB_GO_LDFLAGS)" -o $(POC_BIN) $(POC_SRC)
 
 ################################################################################
