@@ -162,7 +162,7 @@ mod tests {
     }
 
     fn test_prop_validate(chain: TestChain) {
-        let cache = MemoryCertCache::new(chain.len() as _);
+        let cache = MemoryCertCache::new(1024 * 1024);
         let store = TrustStore::new(chain.root(), cache);
 
         // Populate the trust store with all the intermediates & leaf
@@ -190,7 +190,7 @@ mod tests {
         mutator: MissingIntermediate,
         drop_leaf: bool,
     ) {
-        let cache = MemoryCertCache::new(chain.len() as _);
+        let cache = MemoryCertCache::new(1024 * 1024);
         let store = TrustStore::new(chain.root(), cache);
 
         // Maybe include the leaf in the iterator that adds to the local cache.
