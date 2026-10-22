@@ -30,7 +30,8 @@ fips_lib=$(find "$release_dir/build" \
 	-exec ls -t {} + 2>/dev/null | head -n1)
 
 if [ -z "$fips_lib" ]; then
-	exit 0
+	echo "no aws-lc-fips crypto lib found under $release_dir/build" >&2
+	exit 1
 fi
 
 ext=${fips_lib##*.}

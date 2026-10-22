@@ -111,4 +111,9 @@ impl TestChain {
     pub(crate) fn root(&self) -> RootCertificate {
         RootCertificate::from_trusted_cert(self.root.cert().clone())
     }
+
+    /// Return the length of the chain, including roots.
+    pub(crate) fn len(&self) -> usize {
+        self.intermediates.len() + 2
+    }
 }
