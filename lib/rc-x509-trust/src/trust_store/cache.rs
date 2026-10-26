@@ -33,18 +33,31 @@ pub struct MemoryCertCache {
 }
 
 impl MemoryCertCache {
-    /// Construct a [`MemoryCertCache`] that will hold at most `capacity` number
-    /// of entries (best effort bound).
+    /// Construct a [`MemoryCertCache`] that will place a best effort upper
+    /// bound on approximated memory usage to `approx_max_bytes`.
     ///
     /// Evictions when the cache bound is reached are probabilistic, using a
     /// hybrid of LFU and LRU ([TinyLFU]).
     ///
+    /// # Memory Usage
+    ///
+    /// The memory bound is approximate; the underlying implementation is best
+    /// effort, and the entry memory estimator used is naively accounting for
+    /// only the raw DER bytes and none of the values parsed from it or the heap
+    /// overhead necessary to store it, nor can it account for memory
+    /// fragmentation or allocation bucketing.
+    ///
+    /// Estimator: `Certificate DER bytes + 25%`.
+    ///
+    /// It is useful as a rough safety bound to prevent unbounded growth only.
+    ///
     /// [TinyLFU]: https://arxiv.org/abs/1512.00727
-    pub fn new(capacity: u64) -> Self {
+    pub fn new(approx_max_bytes: u64) -> Self {
         Self {
             certs: Cache::builder()
-                .max_capacity(capacity)
+                .max_capacity(approx_max_bytes)
                 .time_to_idle(PURGE_AFTER)
+                .weigher(|_id, cert: &Arc<UntrustedCert>| -> u32 { weight_estimator(cert) })
                 .build(),
         }
     }
@@ -84,6 +97,17 @@ impl CertCache for MemoryCertCache {
         self.certs
             .invalidate(&cert_id.as_dangerous_comparable().into_owned());
     }
+}
+
+/// Approximate the memory usage of `cert` for cache accounting purposes.
+///
+/// See [`MemoryCertCache::new()`].
+fn weight_estimator(cert: &UntrustedCert) -> u32 {
+    let der_len = cert.as_der_slice().len();
+
+    // Approximately account for overhead by applying a 25% multiplier; the DER
+    // slice is not the only data in an `UntrustedCert`.
+    u32::try_from((der_len * 5) / 4).unwrap_or(u32::MAX)
 }
 
 #[cfg(test)]
@@ -195,7 +219,7 @@ mod tests {
             ops in prop::collection::vec(arbitrary_op(arbitrary_cert()), 1..20),
         ) {
             let mut control = HashMap::new();
-            let cache = MemoryCertCache::new(ops.len() as u64 + 1);
+            let cache = MemoryCertCache::new(5 * 1024 * 1024); // Big enough for all
 
             for op in ops {
                 match op {
@@ -231,59 +255,87 @@ mod tests {
             }
         }
 
-        /// Verify the capacity bounds and eviction of the cache.
+        /// Verify the memory bounds and eviction of the cache.
         #[test]
         fn prop_eviction(
-            // A set of indexes into `CERT_POOL`, yielding a set of distinct
-            // certificates that may be smaller or (usually) larger than `CAP`.
-            idx in prop::collection::hash_set(0..POOL_SIZE, 1..=POOL_SIZE),
+            certs in prop::collection::vec(arbitrary_cert(), 5..20),
+            // The fraction of the total input weight the cache is allowed to
+            // hold, as a percentage.
+            capacity_pct in 0u64..=100,
         ) {
-            let certs = idx.iter().map(|&i| Arc::clone(&CERT_POOL[i])).collect::<Vec<_>>();
+            let input = certs
+                .iter()
+                .map(|v| Arc::new(UntrustedCert::from(v.cert().clone())))
+                .collect::<Vec<_>>();
 
-            let cache = MemoryCertCache::new(CAP as _);
+            // Build a list of unique certificates, as later insertions of a
+            // duplicate cert ID will overwrite earlier entries in the cert ID
+            // keyed cache.
+            let mut unique_inputs: Vec<Arc<UntrustedCert>> = Vec::new();
+            for cert in input {
+                unique_inputs.retain(|c: &Arc<UntrustedCert>| {
+                    c.cert_id().as_dangerous_comparable() != cert.cert_id().as_dangerous_comparable()
+                });
+                unique_inputs.push(cert);
+            }
+
+            let total_weight: u64 = unique_inputs.iter().map(|v| u64::from(weight_estimator(v))).sum();
+            let max_weight: u64 = unique_inputs
+                .iter()
+                .map(|v| u64::from(weight_estimator(v)))
+                .max()
+                .expect("at least one input");
+
+            // Scale the cache bound somewhere between "a single entry fits" and
+            // "all entries fit".
+            //
+            // The bound is never less than the largest single entry, as an
+            // entry that exceeds the cache capacity is never admitted.
+            let cap = std::cmp::max(max_weight, (total_weight * capacity_pct) / 100);
+
+            let cache = MemoryCertCache::new(cap);
 
             // Populate the cache.
             for cert in &certs {
                 cache.insert(UntrustedCert::from(cert.cert().clone()));
             }
 
-            // Drive the deferred cache maintenance (including eviction) to
-            // completion, as it is otherwise performed asynchronously.
+            // Forge a cleanup (if necessary).
             cache.certs.sync();
 
-            // Extract both the inputs and cached values as comparable types.
-            //
-            // All inputs are distinct, so no insert overwrote another entry.
             let cached_entries = cache
                 .certs
                 .iter()
                 .map(|v| Arc::clone(v.value()))
                 .collect::<Vec<_>>();
-            let inputs = certs
+
+            // The cache must stay within the configured memory bound.
+            //
+            // Admission & eviction is best effort and lags behind the
+            // insertion of new entries, so allow an overshoot of a single
+            // maximally sized entry.
+            let cached_weight: u64 = cached_entries
                 .iter()
-                .map(|v| Arc::new(UntrustedCert::from(v.cert().clone())))
-                .collect::<Vec<_>>();
+                .map(|v| u64::from(weight_estimator(v)))
+                .sum();
+            assert!(
+                cached_weight <= cap + max_weight,
+                "cached weight {cached_weight} exceeds bound {cap} (+{max_weight} slack)"
+            );
 
             // Assert the expected content.
-            if inputs.len() <= CAP {
-                // Within the capacity bounds, all entries should be retained.
-                assert_eq!(cached_entries.len(), inputs.len());
+            if total_weight <= cap {
+                // Within the memory bounds, all entries should be retained.
+                assert_eq!(cached_entries.len(), unique_inputs.len());
 
-                for want in &inputs {
+                for want in &unique_inputs {
                     assert!(cached_entries.contains(want));
                 }
-            } else {
-                // In excess of the bounds, some entries must be dropped to
-                // respect the capacity bound.
-                assert!(cached_entries.len() <= CAP, "cached {} entries", cached_entries.len());
-                assert!(!cached_entries.is_empty());
-            }
-
-            // Whichever entries were retained, they must be a subset of the
-            // inserted certificates - which entries survive eviction is a
-            // probabilistic property of TinyLFU and is not asserted.
-            for got in &cached_entries {
-                assert!(inputs.contains(got));
+            } else if total_weight > cap + max_weight {
+                // Sufficiently in excess of the bounds (accounting for the
+                // eviction slack above) some entries must have been dropped to
+                // stay within the memory bound.
+                assert!(cached_entries.len() < unique_inputs.len());
             }
         }
     }
