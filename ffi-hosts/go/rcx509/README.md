@@ -6,21 +6,22 @@ three calls.
 
 ## Integration notes
 
-`rcx509` uses cgo. The current Go binding uses libdd-rc's default FIPS build,
-so downstream builds must use `CGO_ENABLED=1` and provide native artifacts
-built from the same libdd-rc revision as the Go module:
+`rcx509` uses cgo, so downstream builds must use `CGO_ENABLED=1` and provide
+native artifacts built from the same libdd-rc revision as the Go module. The
+module's cgo directives link `-lrc_x509_ffi` and the platform's system
+libraries by name only; the consumer supplies locations through `CGO_CFLAGS`
+and `CGO_LDFLAGS` (or its build system's equivalent):
 
 - `libdd_rc.h` on the C compiler's include path
 - `librc_x509_ffi.a` on the native linker's library path
-- the version-agnostic AWS-LC FIPS module (`libaws_lc_fips_crypto.so` on
-  Linux or `libaws_lc_fips_crypto.dylib` on macOS) on both the linker path and
-  the runtime loader path.
+- any crypto library that the chosen `rc-crypto` backend builds separately.
+  With the default `fips` feature this is the AWS-LC FIPS dynamic library on
+  macOS, which must be linked and on the runtime loader path; on Linux it is
+  included in `librc_x509_ffi.a`.
 
 These native artifacts are not included in the Go module. From a full
 libdd-rc checkout, `make -C ffi-hosts/go build` builds and stages them under
-`target/release`. Consumers using another build or packaging system should
-include the header and libraries into paths visible to their compiler,
-linker, and runtime loader.
+`target/release` and sets the cgo flags for you.
 
 ## Usage
 

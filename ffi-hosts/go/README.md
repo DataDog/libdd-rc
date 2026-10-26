@@ -12,31 +12,35 @@ module; callers should use `rcx509`.
 ## Building
 
 The Rust static library must be built before the Go package, since cgo
-links against `target/release/librc_x509_ffi.a`. This artifact is not
-committed to the repo (it's covered by the top-level `.gitignore`) — it must
-be rebuilt locally, and `CGO_ENABLED=1` is required since this package uses
-cgo. The generated Go protobuf bindings under `rcproto` are committed so the
-published Go module contains every package it imports.
+links against `librc_x509_ffi.a`. This artifact is not committed to the repo
+(it's covered by the top-level `.gitignore`) — it must be rebuilt locally, and
+`CGO_ENABLED=1` is required since this package uses cgo. The generated Go
+protobuf bindings under `rcproto` are committed so the published Go module
+contains every package it imports.
 
-```sh
-cargo build -p rc-x509-ffi --release
-CGO_ENABLED=1 go build ./...
-CGO_ENABLED=1 go test ./...
-```
-
-`rc-crypto`'s default `fips` feature also produces a dynamically linked
-AWS-LC FIPS crypto module (FIPS 140 validation requires it to self-verify its
-own binary at load time, so it can't ship as a static archive). `bridge.go`
-links this by name and rpath, and the Makefile stages the built `.dylib`/
-`.so` next to `librc_x509_ffi.a` so it can be found without extra runtime
-configuration.
-
-Or use the provided `Makefile`, which builds the Rust artifact (and stages the
-FIPS crypto module) first:
+The cgo directives name the libraries to link but not where to find them, so
+the build must supply the library location. The provided `Makefile` does this
+for a checkout of this repository: it builds the Rust artifact, stages the
+AWS-LC FIPS crypto library, and sets `CGO_LDFLAGS` before running Go:
 
 ```sh
 make build
 make test
+```
+
+`rc-crypto`'s default `fips` feature builds AWS-LC FIPS. On macOS this
+produces a separate dynamic library that must be linked and found at runtime;
+`scripts/copy_fips_lib.sh` stages it under a version-agnostic name next to
+`librc_x509_ffi.a`, and the Makefile links it by name with an rpath. On Linux,
+AWS-LC FIPS is built as a static archive and included in `librc_x509_ffi.a`.
+
+To build without the Makefile, provide the same flags yourself, for example:
+
+```sh
+cargo build -p rc-x509-ffi --release
+./scripts/copy_fips_lib.sh
+export CGO_LDFLAGS="-L$(pwd)/../../target/release -laws_lc_fips_crypto -Wl,-rpath,$(pwd)/../../target/release"
+CGO_ENABLED=1 go build ./...
 ```
 
 ## Regenerating Go protobuf bindings
