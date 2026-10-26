@@ -28,11 +28,9 @@ make build
 make test
 ```
 
-`rc-crypto`'s default `fips` feature builds AWS-LC FIPS. On macOS this
-produces a separate dynamic library that must be linked and found at runtime;
-`scripts/copy_fips_lib.sh` stages it under a version-agnostic name next to
-`librc_x509_ffi.a`, and the Makefile links it by name with an rpath. On Linux,
-AWS-LC FIPS is built as a static archive and included in `librc_x509_ffi.a`.
+`rc-crypto`'s default `fips` feature also builds an AWS-LC FIPS crypto
+library. `scripts/copy_fips_lib.sh` stages it under a version-agnostic name
+next to `librc_x509_ffi.a`, and the Makefile links it by name with an rpath.
 
 To build without the Makefile, provide the same flags yourself, for example:
 

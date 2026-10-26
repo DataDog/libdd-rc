@@ -14,10 +14,9 @@ and `CGO_LDFLAGS` (or its build system's equivalent):
 
 - `libdd_rc.h` on the C compiler's include path
 - `librc_x509_ffi.a` on the native linker's library path
-- any crypto library that the chosen `rc-crypto` backend builds separately.
-  With the default `fips` feature this is the AWS-LC FIPS dynamic library on
-  macOS, which must be linked and on the runtime loader path; on Linux it is
-  included in `librc_x509_ffi.a`.
+- any crypto library that the chosen `rc-crypto` backend builds separately
+  (with the default `fips` feature, the AWS-LC FIPS crypto library), on the
+  linker path and, if it is a shared library, the runtime loader path.
 
 These native artifacts are not included in the Go module. From a full
 libdd-rc checkout, `make -C ffi-hosts/go build` builds and stages them under
