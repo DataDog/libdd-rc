@@ -1,15 +1,9 @@
 package libddrcffi
 
-// The cgo LDFLAGS below name only the rc-x509-ffi library and the system
-// libraries it needs. They deliberately do not reference library paths: the
-// library location, any separately built crypto library (e.g. the AWS-LC FIPS
-// dylib produced on macOS by rc-crypto's default "fips" feature), and any
-// runtime search path are supplied by the host build through CGO_LDFLAGS. See
-// the Makefile for the in-repository build.
-//
-// The include path below points at this repository's header so that tooling
-// works in a full checkout; outside a checkout the directory does not exist and
-// the host build supplies the header location through CGO_CFLAGS.
+// These directives name the libraries to link, not where to find them: the
+// build supplies library locations, including the AWS-LC FIPS crypto library,
+// through CGO_LDFLAGS (see the Makefile). The include path only exists in a
+// libdd-rc checkout; other builds supply it through CGO_CFLAGS.
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../include

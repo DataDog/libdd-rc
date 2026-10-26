@@ -1,14 +1,10 @@
-# FFI library output directory.
-FFI_LIB_DIR := $(abspath ../../target/release)
-
 # FFI library output (compiled library):
-FFI_LIB := $(FFI_LIB_DIR)/librc_x509_ffi.a
+FFI_LIB := ../../target/release/librc_x509_ffi.a
 
-# The cgo LDFLAGS in internal/libddrcffi name libraries but not their
-# locations, so point the linker at this checkout's build output. The
-# version-agnostic AWS-LC FIPS crypto library staged by copy_fips_lib.sh is
-# linked by name, with an rpath so locally built binaries find it at runtime.
-export CGO_LDFLAGS := -O2 -g -L$(FFI_LIB_DIR) -laws_lc_fips_crypto -Wl,-rpath,$(FFI_LIB_DIR)
+# Tell cgo where this checkout's FFI library and the AWS-LC FIPS library staged
+# by scripts/copy_fips_lib.sh live, with an rpath for running local binaries.
+FFI_LIB_DIR := $(abspath ../../target/release)
+export CGO_LDFLAGS := -L$(FFI_LIB_DIR) -laws_lc_fips_crypto -Wl,-rpath,$(FFI_LIB_DIR)
 
 # Hashing tool for the FFI library; shasum isn't present everywhere (e.g. the
 # Linux CI image), coreutils' sha256sum isn't present on macOS.
@@ -59,4 +55,4 @@ vet:
 	CGO_ENABLED=1 go vet ./...
 
 runtest: $(POC_BIN)
-	DYLD_LIBRARY_PATH=$(FFI_LIB_DIR) LD_LIBRARY_PATH=$(FFI_LIB_DIR) $(POC_BIN)
+	DYLD_LIBRARY_PATH=$(CURDIR)/../../target/release LD_LIBRARY_PATH=$(CURDIR)/../../target/release $(POC_BIN)
