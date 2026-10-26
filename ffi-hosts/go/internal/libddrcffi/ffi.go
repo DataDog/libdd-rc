@@ -1,13 +1,13 @@
 package libddrcffi
 
 // These directives name the libraries to link, not where to find them: the
-// build supplies library locations, including the AWS-LC FIPS crypto library,
-// through CGO_LDFLAGS (see the Makefile). The include path only exists in a
-// libdd-rc checkout; other builds supply it through CGO_CFLAGS.
+// build supplies library locations and any runtime search path through
+// CGO_LDFLAGS (see the Makefile). The include path only exists in a libdd-rc
+// checkout; other builds supply it through CGO_CFLAGS.
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../include
-#cgo LDFLAGS: -lrc_x509_ffi
+#cgo LDFLAGS: -lrc_x509_ffi -laws_lc_fips_crypto
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security -lm
 #cgo linux LDFLAGS: -lpthread -ldl -lm
 #include "libdd_rc.h"

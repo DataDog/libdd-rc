@@ -4,7 +4,7 @@ FFI_LIB := ../../target/release/librc_x509_ffi.a
 # Tell cgo where this checkout's FFI library and the AWS-LC FIPS library staged
 # by scripts/copy_fips_lib.sh live, with an rpath for running local binaries.
 FFI_LIB_DIR := $(abspath ../../target/release)
-export CGO_LDFLAGS := -L$(FFI_LIB_DIR) -laws_lc_fips_crypto -Wl,-rpath,$(FFI_LIB_DIR)
+export CGO_LDFLAGS := -L$(FFI_LIB_DIR) -Wl,-rpath,$(FFI_LIB_DIR)
 
 # Hashing tool for the FFI library; shasum isn't present everywhere (e.g. the
 # Linux CI image), coreutils' sha256sum isn't present on macOS.
