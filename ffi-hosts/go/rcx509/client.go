@@ -24,6 +24,11 @@ var ErrAlreadyStarted = errors.New("rcx509: client already started")
 // already been closed.
 var ErrClientClosed = errors.New("rcx509: client is closed")
 
+// HandlerFunc handles a request for one service URI (a fully-qualified gRPC
+// method name) and returns the response payload. Handlers run on an
+// rcx509-owned goroutine.
+type HandlerFunc = libddrcffi.HandlerFunc
+
 // Client manages a connection between the RC x509 backend and the local
 // rc-x509-client subsystem.
 //
@@ -177,7 +182,7 @@ func (c *Client) Close() error {
 // RegisterHandler registers the provided function to be called when dispatch
 // messages matching the given uri (the fully-qualified gRPC method name) are
 // processed by the backend.
-func (c *Client) RegisterHandler(uri string, fn libddrcffi.HandlerFunc) error {
+func (c *Client) RegisterHandler(uri string, fn HandlerFunc) error {
 	return libddrcffi.RegisterHandler(uri, fn)
 }
 
