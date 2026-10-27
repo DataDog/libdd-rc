@@ -18,21 +18,9 @@ be rebuilt locally, and `CGO_ENABLED=1` is required since this package uses
 cgo. The generated Go protobuf bindings under `rcproto` are committed so the
 published Go module contains every package it imports.
 
-```sh
-cargo build -p rc-x509-ffi --release
-CGO_ENABLED=1 go build ./...
-CGO_ENABLED=1 go test ./...
-```
-
-`rc-crypto`'s default `fips` feature also produces a dynamically linked
-AWS-LC FIPS crypto module (FIPS 140 validation requires it to self-verify its
-own binary at load time, so it can't ship as a static archive). `bridge.go`
-links this by name and rpath, and the Makefile stages the built `.dylib`/
-`.so` next to `librc_x509_ffi.a` so it can be found without extra runtime
-configuration.
-
-Or use the provided `Makefile`, which builds the Rust artifact (and stages the
-FIPS crypto module) first:
+Use the provided `Makefile`, which builds the Rust artifact, stages the AWS-LC
+FIPS crypto library built by `rc-crypto`'s default `fips` feature, and sets
+`CGO_LDFLAGS` so cgo can find both:
 
 ```sh
 make build
