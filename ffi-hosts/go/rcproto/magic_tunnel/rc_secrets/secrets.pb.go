@@ -226,9 +226,9 @@ const file_rc_x509_magic_tunnel_rc_secrets_v1_secrets_proto_rawDesc = "" +
 	"\x1cPrepareSecretDeliveryRequest\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x122\n" +
 	"\x15encryption_context_id\x18\x02 \x01(\tR\x13encryptionContextId\x12\x18\n" +
-	"\aproduct\x18\x03 \x01(\tR\aproduct\"\xe3\x01\n" +
-	"\x1dPrepareSecretDeliveryResponse\x12\x19\n" +
-	"\x05token\x18\x01 \x01(\tB\x03\x80\x01\x01R\x05token\x12\x1d\n" +
+	"\aproduct\x18\x03 \x01(\tR\aproduct\"\xde\x01\n" +
+	"\x1dPrepareSecretDeliveryResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\x02 \x01(\fR\tpublicKey\x12F\n" +
 	"\bkey_type\x18\x03 \x01(\x0e2+.rc.x509.magic_tunnel.rc_secrets.v1.KeyTypeR\akeyType\x12@\n" +
