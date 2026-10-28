@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use rc_x509_client::{
-    ShutdownCtl, ShutdownSignal,
+    AppInfo, ShutdownCtl, ShutdownSignal,
     connection::ConnectionUpdate,
     entrypoint::{GRACEFUL_SHUTDOWN_TIMEOUT, LibraryEntrypoint, Main},
 };
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn rc_init(
         .expect("version must be valid UTF-8")
         .to_string();
 
-    Box::into_raw(Ctx::new(Main::new(app_name, version)))
+    Box::into_raw(Ctx::new(Main::new(AppInfo::new(app_name, version))))
 }
 
 /// Stop the client running in [`Ctx`], and release all resources held by

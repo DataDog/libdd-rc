@@ -55,7 +55,7 @@ type FFIContext interface {
 // FFIConnection is the subset of *libddrcffi.Connection's behavior that the
 // session lifecycle depends on.
 type FFIConnection interface {
-	Connected() error
+	Connected(endpointHostname string) error
 	Close() error
 	Recv(data []byte) error
 	Outgoing() <-chan []byte
@@ -238,7 +238,7 @@ func (c *Client) establishConnection(ctx context.Context) (FFIConnection, Websoc
 		return nil, nil, fmt.Errorf("rcx509: failed to dial %s: %w", c.url, err)
 	}
 
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(c.endpointHostname); err != nil {
 		conn.Close()
 		_ = ws.CloseNow()
 		return nil, nil, fmt.Errorf("rcx509: failed to mark FFI connection as connected: %w", err)

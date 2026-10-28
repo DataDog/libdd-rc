@@ -26,7 +26,7 @@ use tokio::pin;
 
 use crate::{
     AbortOnDrop, ShutdownSignal,
-    app_info::{AppInfo, AppName, AppVersion},
+    app_info::AppInfo,
     connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate},
     host_runtime::Connection,
     metrics::InstanceMetrics,
@@ -79,11 +79,9 @@ pub struct Main {
 }
 
 impl Main {
-    /// Construct a new [`Main`] entrypoint, reporting `app_name` and
-    /// `version` to the backend as part of the connection handshake.
-    pub fn new(app_name: String, version: String) -> Self {
-        let app_info = AppInfo::new(AppName::from(app_name), AppVersion::from(version));
-
+    /// Construct a new [`Main`] entrypoint, reporting `app_info` to the backend
+    /// as part of the connection handshake.
+    pub fn new(app_info: AppInfo) -> Self {
         Self { app_info }
     }
 }
@@ -102,6 +100,8 @@ where
         info!(
             version = %env!("CARGO_PKG_VERSION"),
             commit = %metrics.version().commit().unwrap_or("unknown"),
+            app_name = %self.app_info.name(),
+            app_version = %self.app_info.version(),
             "starting rc-x509-client instance"
         );
 
@@ -188,7 +188,12 @@ async fn handle_connection_events<IO>(
 
         match event.into_event() {
             ConnectionEvent::Init => debug!("new connection registered"),
-            ConnectionEvent::Connected(io, mut dispatch) => {
+            ConnectionEvent::Connected(io, mut dispatch, endpoint_hostname) => {
+                debug!(
+                    verification_hostname = %endpoint_hostname,
+                    "connection established"
+                );
+
                 let stop = shutdown.child_token();
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
                 let delegate = MessageDelegate::new(
