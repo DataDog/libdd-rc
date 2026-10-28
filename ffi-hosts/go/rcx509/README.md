@@ -14,6 +14,8 @@ built from the same libdd-rc revision as the Go module:
 - `librc_x509_ffi.a` on the native linker's library path
 - the version-agnostic AWS-LC FIPS crypto library (`libaws_lc_fips_crypto`)
   on the linker path and, if it is a shared library, the runtime loader path.
+  If `librc_x509_ffi` was built with the `non-fips` feature there is no such
+  library; build with `-tags rcx509_nonfips` instead.
 
 These native artifacts are not included in the Go module. From a full
 libdd-rc checkout, `make -C ffi-hosts/go build` builds and stages them under

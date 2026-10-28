@@ -7,7 +7,7 @@ package libddrcffi
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../include
-#cgo LDFLAGS: -lrc_x509_ffi -laws_lc_fips_crypto
+#cgo LDFLAGS: -lrc_x509_ffi
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security -lm
 #cgo linux LDFLAGS: -lpthread -ldl -lm
 #include "libdd_rc.h"
