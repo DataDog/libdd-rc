@@ -17,7 +17,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
-use rc_x509_roots::R1;
+use rc_x509_roots::{R1, R2};
 use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
@@ -105,9 +105,8 @@ where
             "starting rc-x509-client instance"
         );
 
-        // TODO(dom): both roots.
         let _trust_store = TrustStore::new(
-            R1.clone(),
+            [R1.clone(), R2.clone()],
             MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
         );
 

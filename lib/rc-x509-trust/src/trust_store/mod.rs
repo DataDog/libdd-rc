@@ -17,9 +17,11 @@
 //! [`Certificate`]: rc_crypto::certificate::Certificate
 
 mod cache;
+mod root_set;
 mod store;
 mod traits;
 
 pub use cache::*;
+pub(crate) use root_set::*;
 pub use store::*;
 pub use traits::*;
