@@ -62,6 +62,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
 
+    config.field_attribute(
+        "rc.x509.magic_tunnel.rc_secrets.v1.PrepareSecretDeliveryResponse.key_expires_at",
+        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
+    );
+
+    // `token` is a bearer credential, so the derived `Debug` is replaced with a
+    // manual impl in `lib.rs` that redacts it.
+    config.skip_debug(["rc.x509.magic_tunnel.rc_secrets.v1.PrepareSecretDeliveryResponse"]);
+
     config.type_attribute(
         "rc.x509.signature.v1.DetachedSignature",
         "#[derive(serde::Serialize, serde::Deserialize)]",

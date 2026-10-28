@@ -45,6 +45,18 @@ pub(crate) mod rc {
                     ));
                 }
             }
+            pub mod rc_secrets {
+                pub mod v1 {
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.rc_secrets.v1.rs"
+                    ));
+                    include!(concat!(
+                        env!("OUT_DIR"),
+                        "/rc.x509.magic_tunnel.rc_secrets.v1.serde.rs"
+                    ));
+                }
+            }
             pub mod agent_integrations {
                 pub mod remote_queries {
                     pub mod v1alpha1 {
@@ -107,6 +119,17 @@ where
     T::decode(buf)
 }
 
+impl core::fmt::Debug for magic_tunnel::rc_secrets::v1::PrepareSecretDeliveryResponse {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PrepareSecretDeliveryResponse")
+            .field("token", &"<redacted>")
+            .field("public_key", &self.public_key)
+            .field("key_type", &self.key_type)
+            .field("key_expires_at", &self.key_expires_at)
+            .finish()
+    }
+}
+
 /// A value generator for [`Bytes`] fields on protobuf types (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
 pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
@@ -163,6 +186,19 @@ mod tests {
             decode::<ServerToClient>(got).expect("must round trip"),
             payload
         );
+    }
+
+    #[test]
+    fn test_prepare_secret_delivery_response_debug_redacts_token() {
+        let resp = magic_tunnel::rc_secrets::v1::PrepareSecretDeliveryResponse {
+            token: "super-secret-token".to_string(),
+            ..Default::default()
+        };
+
+        let got = format!("{resp:?}");
+        assert!(!got.contains("super-secret-token"), "{got}");
+        assert!(got.contains("<redacted>"), "{got}");
+        assert_eq!(resp.token, "super-secret-token");
     }
 
     /// A struct that contains all primitive protobuf types.
