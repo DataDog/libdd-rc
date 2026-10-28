@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rc_crypto::{Signature, certificate::id::CertId};
-use rc_x509_trust::trust_store::VerificationError;
+use rc_x509_trust::trust_store::{TrustStore, VerificationError};
 use tokio_util::bytes::Bytes;
 
 /// An abstract verifier of payload signatures.
@@ -33,5 +33,20 @@ where
         payload: Bytes,
     ) -> Result<(), VerificationError> {
         T::validate(self, signing_cert_id, signature, payload)
+    }
+}
+
+/// Allow using a [`TrustStore`] to verify signatures.
+impl<const N: usize, T> AttestationVerifier for TrustStore<N, T>
+where
+    T: rc_x509_trust::trust_store::CertCache,
+{
+    fn validate(
+        &self,
+        signing_cert_id: CertId,
+        signature: Signature,
+        payload: Bytes,
+    ) -> Result<(), VerificationError> {
+        TrustStore::validate(self, signing_cert_id, signature, payload)
     }
 }

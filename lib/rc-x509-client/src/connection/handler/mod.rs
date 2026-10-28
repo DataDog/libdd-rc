@@ -18,8 +18,7 @@ mod hello;
 mod traits;
 mod verifier;
 
-// TODO(dom): restore cfg when unused in prod code
-// #[cfg(test)]
+#[cfg(test)]
 pub(crate) mod mock_verifier;
 
 pub(crate) use actor::*;

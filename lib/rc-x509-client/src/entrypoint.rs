@@ -18,7 +18,7 @@ use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
 use rc_x509_roots::{R1, R2};
-use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
+use rc_x509_trust::trust_store::{CertCache, MemoryCertCache, TrustStore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -105,10 +105,10 @@ where
             "starting rc-x509-client instance"
         );
 
-        let _trust_store = TrustStore::new(
+        let trust_store = Arc::new(TrustStore::new(
             [R1.clone(), R2.clone()],
             MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
-        );
+        ));
 
         // Begin processing the connection events.
         let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
@@ -116,6 +116,7 @@ where
             conn_events,
             metrics,
             self.app_info,
+            trust_store,
         )));
 
         // Wait forever for the shutdown signal.
@@ -143,13 +144,15 @@ where
 ///
 /// `incoming` is closed to signal this function should close any existing
 /// connections and exit.
-async fn handle_connection_events<IO>(
+async fn handle_connection_events<const N: usize, IO, T>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     metrics: Arc<InstanceMetrics>,
     app_info: AppInfo,
+    trust_store: Arc<TrustStore<N, T>>,
 ) where
     IO: Connection,
+    T: CertCache,
 {
     debug!("starting connection event handler");
 
@@ -200,7 +203,7 @@ async fn handle_connection_events<IO>(
                     Arc::clone(&metrics),
                     dispatch,
                     app_info.clone(), // Refclone
-                    crate::connection::mock_verifier::MockVerifier::default(),
+                    Arc::clone(&trust_store),
                 );
                 let conn = ConnectionActor::new(
                     io,
