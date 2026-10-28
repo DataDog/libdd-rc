@@ -23,7 +23,7 @@ use crate::{
 ///
 /// Each implementation consumes `self` and returns the (possibly different)
 /// next [`State`].
-pub(crate) trait ServerMessageDelegate<IO>: Debug + Send + Sync + Sized
+pub(crate) trait ServerMessageDelegate<IO, V>: Debug + Send + Sync + Sized
 where
     IO: SendToServer,
 {
@@ -32,12 +32,12 @@ where
     /// # Panics
     ///
     /// Panics if this is not the first call to `self` (the state machine).
-    fn send_hello(self, reply: &mut IO) -> impl Future<Output = State> + Send + Sync;
+    fn send_hello(self, reply: &mut IO) -> impl Future<Output = State<V>> + Send + Sync;
 
     /// Process the decoded `msg`.
     fn process(
         self,
         msg: ServerToClient,
         reply: &mut IO,
-    ) -> impl Future<Output = State> + Send + Sync;
+    ) -> impl Future<Output = State<V>> + Send + Sync;
 }

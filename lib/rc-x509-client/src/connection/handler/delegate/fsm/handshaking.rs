@@ -36,15 +36,16 @@ impl Handshaking {
     pub(crate) const IS_HANDSHAKE_COMPLETE: bool = false;
 }
 
-impl<IO> ServerMessageDelegate<IO> for Fsm<Handshaking>
+impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<Handshaking, V>
 where
     IO: SendToServer,
+    V: Debug + Send + Sync,
 {
-    async fn send_hello(self, _reply: &mut IO) -> State {
+    async fn send_hello(self, _reply: &mut IO) -> State<V> {
         unreachable!("send_hello called outside the pre-handshake phase")
     }
 
-    async fn process(mut self, msg: ServerToClient, reply: &mut IO) -> State {
+    async fn process(mut self, msg: ServerToClient, reply: &mut IO) -> State<V> {
         match msg {
             ServerToClient::Ping => {
                 retry_send(reply, ClientToServer::Pong, &self.stop).await;

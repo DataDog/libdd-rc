@@ -200,6 +200,7 @@ async fn handle_connection_events<IO>(
                     Arc::clone(&metrics),
                     dispatch,
                     app_info.clone(), // Refclone
+                    crate::connection::mock_verifier::MockVerifier::default(),
                 );
                 let conn = ConnectionActor::new(
                     io,

@@ -14,6 +14,7 @@
 
 //! Initial FSM state.
 
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
@@ -41,17 +42,19 @@ pub(crate) struct PreHandshake {
     app_info: AppInfo,
 }
 
-impl Fsm<PreHandshake> {
+impl<V> Fsm<PreHandshake, V> {
     pub(crate) fn new(
         metrics: Arc<InstanceMetrics>,
         stop: CancellationToken,
         dispatch: DispatchPublisher,
         app_info: AppInfo,
+        verifier: V,
     ) -> Self {
         Self {
             metrics,
             stop,
             dispatch,
+            verifier,
             state: PreHandshake { app_info },
         }
     }
@@ -61,20 +64,21 @@ impl PreHandshake {
     pub(crate) const IS_HANDSHAKE_COMPLETE: bool = false;
 }
 
-impl<IO> ServerMessageDelegate<IO> for Fsm<PreHandshake>
+impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<PreHandshake, V>
 where
     IO: SendToServer,
+    V: Debug + Send + Sync,
 {
     /// Send a `ClientHello`, (re)starting the handshake and transitioning to
     /// [`Handshaking`] with a freshly generated nonce.
-    async fn send_hello(self, reply: &mut IO) -> State {
+    async fn send_hello(self, reply: &mut IO) -> State<V> {
         let (nonce, hello) = build_hello(&self.state.app_info, &self.metrics);
         retry_send(reply, hello, &self.stop).await;
 
         State::Handshaking(self.into_state(Handshaking(nonce)))
     }
 
-    async fn process(self, msg: ServerToClient, reply: &mut IO) -> State {
+    async fn process(self, msg: ServerToClient, reply: &mut IO) -> State<V> {
         match msg {
             ServerToClient::Ping => {
                 retry_send(reply, ClientToServer::Pong, &self.stop).await;

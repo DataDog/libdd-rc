@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Debug;
+
 use rc_crypto::certificate::id::CertId;
 use rc_crypto::connection_id::ConnectionId;
 use tokio_util::bytes::Bytes;
@@ -20,7 +22,7 @@ use tracing::{debug, error};
 use crate::{
     codec::{ClientToServer, DetachedSignature, ProtocolError, ServerToClient},
     connection::handler::{
-        SendToServer,
+        AttestationVerifier, SendToServer,
         delegate::{retry_send, state::State},
     },
     dispatch::Dispatch,
@@ -29,7 +31,8 @@ use crate::{
 
 use super::{Fsm, ServerMessageDelegate};
 
-/// The handshake completed successfully.
+/// The handshake completed successfully, and the connection is fully ready to
+/// process requests.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub(crate) struct Active(pub(super) ConnectionId);
@@ -38,15 +41,16 @@ impl Active {
     pub(crate) const IS_HANDSHAKE_COMPLETE: bool = true;
 }
 
-impl<IO> ServerMessageDelegate<IO> for Fsm<Active>
+impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<Active, V>
 where
     IO: SendToServer,
+    V: AttestationVerifier,
 {
-    async fn send_hello(self, _reply: &mut IO) -> State {
+    async fn send_hello(self, _reply: &mut IO) -> State<V> {
         unreachable!("send_hello called outside the pre-handshake phase")
     }
 
-    async fn process(self, msg: ServerToClient, reply: &mut IO) -> State {
+    async fn process(self, msg: ServerToClient, reply: &mut IO) -> State<V> {
         match msg {
             ServerToClient::Ping => {
                 retry_send(reply, ClientToServer::Pong, &self.stop).await;
@@ -81,7 +85,10 @@ where
     }
 }
 
-impl Fsm<Active> {
+impl<V> Fsm<Active, V>
+where
+    V: Debug + Send + Sync,
+{
     /// Process a [`ServerToClient::Dispatch`] request, verifying the
     /// attached [`DetachedSignature`] before forwarding `payload` to the
     /// host application via [`DispatchPublisher`](crate::dispatch::DispatchPublisher).
@@ -91,7 +98,7 @@ impl Fsm<Active> {
         correlation_id: CorrelationId,
         payload: Bytes,
         detached_signature: Option<DetachedSignature>,
-    ) -> State
+    ) -> State<V>
     where
         IO: SendToServer,
     {

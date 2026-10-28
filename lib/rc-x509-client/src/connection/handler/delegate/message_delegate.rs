@@ -20,7 +20,9 @@ use tracing::{debug, warn};
 use crate::{
     app_info::AppInfo,
     codec::{DecodingError, ProtocolError, ServerToClient},
-    connection::handler::{SendToServer, ServerMessageDelegate, delegate::state::State},
+    connection::handler::{
+        AttestationVerifier, SendToServer, ServerMessageDelegate, delegate::state::State,
+    },
     dispatch::DispatchPublisher,
     metrics::InstanceMetrics,
 };
@@ -30,27 +32,31 @@ use super::fsm;
 /// Handler for [`ServerToClient`] messages (an implementation of
 /// [`ServerMessageDelegate`]).
 #[derive(Debug)]
-pub(crate) struct MessageDelegate(State);
+pub(crate) struct MessageDelegate<V>(State<V>);
 
-impl MessageDelegate {
+impl<V> MessageDelegate<V>
+where
+    V: AttestationVerifier,
+{
     pub(crate) fn new(
         stop: CancellationToken,
         metrics: Arc<InstanceMetrics>,
         dispatch: DispatchPublisher,
         app_info: AppInfo,
+        verifier: V,
     ) -> Self {
         Self(State::PreHandshake(fsm::Fsm::new(
-            metrics, stop, dispatch, app_info,
+            metrics, stop, dispatch, app_info, verifier,
         )))
     }
 
     /// Process `msg`, reporting any deserialisation error to the server and
     /// otherwise dispatching to the current phase.
     async fn process_impl<IO>(
-        state: State,
+        state: State<V>,
         msg: Result<ServerToClient, DecodingError>,
         reply: &mut IO,
-    ) -> State
+    ) -> State<V>
     where
         IO: SendToServer,
     {
@@ -79,14 +85,15 @@ impl MessageDelegate {
 
     /// Returns the current lifecycle state.
     #[cfg(test)]
-    pub(super) fn state(&self) -> &State {
+    pub(super) fn state(&self) -> &State<V> {
         &self.0
     }
 }
 
-impl<IO> ServerMessageDelegate<IO> for MessageDelegate
+impl<IO, V> ServerMessageDelegate<IO> for MessageDelegate<V>
 where
     IO: SendToServer,
+    V: AttestationVerifier,
 {
     async fn send_hello(self, reply: &mut IO) -> Self {
         Self(self.0.send_hello(reply).await)
@@ -108,10 +115,13 @@ mod tests {
     use crate::{
         build_version::BuildVersion,
         codec::ClientToServer,
-        connection::handler::delegate::fsm::test_helpers::{
-            any_server_to_client, arbitrary_invalid_dispatch_request, do_handshake,
-            filter_allowed_after_handshake, filter_allowed_at_any_time, filter_implemented,
-            has_reply,
+        connection::{
+            handler::delegate::fsm::test_helpers::{
+                any_server_to_client, arbitrary_invalid_dispatch_request, do_handshake,
+                filter_allowed_after_handshake, filter_allowed_at_any_time, filter_implemented,
+                has_reply,
+            },
+            mock_verifier::MockVerifier,
         },
         dispatch::new_dispatcher_interconnect,
         mocks::io::new_io_pair,
@@ -129,6 +139,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -149,6 +160,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "opaque 1.0.0"),
+            MockVerifier::default(),
         );
 
         // The initial state is "pre-handshake":
@@ -220,6 +232,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -360,6 +373,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -405,6 +419,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -460,6 +475,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -520,6 +536,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -549,6 +566,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -602,6 +620,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         // The initial state is "pre-handshake":
@@ -674,6 +693,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
         );
 
         let (mut client, mut server) = new_io_pair();
