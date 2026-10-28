@@ -1591,6 +1591,7 @@ dependencies = [
  "proptest-derive",
  "rc-crypto",
  "rc-x509-proto",
+ "rc-x509-roots",
  "rc-x509-trust",
  "thiserror",
  "tokio",
