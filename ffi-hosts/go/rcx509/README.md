@@ -19,9 +19,9 @@ built from the same libdd-rc revision as the Go module:
 
 These native artifacts are not included in the Go module. From a full
 libdd-rc checkout, `make -C ffi-hosts/go build` builds and stages them under
-`target/release`. Consumers using another build or packaging system should
-pass the header and library locations to cgo (for example through
-`CGO_CFLAGS` and `CGO_LDFLAGS`).
+`target/release`; add `FIPS=0` for the non-FIPS build. Consumers using another
+build or packaging system should pass the header and library locations to cgo
+(for example through `CGO_CFLAGS` and `CGO_LDFLAGS`).
 
 ## Usage
 
