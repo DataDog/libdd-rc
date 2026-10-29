@@ -18,12 +18,14 @@ native artifacts built from the same libdd-rc revision as the Go module:
 - `librc_x509_ffi.a` on the native linker's library path
 - the version-agnostic AWS-LC FIPS crypto library (`libaws_lc_fips_crypto`)
   on the linker path and, if it is a shared library, the runtime loader path.
+  If `librc_x509_ffi` was built with the `non-fips` feature there is no such
+  library; build with `-tags rcx509_nonfips` instead.
 
 These native artifacts are not included in the Go module. 
 
 To build a native artifact, perform a libdd-rc checkout and from the repo root
-run `make -C ffi-hosts/go build`. The resulting binaries are found under
-`target/release`. Consumers using another build or packaging system should pass
+run `make -C ffi-hosts/go build`; add `FIPS=0` for the non-FIPS build. The
+resulting binaries are found under `target/release`. Consumers using another build or packaging system should pass
 the header and library locations to cgo (for example through `CGO_CFLAGS` and
 `CGO_LDFLAGS`).
 
