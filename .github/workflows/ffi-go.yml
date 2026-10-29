@@ -73,3 +73,7 @@ jobs:
       - name: Run go vet + tests
         working-directory: ffi-hosts/go
         run: make vet test
+
+      - name: Run go vet + tests (non-FIPS)
+        working-directory: ffi-hosts/go
+        run: make vet test FIPS=0

@@ -11,21 +11,23 @@ module; callers should use `rcx509`.
 
 ## Building
 
-The Rust static library must be built before the Go package, since cgo
-links against `target/release/librc_x509_ffi.a`. This artifact is not
-committed to the repo (it's covered by the top-level `.gitignore`) — it must
-be rebuilt locally, and `CGO_ENABLED=1` is required since this package uses
-cgo. The generated Go protobuf bindings under `rcproto` are committed so the
-published Go module contains every package it imports.
+This client uses cgo, so downstream builds must use `CGO_ENABLED=1` and provide
+native artifacts built from the same libdd-rc revision as the Go module:
 
-Use the provided `Makefile`, which builds the Rust artifact, stages the AWS-LC
-FIPS crypto library built by `rc-crypto`'s default `fips` feature, and sets
-`CGO_LDFLAGS` so cgo can find both:
+- `libdd_rc.h` on the C compiler's include path
+- `librc_x509_ffi.a` on the native linker's library path
+- the version-agnostic AWS-LC FIPS crypto library (`libaws_lc_fips_crypto`)
+  on the linker path and, if it is a shared library, the runtime loader path.
+  If `librc_x509_ffi` was built with the `non-fips` feature there is no such
+  library; build with `-tags rcx509_nonfips` instead.
 
-```sh
-make build
-make test
-```
+These native artifacts are not included in the Go module. 
+
+To build a native artifact, perform a libdd-rc checkout and from the repo root
+run `make -C ffi-hosts/go build`; add `FIPS=0` for the non-FIPS build. The
+resulting binaries are found under `target/release`. Consumers using another build or packaging system should pass
+the header and library locations to cgo (for example through `CGO_CFLAGS` and
+`CGO_LDFLAGS`).
 
 ## Regenerating Go protobuf bindings
 

@@ -386,6 +386,27 @@ func TestEstablishConnectionCleansUpWhenConnectedFails(t *testing.T) {
 	}
 }
 
+// TestEstablishConnectionReportsEndpointHostname verifies the client's
+// endpoint hostname is reported to the FFI layer when the connection it
+// manages is marked as connected, as the FFI layer tracks it per-connection.
+func TestEstablishConnectionReportsEndpointHostname(t *testing.T) {
+	ffiConn := newFakeFFIConnection()
+	client := &Client{
+		ffiCtx:           &fakeFFIContext{conn: ffiConn},
+		url:              "ws://example.com",
+		endpointHostname: "example.com",
+		dialer:           &fakeWebsocketDialer{conn: newFakeWebsocketConn()},
+	}
+
+	if _, _, err := client.establishConnection(context.Background()); err != nil {
+		t.Fatalf("establishConnection returned unexpected error: %v", err)
+	}
+
+	if got, want := ffiConn.connectedHost, "example.com"; got != want {
+		t.Errorf("Connected() hostname = %q, want %q", got, want)
+	}
+}
+
 // TestEstablishConnectionSucceeds verifies that establishConnection returns
 // the FFI connection and websocket it created without tearing either down
 // when nothing fails.

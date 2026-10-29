@@ -24,7 +24,7 @@ use tokio_util::{bytes::Bytes, sync::CancellationToken};
 use tracing::{debug, error, warn};
 
 use rc_x509_client::{
-    AbortOnDrop,
+    AbortOnDrop, EndpointHostname,
     codec::{ClientToServer, DecodingError, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
@@ -284,19 +284,40 @@ pub unsafe extern "C" fn rc_conn_dispatch_error(
 /// Calling this out of order is a debug-build panic; release builds instead
 /// return [`ConnRet::InvalidState`] and leave the connection unchanged.
 ///
+/// `endpoint_hostname` is the DNS address of the Datadog datacenter this
+/// connection was established to (e.g. `config.datadoghq.com`). This value is
+/// critical to signature verification and SHOULD match the Datadog domain name
+/// for the Remote Config subdomain of the DC this connection is open to.
+///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of [`FFIConnection`] to client
-///     library for the duration of the call.
+///     library for the duration of the call. `endpoint_hostname` is copied into
+///     the connection state; ownership of the buffer backing it is retained by
+///     the caller.
 ///
 /// # Safety
 ///
+/// `endpoint_hostname` MUST be valid for a read of `endpoint_hostname_len`
+/// bytes for the duration of this function call, and MUST reference valid
+/// UTF-8.
+///
 /// This call is not concurrency safe.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rc_conn_connected(conn: *mut FFIConnection) -> ConnRet {
+pub unsafe extern "C" fn rc_conn_connected(
+    conn: *mut FFIConnection,
+    endpoint_hostname: *const u8,
+    endpoint_hostname_len: u32,
+) -> ConnRet {
     assert!(!conn.is_null());
+    assert!(!endpoint_hostname.is_null());
+
+    let endpoint_hostname =
+        unsafe { slice::from_raw_parts(endpoint_hostname, endpoint_hostname_len as usize) };
+    let endpoint_hostname =
+        str::from_utf8(endpoint_hostname).expect("endpoint_hostname must be valid UTF-8");
 
     let conn = unsafe { &mut *conn };
-    conn.set_connected()
+    conn.set_connected(EndpointHostname::from(endpoint_hostname))
 }
 
 /// Mark the connection as closed.
@@ -783,7 +804,7 @@ impl FFIConnection {
     /// configured with a [`SendCb`] callback, or is already connected.
     /// Release builds instead return [`ConnRet::InvalidState`] and leave the
     /// connection unchanged.
-    fn set_connected(&mut self) -> ConnRet {
+    fn set_connected(&mut self, endpoint_hostname: EndpointHostname) -> ConnRet {
         // Correctness: the callback can only be changed when the connection is
         // not in use (and therefore the caller has an exclusive ref).
         //
@@ -866,7 +887,11 @@ impl FFIConnection {
             dispatch_responder,
         };
 
-        self.publish_event(ConnectionEvent::Connected(io_handle, publisher));
+        self.publish_event(ConnectionEvent::Connected(
+            io_handle,
+            publisher,
+            endpoint_hostname,
+        ));
 
         ConnRet::Success
     }
@@ -1226,6 +1251,9 @@ mod tests {
     const fn is_send<T: Send>() {}
     const _: () = is_send::<FFIConnection>();
 
+    /// The endpoint hostname passed to [`rc_conn_connected()`] in tests.
+    const ENDPOINT_HOSTNAME: &str = "config.datadoghq.com";
+
     /// A mock [`LibraryEntrypoint`] that forwards all connection lifecycle
     /// events it observes to the provided event sink.
     #[derive(Debug)]
@@ -1356,14 +1384,18 @@ mod tests {
         unsafe {
             // Configure the send callback and mark as connected.
             rc_conn_send_callback(conn, do_send, Box::into_raw(cb_tx) as _);
-            rc_conn_connected(conn);
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            );
         }
 
         // Assert the connected lifecycle event was received.
         let got = conn_events.recv().await.unwrap();
         let (mut io, _dispatch) = assert_matches!(
             got.into_event(),
-            ConnectionEvent::Connected(io, dispatch) => (io, dispatch)
+            ConnectionEvent::Connected(io, dispatch, _hostname) => (io, dispatch)
         );
 
         //
@@ -1446,7 +1478,7 @@ mod tests {
             pin_mut!(conn_events);
 
             while let Some(event) = conn_events.next().await {
-                if let ConnectionEvent::Connected(io, dispatch) = event.into_event() {
+                if let ConnectionEvent::Connected(io, dispatch, _hostname) = event.into_event() {
                     tokio::task::spawn(handle_conn(io, dispatch));
                 }
             }
@@ -1525,7 +1557,11 @@ mod tests {
 
         unsafe {
             rc_conn_send_callback(conn, do_send, ptr::null());
-            rc_conn_connected(conn);
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            );
         }
 
         // The connection is configured.
@@ -1556,7 +1592,7 @@ mod tests {
                         cert_id: vec![1, 2, 3, 4].into(),
                         signature: vec![5, 6, 7, 8].into(),
                     }),
-                    encoded_dispatch_request: encoded_dispatch_request.clone().into(),
+                    encoded_dispatch_request: encoded_dispatch_request.clone(),
                 },
             )),
         };
@@ -1614,8 +1650,9 @@ mod tests {
         // Never configured with a send callback: invalid transition to
         // Connected.
         let conn_ref = unsafe { &mut *conn };
-        let result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| conn_ref.set_connected()));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            conn_ref.set_connected(EndpointHostname::from(ENDPOINT_HOSTNAME))
+        }));
 
         if cfg!(debug_assertions) {
             assert!(result.is_err(), "expected a panic in a debug build");
@@ -1718,7 +1755,11 @@ mod tests {
 
         unsafe {
             rc_conn_send_callback(conn, do_send, ptr::null());
-            rc_conn_connected(conn);
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            );
             rc_conn_disconnected(conn);
         }
 
@@ -1766,7 +1807,11 @@ mod tests {
 
         unsafe {
             rc_conn_send_callback(conn, do_send, ptr::null());
-            rc_conn_connected(conn);
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            );
         }
 
         // Still connected: freeing without disconnecting first is invalid.
@@ -1828,13 +1873,17 @@ mod tests {
 
         unsafe {
             rc_conn_send_callback(conn, do_send, ptr::null());
-            rc_conn_connected(conn);
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            );
         }
 
         let got = conn_events.recv().await.unwrap();
         let (_io, mut dispatch) = assert_matches!(
             got.into_event(),
-            ConnectionEvent::Connected(io, dispatch) => (io, dispatch)
+            ConnectionEvent::Connected(io, dispatch, _hostname) => (io, dispatch)
         );
         let mut recv = dispatch
             .take_recv_stream()

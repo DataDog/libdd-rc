@@ -2,6 +2,7 @@ package libddrcffi
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
@@ -107,16 +108,28 @@ func (c *X509Context) NewConnection() (*Connection, error) {
 // Connected signals to the host's rc-x509-client instance that we have
 // an established connection to the RC backend.
 //
+// endpointHostname is the DNS address of the Datadog datacenter this
+// connection was established to (e.g. "config.datadoghq.com"), used to enforce
+// any DC pins during chain verification. It must be non-empty and no longer
+// than 255 bytes.
+//
 // It can only be called once per Connection, there is no concept of
 // reconnection to the rx-509-client system.
-func (c *Connection) Connected() error {
+func (c *Connection) Connected(endpointHostname string) error {
+	if endpointHostname == "" {
+		return errors.New("libddrc: endpointHostname must not be empty")
+	}
+	if len(endpointHostname) > maxStringLen {
+		return fmt.Errorf("libddrc: endpointHostname must not be longer than %d bytes", maxStringLen)
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if err := c.lifecycle.markConnected(); err != nil {
 		return err
 	}
-	if err := c.state.conn.connected(); err != nil {
+	if err := c.state.conn.connected(endpointHostname); err != nil {
 		return err
 	}
 

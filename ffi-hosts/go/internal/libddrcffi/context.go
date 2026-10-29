@@ -32,9 +32,9 @@ type X509Context struct {
 	conns map[*Connection]struct{}
 }
 
-// maxAppNameOrVersionLen is the maximum permitted length, in bytes, of the
-// appName and version strings passed to Init.
-const maxAppNameOrVersionLen = 255
+// maxStringLen is the maximum permitted length, in bytes, of the strings
+// passed across the FFI boundary.
+const maxStringLen = 255
 
 // Init initializes an instance of the rc-x509-client subsystem.
 //
@@ -45,16 +45,15 @@ func Init(appName, version string) (*X509Context, error) {
 	if appName == "" {
 		return nil, errors.New("libddrc: appName must not be empty")
 	}
-	if len(appName) > maxAppNameOrVersionLen {
-		return nil, fmt.Errorf("libddrc: appName must not be longer than %d bytes", maxAppNameOrVersionLen)
+	if len(appName) > maxStringLen {
+		return nil, fmt.Errorf("libddrc: appName must not be longer than %d bytes", maxStringLen)
 	}
 	if version == "" {
 		return nil, errors.New("libddrc: version must not be empty")
 	}
-	if len(version) > maxAppNameOrVersionLen {
-		return nil, fmt.Errorf("libddrc: version must not be longer than %d bytes", maxAppNameOrVersionLen)
+	if len(version) > maxStringLen {
+		return nil, fmt.Errorf("libddrc: version must not be longer than %d bytes", maxStringLen)
 	}
-
 	appNameBytes := []byte(appName)
 	versionBytes := []byte(version)
 
