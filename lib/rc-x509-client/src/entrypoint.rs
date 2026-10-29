@@ -17,6 +17,8 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
+use rc_x509_roots::{R1, R2};
+use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -32,6 +34,16 @@ use crate::{
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// 1 MiB in bytes.
+const MIB: usize = 1024 * 1024;
+
+/// The approximate upper bound on the certificate cache memory usage.
+///
+/// This value should account for the absolute number of live signer certs in
+/// use at any one time, plus any intermediates, else risks unnecessary extra
+/// round trips to obtain evicted, in-use certificates.
+const APPROX_MAX_CACHE_BYTES: usize = 2 * MIB;
 
 /// Defines the library entrypoint that is invoked by the FFI host.
 pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
@@ -91,6 +103,11 @@ where
             version = %env!("CARGO_PKG_VERSION"),
             commit = %metrics.version().commit().unwrap_or("unknown"),
             "starting rc-x509-client instance"
+        );
+
+        let _trust_store = TrustStore::new(
+            [R1.clone(), R2.clone()],
+            MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
         );
 
         // Begin processing the connection events.

@@ -179,12 +179,13 @@ mod tests {
             arbitrary_chain, arbitrary_eku_apply_to, arbitrary_leaf_san_scenario,
             arbitrary_name_constraint_scenario,
         },
-        trust_store::{CertCache, MemoryCertCache},
+        trust_store::{CertCache, MemoryCertCache, RootSet, tests::arbitrary_ordered_root_set},
     };
 
     use super::*;
 
     static CA: TestCA = TestCA::new();
+    static CA2: TestCA = TestCA::new();
 
     /// The default leaf SAN used in [`TestChain::build`].
     const DEFAULT_LEAF_SAN: &str = "leaf.itsallbroken.com";
@@ -202,18 +203,20 @@ mod tests {
         /// root and the leaf.
         #[test]
         fn prop_valid_chain(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             input in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
         ) {
-            test_prop_valid_chain(input);
+            test_prop_valid_chain(roots, input);
         }
 
         /// Generate an invalid chain, by applying a random ChainMutator, each
         /// of which manipulates the chain to produce an invalid input chain.
         #[test]
         fn prop_invalid_chain(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             input in arbitrary_invalid_chain(&CA, 2..=5_u8),
         ) {
-            test_prop_invalid_chain(input);
+            test_prop_invalid_chain(roots, input);
         }
 
         /// Randomise the set of EKUs on the chain certificates and assert:
@@ -225,10 +228,11 @@ mod tests {
         ///
         #[test]
         fn prop_eku_policy(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             ekus in arbitrary_eku_apply_to(),
             n_intermediates in 0..=5_u8,
         ) {
-            test_prop_eku_policy(ekus, n_intermediates);
+            test_prop_eku_policy(roots, ekus, n_intermediates);
         }
 
         /// Randomise the name constraint configuration of intermediate
@@ -243,6 +247,7 @@ mod tests {
         ///
         #[test]
         fn prop_dc_pin(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             connected_endpoint in prop_oneof![
                     Just("bananas.itsallbroken.com"),
                     Just(LEAF_ENDPOINT_HOSTNAME)
@@ -251,12 +256,12 @@ mod tests {
             san_scenario in arbitrary_leaf_san_scenario(),
             n_intermediates in 1..=5_u8, // Name constrains require an intermediate
         ) {
-            test_prop_dc_pin(connected_endpoint, ns_scenario, san_scenario, n_intermediates);
+            test_prop_dc_pin(roots, connected_endpoint, ns_scenario, san_scenario, n_intermediates);
         }
     }
 
     /// Process a valid chain, expecting success.
-    fn test_prop_valid_chain(input: TestChain) {
+    fn test_prop_valid_chain(roots: RootSet<2>, input: TestChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
 
         // Populate the cache with all the intermediate certificates.
@@ -276,7 +281,7 @@ mod tests {
 
         // Build a chain that connects leaf to root.
         let chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(input.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(input.leaf.cert().clone()),
             &cache,
         )
@@ -297,7 +302,7 @@ mod tests {
 
     /// Process a chain with randomised EKUs, asserting the EKU policy
     /// properties.
-    fn test_prop_eku_policy(ekus: ChainEKUConfig, n_intermediates: u8) {
+    fn test_prop_eku_policy(roots: RootSet<2>, ekus: ChainEKUConfig, n_intermediates: u8) {
         // Generate the chain.
         let chain = TestChain::build(&CA, n_intermediates, &SetEKUs::new(ekus.clone()));
 
@@ -323,12 +328,8 @@ mod tests {
         let untrusted_leaf = UntrustedCert::from(chain.leaf.cert().clone());
 
         // Build the candidate chain from the cache, which ignores EKUs.
-        let candidate_chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
-            &untrusted_leaf,
-            &cache,
-        )
-        .expect("valid chain structure");
+        let candidate_chain = build_unverified_chain_for(&roots, &untrusted_leaf, &cache)
+            .expect("valid chain structure");
 
         // Invariant 1 & 2: RequireCodeSigning requires the codeSigning EKU when
         // the EKU extension IS present, but allows certs that omit EKU entirely
@@ -428,6 +429,7 @@ mod tests {
     /// Assert the name constraint ("DC pin") and leaf SAN scenarios produce the
     /// expected outcome.
     fn test_prop_dc_pin(
+        roots: RootSet<2>,
         connected_endpoint: &str,
         ns_scenario: NameConstraintScenario,
         san_scenario: LeafSanScenario,
@@ -443,7 +445,7 @@ mod tests {
         }
 
         let candidate_chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(chain.leaf.cert().clone()),
             &cache,
         )
@@ -484,14 +486,14 @@ mod tests {
     }
 
     /// Process an invalid chain, expecting an error.
-    fn test_prop_invalid_chain(input: TestChain) {
+    fn test_prop_invalid_chain(roots: RootSet<2>, input: TestChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
         let chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(input.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(input.leaf.cert().clone()),
             &cache,
         );
