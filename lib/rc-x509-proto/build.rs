@@ -62,14 +62,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
     );
 
+    // Likewise `google.protobuf.Duration`.
     config.field_attribute(
-        "rc.x509.magic_tunnel.rc_secrets.v1.PrepareSecretDeliveryResponse.key_expires_at",
-        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
+        "rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.key_validity",
+        r#"#[proptest(strategy = "crate::arbitrary_duration()")]"#,
     );
 
     // `token` is a bearer credential, so the derived `Debug` is replaced with a
     // manual impl in `lib.rs` that redacts it.
-    config.skip_debug(["rc.x509.magic_tunnel.rc_secrets.v1.PrepareSecretDeliveryResponse"]);
+    config.skip_debug([
+        "rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse",
+    ]);
 
     config.type_attribute(
         "rc.x509.signature.v1.DetachedSignature",
@@ -80,6 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // rust repr instead of `prost_types::Timestamp` - the former has a
     // serde::Serialise impl.
     config.extern_path(".google.protobuf.Timestamp", "::pbjson_types::Timestamp");
+    config.extern_path(".google.protobuf.Duration", "::pbjson_types::Duration");
 
     // Discover all the protobuf files.
     let mut protos = vec![];
