@@ -26,7 +26,12 @@ var ErrClientClosed = errors.New("rcx509: client is closed")
 
 // HandlerFunc handles a request for one service URI (a fully-qualified gRPC
 // method name) and returns the response payload. Handlers run on an
-// rcx509-owned goroutine.
+// rcx509-owned goroutine, and MUST NOT take more than 30s to execute (else ctx
+// is cancelled, and the RPC endpoint is marked unhealthy and subject to rate
+// limiting).
+//
+// If the returned err error is non-nil, the RPC endpoint MAY be marked as
+// unhealthy and rate limited, affecting future delivery.
 type HandlerFunc = libddrcffi.HandlerFunc
 
 // Client manages a connection between the RC x509 backend and the local
