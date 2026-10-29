@@ -23,7 +23,7 @@ func dupLogSinkFile(f *os.File) (C.int, func(), error) {
 	// accept as the current process's pseudo-handle.
 	src := syscall.Handle(f.Fd())
 	if src == syscall.InvalidHandle {
-		return 0, nil, syscall.ERROR_INVALID_HANDLE
+		return 0, nil, syscall.EBADF
 	}
 	proc, err := syscall.GetCurrentProcess()
 	if err != nil {
