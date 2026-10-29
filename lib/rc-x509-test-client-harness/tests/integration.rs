@@ -243,3 +243,6 @@ async fn test_connection_metrics() {
 
     client.shutdown().await;
 }
+
+// TODO(dom:test): multiple connections, different endpoints serving different
+// SANs to pin DCs.

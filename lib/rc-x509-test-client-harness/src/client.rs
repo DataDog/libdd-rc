@@ -17,7 +17,7 @@ use std::{ops::Deref, time::Duration};
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::{
-    AbortOnDrop, ShutdownCtl, ShutdownSignal,
+    AbortOnDrop, AppInfo, EndpointHostname, ShutdownCtl, ShutdownSignal,
     codec::{ClientToServer, DecodingError, DetachedSignature, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
@@ -52,7 +52,7 @@ impl TestClient {
     pub fn new() -> Self {
         let (signal, stop) = ShutdownSignal::new();
 
-        let client = Main::new("test".to_string(), "0.0.0".to_string());
+        let client = Main::new(AppInfo::new("test", "0.0.0"));
 
         let (event_tx, event_rx) = mpsc::channel(1);
         let handle = AbortOnDrop::from(tokio::spawn(
@@ -86,6 +86,7 @@ impl TestClient {
             .send(ConnectionUpdate::new(ConnectionEvent::Connected(
                 io,
                 dispatch_publisher,
+                EndpointHostname::from("config.itsallbroken.com"),
             )))
             .await
             .expect("notify: connection connected");

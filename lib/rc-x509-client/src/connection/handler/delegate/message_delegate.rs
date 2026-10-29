@@ -128,7 +128,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -148,7 +148,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "opaque 1.0.0".into()),
+            AppInfo::new("bananas", "opaque 1.0.0"),
         );
 
         // The initial state is "pre-handshake":
@@ -219,7 +219,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -359,7 +359,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -404,7 +404,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -459,7 +459,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -519,7 +519,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -548,7 +548,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();
@@ -601,7 +601,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         // The initial state is "pre-handshake":
@@ -673,7 +673,7 @@ mod tests {
             CancellationToken::default(),
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
-            AppInfo::new("bananas".into(), "1.0.0".into()),
+            AppInfo::new("bananas", "1.0.0"),
         );
 
         let (mut client, mut server) = new_io_pair();

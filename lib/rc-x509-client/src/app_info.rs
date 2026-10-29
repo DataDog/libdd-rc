@@ -58,14 +58,19 @@ impl Display for AppVersion {
 
 /// Static metadata describing the host application.
 #[derive(Debug, Clone)]
-pub(crate) struct AppInfo {
+pub struct AppInfo {
     name: AppName,
     version: AppVersion,
 }
 
 impl AppInfo {
-    pub(crate) fn new(name: AppName, version: AppVersion) -> Self {
-        Self { name, version }
+    /// Construct a new [`AppInfo`] describing the host application identified
+    /// by `name`, running the given `version`.
+    pub fn new(name: impl Into<AppName>, version: impl Into<AppVersion>) -> Self {
+        Self {
+            name: name.into(),
+            version: version.into(),
+        }
     }
 
     pub(crate) fn name(&self) -> &AppName {

@@ -37,8 +37,10 @@ const (
 // Connection's state machine and worker plumbing without linking the native
 // library.
 type nativeConn interface {
-	// connected reports the connection as established to rc-x509-client.
-	connected() error
+	// connected reports the connection as established to rc-x509-client,
+	// along with the DNS address of the Datadog datacenter it was established
+	// to. endpointHostname must be non-empty.
+	connected(endpointHostname string) error
 
 	// recv passes data received from the RC delivery backend into
 	// rc-x509-client. data must be non-empty.
@@ -83,8 +85,18 @@ func newCgoConn(ctxPtr *C.Ctx, userData unsafe.Pointer) (*cgoConn, error) {
 	return &cgoConn{ptr: ptr}, nil
 }
 
-func (c *cgoConn) connected() error {
-	if ret := C.rc_conn_connected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
+func (c *cgoConn) connected(endpointHostname string) error {
+	// rc_conn_connected only requires the buffer to be valid for the duration
+	// of the call: it copies the string before returning, so it can be passed
+	// directly without allocating C memory first.
+	endpointHostnameBytes := []byte(endpointHostname)
+
+	ret := C.rc_conn_connected(
+		c.ptr,
+		(*C.uint8_t)(unsafe.Pointer(&endpointHostnameBytes[0])),
+		C.uint32_t(len(endpointHostnameBytes)),
+	)
+	if ret != C.CONN_RET_T_SUCCESS {
 		log.Printf("ddrc: rc_conn_connected returned %v", ret)
 		return fmt.Errorf("ddrc: rc_conn_connected returned %v", ret)
 	}
