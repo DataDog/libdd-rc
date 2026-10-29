@@ -52,12 +52,6 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "/root/go/bin" >> "$GITHUB_PATH"
 
-      - name: Install protoc-gen-go
-        working-directory: ffi-hosts/go
-        run: |
-          version="$(go list -m -f '{{.Version}}' google.golang.org/protobuf)"
-          go install "google.golang.org/protobuf/cmd/protoc-gen-go@${version}"
-
       - name: Verify committed Go protobuf bindings
         working-directory: ffi-hosts/go
         run: |
