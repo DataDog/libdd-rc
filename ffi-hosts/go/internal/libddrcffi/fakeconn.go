@@ -27,12 +27,13 @@ type recordedDispatchError struct {
 type fakeConn struct {
 	mu sync.Mutex
 
-	connectedCalls    int
-	recvCalls         [][]byte
-	disconnectedCalls int
-	dispatchResults   []recordedDispatchResult
-	dispatchErrors    []recordedDispatchError
-	freeCalls         int
+	connectedCalls     int
+	connectedHostnames []string
+	recvCalls          [][]byte
+	disconnectedCalls  int
+	dispatchResults    []recordedDispatchResult
+	dispatchErrors     []recordedDispatchError
+	freeCalls          int
 
 	// recvErr, if set, is returned by every recv call instead of nil.
 	recvErr error
@@ -41,10 +42,11 @@ type fakeConn struct {
 	connectedErr error
 }
 
-func (f *fakeConn) connected() error {
+func (f *fakeConn) connected(endpointHostname string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.connectedCalls++
+	f.connectedHostnames = append(f.connectedHostnames, endpointHostname)
 	return f.connectedErr
 }
 

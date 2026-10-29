@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::dispatch::DispatchPublisher;
+use crate::{dispatch::DispatchPublisher, endpoint::EndpointHostname};
 
 /// Lifecycle events for a single I/O connection brokered by the FFI host.
 ///
@@ -71,7 +71,10 @@ pub enum ConnectionEvent<IO> {
     /// Data can be sent / received through the provided handle, and dispatch
     /// requests for messages received on this connection can be published
     /// through the provided [`DispatchPublisher`].
-    Connected(IO, DispatchPublisher),
+    ///
+    /// The [`EndpointHostname`] is the DNS address of the Datadog datacenter
+    /// this connection was established to, as reported by the FFI host.
+    Connected(IO, DispatchPublisher, EndpointHostname),
 
     /// The FFI host has lost (or closed) the connection to the RC backend.
     Disconnected,

@@ -65,7 +65,7 @@ rc_init(..) → *mut Ctx            // create new client
 rc_free(ctx)                      // stop client & release all resources
 
 rc_conn_new(ctx) → *mut Conn      // create new client connection state
-rc_conn_connected(conn)           // mark connection as established
+rc_conn_connected(conn, ..)       // mark connection as established
 rc_conn_disconnected(conn)        // mark connection as disconnected
 rc_conn_free(conn)                // release resources held by connection
 
