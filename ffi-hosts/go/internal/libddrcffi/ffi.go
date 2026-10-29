@@ -126,7 +126,7 @@ func (c *cgoConn) dispatchResult(correlationID uint64, encoded []byte) {
 }
 
 func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
-	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.int(errorCode))
+	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.DispatchHostError(errorCode))
 }
 
 func (c *cgoConn) free() {

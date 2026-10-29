@@ -19,12 +19,18 @@ import (
 // significant bits. See
 // https://learn.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
 func dupLogSinkFile(f *os.File) (C.int, func(), error) {
+	// A nil or closed f returns InvalidHandle, which DuplicateHandle would
+	// accept as the current process's pseudo-handle.
+	src := syscall.Handle(f.Fd())
+	if src == syscall.InvalidHandle {
+		return 0, nil, syscall.ERROR_INVALID_HANDLE
+	}
 	proc, err := syscall.GetCurrentProcess()
 	if err != nil {
 		return 0, nil, err
 	}
 	var h syscall.Handle
-	err = syscall.DuplicateHandle(proc, syscall.Handle(f.Fd()), proc, &h, 0, false, syscall.DUPLICATE_SAME_ACCESS)
+	err = syscall.DuplicateHandle(proc, src, proc, &h, 0, false, syscall.DUPLICATE_SAME_ACCESS)
 	if err != nil {
 		return 0, nil, err
 	}
