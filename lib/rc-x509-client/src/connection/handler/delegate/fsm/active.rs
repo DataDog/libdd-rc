@@ -16,10 +16,10 @@ use std::fmt::Debug;
 
 use rc_crypto::certificate::id::CertId;
 use rc_crypto::connection_id::ConnectionId;
-use tokio_util::bytes::Bytes;
 use tracing::{debug, error};
 
 use crate::{
+    Payload,
     codec::{ClientToServer, DetachedSignature, ProtocolError, ServerToClient},
     connection::handler::{
         AttestationVerifier, SendToServer,
@@ -96,7 +96,7 @@ where
         self,
         reply: &mut IO,
         correlation_id: CorrelationId,
-        payload: Bytes,
+        payload: Payload,
         detached_signature: Option<DetachedSignature>,
     ) -> State<V>
     where
