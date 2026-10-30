@@ -15,11 +15,14 @@
 use std::sync::Arc;
 
 use crate::cert::UntrustedCert;
-use valuable::Valuable;
+use rc_x509_roots::RootCertificate;
+use valuable::{Listable, Valuable};
 
-/// An unverified candidate chain for some leaf [`Certificate`]. to some root.
+/// An unverified candidate chain for some leaf [`Certificate`], to the included
+/// root.
 ///
-/// This type contains the chain of intermediates only.
+/// This type contains the chain of intermediates and root only - the leaf is
+/// implicit.
 ///
 /// An [`UntrustedChain`] is not yet cryptographically verified and must not be
 /// trusted.
@@ -33,34 +36,40 @@ use valuable::Valuable;
 ///                 <leaf> -> [SubCA 2, SubCA 1] -> <root>
 /// ```
 ///
-/// Where `<leaf>` and `<root>` are implicit / not retained within the
-/// [`UntrustedChain`] and must be provided alongside it for any trust
-/// operations.
+/// Where `<leaf>` is implicit / not retained within the [`UntrustedChain`] and
+/// must be provided alongside it for any trust operations.
 #[derive(Debug)]
-pub(crate) struct UntrustedChain(Vec<Arc<UntrustedCert>>);
+pub(crate) struct UntrustedChain<'a>(&'a RootCertificate, Vec<Arc<UntrustedCert>>);
 
-impl UntrustedChain {
+impl<'a> UntrustedChain<'a> {
+    pub(crate) fn new(root: &'a RootCertificate, intermediates: Vec<Arc<UntrustedCert>>) -> Self {
+        Self(root, intermediates)
+    }
+
     /// Borrow the chain content.
     pub(crate) fn as_slice(&self) -> &[Arc<UntrustedCert>] {
-        &self.0
+        &self.1
     }
 }
 
-impl From<Vec<Arc<UntrustedCert>>> for UntrustedChain {
-    fn from(value: Vec<Arc<UntrustedCert>>) -> Self {
-        Self(value)
-    }
-}
-
-impl Valuable for UntrustedChain {
+impl<'a> Valuable for UntrustedChain<'a> {
     fn as_value(&self) -> valuable::Value<'_> {
-        valuable::Value::Listable(&self.0)
+        valuable::Value::Listable(self)
     }
 
     fn visit(&self, visit: &mut dyn valuable::Visit) {
-        for v in &self.0 {
+        self.0.visit(visit);
+
+        for v in &self.1 {
             v.visit(visit)
         }
+    }
+}
+
+impl<'a> Listable for UntrustedChain<'a> {
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.1.len() + 1;
+        (n, Some(n))
     }
 }
 
@@ -81,15 +90,31 @@ mod tests {
         let int_a = CertBuilder::new_intermediate("A", CA.root()).build();
         let int_b = CertBuilder::new_intermediate("B", &int_a).build();
 
-        let chain = UntrustedChain::from(vec![
-            Arc::new(UntrustedCert::from(int_a.cert().clone())),
-            Arc::new(UntrustedCert::from(int_b.cert().clone())),
-        ]);
+        let root_cert = CA.root_cert();
+        let chain = UntrustedChain::new(
+            &root_cert,
+            vec![
+                Arc::new(UntrustedCert::from(int_a.cert().clone())),
+                Arc::new(UntrustedCert::from(int_b.cert().clone())),
+            ],
+        );
 
         assert_valuable_repr(
             &chain,
             format!(
                 "\
+- serial_number:
+    {root_serial}
+- fingerprint:
+    {root_fingerprint}
+- validity:
+    {root_validity}
+- cert_id:
+    {root_cert_id}
+- issuer_cert_id:
+    {root_issuer_cert_id}
+- is_ca:
+    {root_is_ca}
 - serial_number:
     {cert_a_serial}
 - fingerprint:
@@ -115,6 +140,12 @@ mod tests {
 - is_ca:
     {cert_b_is_ca}
 ",
+                root_serial = CA.root().cert().serial_number().as_hex_str(),
+                root_fingerprint = CA.root().cert().fingerprint().as_hex_str(),
+                root_validity = CA.root().cert().validity(),
+                root_cert_id = CA.root().cert().cert_id(),
+                root_issuer_cert_id = CA.root().cert().issuer_cert_id(),
+                root_is_ca = CA.root().cert().is_ca(),
                 cert_a_serial = int_a.cert().serial_number().as_hex_str(),
                 cert_a_fingerprint = int_a.cert().fingerprint().as_hex_str(),
                 cert_a_validity = int_a.cert().validity(),
