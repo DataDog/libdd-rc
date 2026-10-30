@@ -186,8 +186,11 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::{
-        app_info::AppInfo, codec::ClientToServer, connection::handler::delegate::MessageDelegate,
-        dispatch::new_dispatcher_interconnect, mocks::io::new_io_pair,
+        app_info::AppInfo,
+        codec::ClientToServer,
+        connection::{handler::delegate::MessageDelegate, mock_verifier::MockVerifier},
+        dispatch::new_dispatcher_interconnect,
+        mocks::io::new_io_pair,
     };
 
     use super::*;
@@ -210,6 +213,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                MockVerifier::default(),
             ),
             dispatch_stream,
             metrics,
@@ -246,6 +250,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                MockVerifier::default(),
             ),
             dispatch_stream,
             metrics,
@@ -282,6 +287,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                MockVerifier::default(),
             ),
             dispatch_stream,
             metrics,
@@ -318,6 +324,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                MockVerifier::default(),
             ),
             dispatch_stream,
             metrics,
@@ -381,6 +388,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                MockVerifier::default(),
             ),
             dispatch_stream,
             metrics,

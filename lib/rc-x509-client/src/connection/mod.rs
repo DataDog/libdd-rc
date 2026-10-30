@@ -19,6 +19,7 @@ mod handler;
 mod lifecycle_events;
 mod reconnection;
 
+pub use handler::AttestationVerifier;
 pub(crate) use handler::*;
 pub use lifecycle_events::*;
 pub use reconnection::*;

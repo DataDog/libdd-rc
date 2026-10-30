@@ -32,20 +32,27 @@ use super::Error;
 /// A single lifecycle phase of a connection, generic over the phase-specific
 /// `state`.
 #[derive(Debug)]
-pub(crate) struct Fsm<S> {
+pub(crate) struct Fsm<S, V> {
     pub(super) metrics: Arc<InstanceMetrics>,
     pub(super) stop: CancellationToken,
     pub(super) dispatch: DispatchPublisher,
 
+    /// An abstract [`AttestationVerifier`] capable of validating a
+    /// cryptographic signature covering a message from the backend.
+    ///
+    /// [`AttestationVerifier`]:
+    ///     crate::connection::handler::delegate::traits::AttestationVerifier
+    pub(super) verifier: V,
+
     pub(super) state: S,
 }
 
-impl<S> Fsm<S>
+impl<S, V> Fsm<S, V>
 where
     S: Debug,
 {
     /// Transition to a new FSM state.
-    pub(super) fn into_state<U>(self, state: U) -> Fsm<U>
+    pub(super) fn into_state<U>(self, state: U) -> Fsm<U, V>
     where
         U: Debug,
     {
@@ -55,6 +62,7 @@ where
             metrics: self.metrics,
             stop: self.stop,
             dispatch: self.dispatch,
+            verifier: self.verifier,
             state,
         }
     }
@@ -66,7 +74,7 @@ where
         is_handshake_complete: bool,
         io: &mut IO,
         reason: ProtocolError,
-    ) -> State
+    ) -> State<V>
     where
         IO: SendToServer,
     {
