@@ -113,7 +113,7 @@ print -Pn "%F{yellow}proceed?%f [y/N] " >&2
 read -r CONFIRM
 [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echoe "%F{red}aborted%f"; exit 1; }
 
-echoe "performing dry run publish for each crate"
+echoe "performing dry run publish for each crate (this can take a while)"
 
 cargo publish --dry-run --workspace > publish.log 2>&1 \
 	|| { cat publish.log; exit 1; }
@@ -132,5 +132,6 @@ git push origin "$TAG"
 echoe "creating GitHub release"
 gh release create "$TAG" --title "$TAG" --generate-notes
 
-echoe "publish complete - switching to workflow view"
+echoe "publish complete - wait to switch to workflow view"
+sleep 15 # It can take a while to start.
 gh run watch "$(gh run list -w publish --limit 1 --json databaseId -q '.[0].databaseId')" --exit-status
