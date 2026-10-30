@@ -24,6 +24,7 @@ use rc_x509_trust::cert::UntrustedCertBytes;
 use tokio_util::bytes::Bytes;
 
 use crate::{
+    Payload,
     codec::{ClientToServer, DetachedSignature, ServerToClient, tests::SAMPLE_CERT_DER},
     connection::{
         ReconnectionData,
@@ -98,7 +99,7 @@ pub(crate) fn arbitrary_valid_dispatch_request() -> impl Strategy<Value = Server
         .prop_map(
             |(id, payload, cert_id, signature)| ServerToClient::Dispatch {
                 correlation_id: CorrelationId::new(id),
-                payload,
+                payload: Payload::from(payload),
                 detached_signature: Some(DetachedSignature { cert_id, signature }),
             },
         )

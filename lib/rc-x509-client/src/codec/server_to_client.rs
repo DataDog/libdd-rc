@@ -23,7 +23,7 @@ use rc_x509_trust::cert::UntrustedCertBytes;
 use thiserror::Error;
 use tokio_util::bytes::Bytes;
 
-use crate::{connection::ReconnectionData, host_runtime::CorrelationId};
+use crate::{Payload, connection::ReconnectionData, host_runtime::CorrelationId};
 
 /// Errors deserialising incoming messages from the RC delivery backend.
 ///
@@ -90,8 +90,7 @@ pub enum ServerToClient {
         /// The payload to dispatch to the host.
         ///
         /// This is a serialised [`v1::DispatchRequestPayload`].
-        #[cfg_attr(feature = "fuzzing", arbitrary(with = crate::fuzzing::arbitrary_bytes))]
-        payload: Bytes,
+        payload: Payload,
 
         /// The detached signature covering `payload`, if the server provided
         /// one.
@@ -125,7 +124,7 @@ impl TryFrom<&[u8]> for ServerToClient {
             Message::Ping(_) => Self::Ping,
             Message::Dispatch(v) => Self::Dispatch {
                 correlation_id: CorrelationId::new(v.correlation_id),
-                payload: v.encoded_dispatch_request,
+                payload: Payload::from(v.encoded_dispatch_request),
                 detached_signature: v.signature.map(|v| DetachedSignature {
                     cert_id: v.cert_id,
                     signature: v.signature,
