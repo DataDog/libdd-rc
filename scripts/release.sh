@@ -133,5 +133,14 @@ echoe "creating GitHub release"
 gh release create "$TAG" --title "$TAG" --generate-notes
 
 echoe "publish complete - wait to switch to workflow view"
-sleep 15 # It can take a while to start.
-gh run watch "$(gh run list -w publish --limit 1 --json databaseId -q '.[0].databaseId')" --exit-status
+RUN_ID=""
+for ATTEMPT in {1..60}; do
+	RUN_ID=$(gh run list -w publish --event release --branch "$TAG" --limit 1 --json databaseId -q '.[0].databaseId // empty')
+	[[ -n "$RUN_ID" ]] && break
+	sleep 5
+done
+if [[ -z "$RUN_ID" ]]; then
+	echoe "%F{red}timed out waiting for the publish workflow for $TAG%f"
+	exit 1
+fi
+gh run watch "$RUN_ID" --exit-status
