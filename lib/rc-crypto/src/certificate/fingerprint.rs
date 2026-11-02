@@ -74,10 +74,10 @@ impl Display for Fingerprint {
 impl<'a> From<&'a X509Certificate<'a>> for Fingerprint {
     fn from(cert: &'a X509Certificate<'a>) -> Self {
         // miri can't call into AWS-LC, so stub out the hash generation.
-        let digest = cfg_select! {
-            miri => Digest::from_raw([42; FINGERPRINT_LEN]),
-            _ => Sha256::hash(cert.as_raw()),
-        };
+        #[cfg(miri)]
+        let digest = Digest::from_raw([42; FINGERPRINT_LEN]);
+        #[cfg(not(miri))]
+        let digest = Sha256::hash(cert.as_raw());
 
         Self {
             digest,
