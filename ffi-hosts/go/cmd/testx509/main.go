@@ -12,6 +12,10 @@ import (
 // Remote Config team's example DebugService/Ping RPC.
 const debugServicePingURI = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping"
 
+// prepareSecretDeliveryURI is the fully-qualified gRPC method name for the
+// Remote Config secrets SecretsService/PrepareSecretDelivery RPC.
+const prepareSecretDeliveryURI = "rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService/PrepareSecretDelivery"
+
 func main() {
 	enableLogging()
 
@@ -32,6 +36,11 @@ func main() {
 
 	// Register a handler for the DebugService/Ping URI:
 	if err := client.RegisterHandler(debugServicePingURI, handlePing); err != nil {
+		log.Fatal(err)
+	}
+
+	// Register a handler for the SecretsService/PrepareSecretDelivery URI:
+	if err := client.RegisterHandler(prepareSecretDeliveryURI, handlePrepareSecretDelivery); err != nil {
 		log.Fatal(err)
 	}
 
