@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"syscall"
 )
 
 // ErrLogSinkAlreadySet is returned by EnableLogSink when a log sink has
@@ -32,14 +31,19 @@ var ErrLogSinkAlreadySet = errors.New("ddrc: log sink already installed for this
 // specific RCX509Context instance.
 func EnableLogSink(f *os.File) error {
 	// Duplicate the descriptor, to decouple Go ownership of the underlying
-	// file from the fd passed into the client library.
-	ffiFd, err := syscall.Dup(int(f.Fd()))
+	// file from the fd passed into the client library. dupLogSinkFile is
+	// OS-specific (log_sink_unix.go, log_sink_windows.go).
+	ffiFd, closeFfiFd, err := dupLogSinkFile(f)
 	if err != nil {
 		return err
 	}
 
-	// Pass the newly duplicated fd to the client library.
-	ret := C.rc_enable_log_sink(C.int(ffiFd))
+	// Pass the newly duplicated fd to the client library, which only takes
+	// ownership of it on success.
+	ret := C.rc_enable_log_sink(ffiFd)
+	if ret != C.LOG_SINK_RET_T_SUCCESS {
+		closeFfiFd()
+	}
 	switch ret {
 	case C.LOG_SINK_RET_T_SUCCESS:
 		return nil

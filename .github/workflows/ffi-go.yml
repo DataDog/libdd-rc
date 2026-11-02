@@ -77,3 +77,37 @@ jobs:
       - name: Run go vet + tests (non-FIPS)
         working-directory: ffi-hosts/go
         run: make vet test FIPS=0
+
+  # Build native library and run Go tests on Windows, using non-FIPS build
+  go-test-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Use AWS-LC's prebuilt assembly instead of installing NASM.
+      AWS_LC_SYS_PREBUILT_NASM: "1"
+      CGO_ENABLED: "1"
+      CGO_LDFLAGS: -L${{ github.workspace }}/target/release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust (MinGW)
+        run: |
+          rustup set default-host x86_64-pc-windows-gnu
+          rustup toolchain install
+
+      - name: Install protoc
+        run: choco install protoc --no-progress -y
+
+      - name: Build rc-x509-ffi (non-FIPS)
+        run: cargo build -p rc-x509-ffi --release --no-default-features --features=non-fips
+
+      - name: Run go vet + tests (non-FIPS)
+        working-directory: ffi-hosts/go
+        run: |
+          go vet -tags=rcx509_nonfips ./...
+          go test -tags=rcx509_nonfips ./...
