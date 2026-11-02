@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -161,7 +161,7 @@ func (c *Client) runSession(ctx context.Context, conn FFIConnection, ws Websocke
 	go func() {
 		err := readWorker(readCtx, ws, incoming)
 		if err != nil && readCtx.Err() == nil {
-			log.Printf("rcx509: read worker quit for read error: %v", err)
+			slog.Info("rcx509: read worker quit for read error", "error", err)
 		}
 		wg.Done()
 	}()
@@ -171,7 +171,7 @@ func (c *Client) runSession(ctx context.Context, conn FFIConnection, ws Websocke
 		err = conn.Close()
 		if err != nil {
 			// We need to do the other operations, so log this and move on
-			log.Printf("rcx509: error disconnecting connection to rc-x509-client layer: %v", err)
+			slog.Warn("rcx509: error disconnecting connection to rc-x509-client layer", "error", err)
 		}
 
 		// Attempt to send any pending message to the backend, if this shutdown operation wasn't due
@@ -209,7 +209,7 @@ func (c *Client) runSession(ctx context.Context, conn FFIConnection, ws Websocke
 					errors.Is(err, libddrcffi.ErrConnectionNotConnected) {
 					return fmt.Errorf("rcx509: failed to deliver message to FFI layer: %w", err)
 				}
-				log.Printf("rcx509: dropping message the FFI layer rejected: %v", err)
+				slog.Warn("rcx509: dropping message the FFI layer rejected", "error", err)
 			}
 
 		// There is a message from the rc-x509-client layer we need to push to the backend
@@ -285,7 +285,7 @@ func drainOutgoing(ctx context.Context, ws WebsocketConnection, outgoing <-chan 
 			continue
 		}
 		if err := writeMessage(ctx, ws, msg); err != nil {
-			log.Printf("rcx509: dropping outgoing payloads during teardown: %v", err)
+			slog.Warn("rcx509: dropping outgoing payloads during teardown", "error", err)
 			writable = false
 		}
 	}
