@@ -390,7 +390,10 @@ mod tests {
     use rcgen::ExtendedKeyUsagePurpose;
 
     use crate::{
-        chain::{build_unverified_chain_for, tests::arbitrary_invalid_chain},
+        chain::{
+            ChainBuildError, MAX_INTERMEDIATES, build_unverified_chain_for,
+            tests::arbitrary_invalid_chain,
+        },
         test_issuer::{
             CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
             NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
@@ -757,5 +760,42 @@ mod tests {
                 | ChainVerifyError::CertExpired { .. }
                 | ChainVerifyError::CertFutureValidity { .. }
         );
+    }
+
+    /// Process a valid chain that may exceed the path depth limit.
+    fn test_prop_chain_walk_limits(roots: RootSet<2>, input: TestChain) {
+        let cache = MemoryCertCache::new(input.len() as _);
+        for identity in &input.intermediates {
+            cache.insert(UntrustedCert::from(identity.cert().clone()));
+        }
+
+        let leaf = UntrustedCert::from(input.leaf.cert().clone());
+
+        // MAX_INTERMEDIATES matches the path depth limit internal to the verifier,
+        // so an over-long chain is rejected here and never reaches
+        // verify_chain().
+        let chain = match build_unverified_chain_for(&roots, &leaf, &cache) {
+            Ok(v) => {
+                assert!(input.intermediates.len() <= MAX_INTERMEDIATES);
+                v
+            }
+            Err(e) => {
+                assert_matches!(e, ChainBuildError::ExcessivelyLongChain);
+                assert!(input.intermediates.len() > MAX_INTERMEDIATES);
+                return;
+            }
+        };
+
+        // Every certificate in the chain is valid, and the chain is within the
+        // depth limit, so it MUST be accepted.
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
+        verify_chain(
+            &CA.root_cert(),
+            leaf,
+            chain,
+            EKUPolicy::RequireCodeSigning,
+            &dns_name,
+        )
+        .expect("a chain within the path depth limit must be accepted");
     }
 }
