@@ -30,10 +30,13 @@ impl<const N: usize> RootSet<N> {
 
     /// Returns true if this [`RootSet`] contains a root with an
     /// [`IssuerCertId`] matching the search `needle`.
-    pub(crate) fn contains(&self, needle: DangerousComparableId<IssuerCertId>) -> bool {
+    pub(crate) fn find(
+        &self,
+        needle: DangerousComparableId<IssuerCertId>,
+    ) -> Option<&RootCertificate> {
         self.roots
             .iter()
-            .any(|v| v.cert_id().as_dangerous_comparable() == needle)
+            .find(|v| v.cert_id().as_dangerous_comparable() == needle)
     }
 
     /// Unwrap this [`RootSet`] into the underlying array.

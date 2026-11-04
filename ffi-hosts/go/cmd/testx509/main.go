@@ -35,6 +35,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	////////////////////////////////////////////////////////////////////////////
+	// Looking to start testing your own client code?                         //
+	//                                                                        //
+	// Feel free to copy this example code to your own application, but don't //
+	// PR it into our repo please - your code is yours! :)                    //
+	////////////////////////////////////////////////////////////////////////////
+
 	go client.Start()
 
 	fmt.Println("Press Enter to exit...")

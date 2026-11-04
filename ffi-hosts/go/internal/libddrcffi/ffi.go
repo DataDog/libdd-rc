@@ -10,6 +10,7 @@ package libddrcffi
 #cgo LDFLAGS: -lrc_x509_ffi
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security -lm
 #cgo linux LDFLAGS: -lpthread -ldl -lm
+#cgo windows LDFLAGS: -lbcrypt -lntdll -luserenv -lws2_32
 #include "libdd_rc.h"
 
 extern DispatchRet goDispatchCb(uint64_t correlation_id, uint8_t *data, uint32_t length, void *user_data);
@@ -125,7 +126,7 @@ func (c *cgoConn) dispatchResult(correlationID uint64, encoded []byte) {
 }
 
 func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
-	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.int(errorCode))
+	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.DispatchHostError(errorCode))
 }
 
 func (c *cgoConn) free() {

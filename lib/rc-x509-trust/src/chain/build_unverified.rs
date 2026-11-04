@@ -47,7 +47,8 @@ pub enum ChainBuildError {
 
 /// Build a candidate chain from `cert` to `root`, using entries in `cache`.
 ///
-/// The returned chain MUST be cryptographically verified before use.
+/// The returned chain MUST be cryptographically verified before use. The chain
+/// includes both the leaf, and appropriate root.
 ///
 /// All certificates necessary to build the chain must be present in `cache`, or
 /// a [`ChainBuildError::MissingIntermediate`] error is returned.
@@ -88,20 +89,22 @@ pub enum ChainBuildError {
 /// Where `<leaf>` and `<cert>` are implicit and not present in the returned
 /// chain - they must be passed into any subsequent calls that use the
 /// [`UntrustedChain`].
-pub(crate) fn build_unverified_chain_for<const N: usize, T>(
-    roots: &RootSet<N>,
+pub(crate) fn build_unverified_chain_for<'a, const N: usize, T>(
+    roots: &'a RootSet<N>,
     cert: &UntrustedCert,
     cache: &T,
-) -> Result<UntrustedChain, ChainBuildError>
+) -> Result<UntrustedChain<'a>, ChainBuildError>
 where
     T: CertCache,
 {
+    let root;
     let mut next_cert_id = cert.issuer_cert_id().to_owned();
     let mut chain = vec![];
     loop {
         // If the next cert ID to resolve is the same as the cert ID in the
         // root, the candidate chain is complete (but unverified).
-        if roots.contains(next_cert_id.as_dangerous_comparable()) {
+        if let Some(v) = roots.find(next_cert_id.as_dangerous_comparable()) {
+            root = v;
             break;
         }
 
@@ -141,7 +144,7 @@ where
         chain.push(issuer_cert);
     }
 
-    Ok(UntrustedChain::from(chain))
+    Ok(UntrustedChain::new(root, chain))
 }
 
 #[cfg(test)]
@@ -168,8 +171,9 @@ mod tests {
     fn test_root_chain_root() {
         let cache = MemoryCertCache::new(1024 * 1024);
 
+        let roots = RootSet::new([CA.root_cert()]);
         let got = build_unverified_chain_for(
-            &RootSet::new([CA.root_cert()]),
+            &roots,
             &UntrustedCert::from(CA.root().cert().clone()),
             &cache,
         )
@@ -306,10 +310,11 @@ mod tests {
             .build();
 
         // Chain building succeeds in returning an UntrustedChain.
+        let roots = RootSet::new([RootCertificate::from_trusted_cert(
+            legit_root.cert().clone(),
+        )]);
         let chain = build_unverified_chain_for(
-            &RootSet::new([RootCertificate::from_trusted_cert(
-                legit_root.cert().clone(),
-            )]),
+            &roots,
             &UntrustedCert::from(evil_leaf.cert().clone()),
             &cache,
         )
