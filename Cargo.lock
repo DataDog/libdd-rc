@@ -1593,6 +1593,7 @@ dependencies = [
  "rc-x509-proto",
  "rc-x509-roots",
  "rc-x509-trust",
+ "static_assertions",
  "thiserror",
  "tokio",
  "tokio-stream",
