@@ -37,9 +37,11 @@ pub(crate) mod tests {
     use proptest::prelude::*;
 
     use crate::test_issuer::{
-        ExpiredIntermediate, ExpiredLeaf, ForgedIntermediate, ForgedLeaf, FutureValidIntermediate,
-        FutureValidLeaf, MissingIntermediate, PathLenViolation, SelfReferentialCertIds, TestCA,
-        TestChain, arbitrary_chain,
+        CaSignerLeaf, CriticalExtensionIntermediate, CriticalExtensionLeaf, ExpiredIntermediate,
+        ExpiredLeaf, ForgedIntermediate, ForgedLeaf, FutureValidIntermediate, FutureValidLeaf,
+        MismatchedLeafSan, MissingIntermediate, NonCaIntermediate, OrphanLeaf, PathLenViolation,
+        PreEpochIntermediate, PreEpochLeaf, SelfReferentialCertIds, TestCA, TestChain,
+        arbitrary_chain,
     };
 
     /// A set of chain mutations that result in an invalid chain being produced,
@@ -69,11 +71,40 @@ pub(crate) mod tests {
                     &ExpiredIntermediate::new(seed)
                 )),
             n_intermediates
+                .clone()
                 .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
                 .prop_map(move |(n, seed)| TestChain::build(
                     ca,
                     n,
                     &FutureValidIntermediate::new(seed),
+                )),
+            arbitrary_chain(ca, n_intermediates.clone(), CaSignerLeaf::default()),
+            arbitrary_chain(ca, n_intermediates.clone(), MismatchedLeafSan::default()),
+            arbitrary_chain(ca, n_intermediates.clone(), PreEpochLeaf::default()),
+            arbitrary_chain(
+                ca,
+                n_intermediates.clone(),
+                CriticalExtensionLeaf::default()
+            ),
+            arbitrary_chain(ca, n_intermediates.clone(), OrphanLeaf::default()),
+            n_intermediates
+                .clone()
+                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
+                .prop_map(move |(n, seed)| TestChain::build(ca, n, &NonCaIntermediate::new(seed))),
+            n_intermediates
+                .clone()
+                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
+                .prop_map(move |(n, seed)| TestChain::build(
+                    ca,
+                    n,
+                    &PreEpochIntermediate::new(seed)
+                )),
+            n_intermediates
+                .prop_flat_map(|n| any::<u8>().prop_map(move |seed| (n, seed)))
+                .prop_map(move |(n, seed)| TestChain::build(
+                    ca,
+                    n,
+                    &CriticalExtensionIntermediate::new(seed),
                 )),
         ]
     }

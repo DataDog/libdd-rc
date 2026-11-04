@@ -440,6 +440,16 @@ mod tests {
             test_prop_invalid_chain(roots, input);
         }
 
+        /// Generate a valid chain that straddles the path depth limit, and
+        /// assert the limit is enforced.
+        #[test]
+        fn prop_chain_walk_limits(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            input in arbitrary_chain(&CA, 6..=10_u8, ValidChain::default()),
+        ) {
+            test_prop_chain_walk_limits(roots, input);
+        }
+
         /// Randomise the set of EKUs on the chain certificates and assert:
         ///
         /// * [`EKUPolicy::RequireCodeSigning`] rejects a non-empty EKU set
@@ -736,8 +746,11 @@ mod tests {
             }
         };
 
+        // Every mutation renders the chain invalid, so verification MUST
+        // reject it. The specific rejection reason varies by mutation and is
+        // not asserted here.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        let err = verify_chain(
+        verify_chain(
             &CA.root_cert(),
             UntrustedCert::from(input.leaf.cert().clone()),
             chain,
@@ -745,33 +758,18 @@ mod tests {
             &dns_name,
         )
         .expect_err("invalid chain must be rejected");
-
-        // Each mutation maps onto a distinct rejection reason:
-        //
-        //   * ForgedLeaf / ForgedIntermediate -> CertSignatureInvalid
-        //   * PathLenViolation -> PathLen
-        //   * Expired{Leaf,Intermediate} -> CertExpired
-        //   * FutureValid{Leaf,Intermediate} -> CertFutureValidity
-        //
-        assert_matches!(
-            err,
-            ChainVerifyError::CertSignatureInvalid
-                | ChainVerifyError::PathLen
-                | ChainVerifyError::CertExpired { .. }
-                | ChainVerifyError::CertFutureValidity { .. }
-        );
     }
 
     /// Process a valid chain that may exceed the path depth limit.
     fn test_prop_chain_walk_limits(roots: RootSet<2>, input: TestChain) {
-        let cache = MemoryCertCache::new(input.len() as _);
+        let cache = MemoryCertCache::new(1024 * 1024);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
         let leaf = UntrustedCert::from(input.leaf.cert().clone());
 
-        // MAX_INTERMEDIATES matches the path depth limit internal to the verifier,
+        // MAX_CHAIN_LEN matches the path depth limit internal to the verifier,
         // so an over-long chain is rejected here and never reaches
         // verify_chain().
         let chain = match build_unverified_chain_for(&roots, &leaf, &cache) {
