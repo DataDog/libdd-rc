@@ -392,7 +392,7 @@ mod tests {
     use crate::{
         chain::{
             ChainBuildError, MAX_INTERMEDIATES, build_unverified_chain_for,
-            tests::arbitrary_invalid_chain,
+            tests::{ChainError, InvalidChain, arbitrary_invalid_chain},
         },
         test_issuer::{
             CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
@@ -719,8 +719,9 @@ mod tests {
         result.expect("chain with valid name constraints and leaf SAN must be accepted");
     }
 
-    /// Process an invalid chain, expecting an error.
-    fn test_prop_invalid_chain(roots: RootSet<2>, input: TestChain) {
+    /// Process an invalid chain, expecting the specific error the applied
+    /// mutation causes.
+    fn test_prop_invalid_chain(roots: RootSet<2>, input: InvalidChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
@@ -740,17 +741,16 @@ mod tests {
                 // verified and MUST be identified as invalid.
                 v
             }
-            Err(_) => {
-                // The chain was rejected at the first step, return early.
-                return;
+            Err(e) => {
+                // The chain was rejected at the first step.
+                return input.assert_err(ChainError::Build(e));
             }
         };
 
         // Every mutation renders the chain invalid, so verification MUST
-        // reject it. The specific rejection reason varies by mutation and is
-        // not asserted here.
+        // reject it, for the reason the mutation was designed to provoke.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        verify_chain(
+        let err = verify_chain(
             &CA.root_cert(),
             UntrustedCert::from(input.leaf.cert().clone()),
             chain,
@@ -758,6 +758,8 @@ mod tests {
             &dns_name,
         )
         .expect_err("invalid chain must be rejected");
+
+        input.assert_err(ChainError::Verify(err));
     }
 
     /// Process a valid chain that may exceed the path depth limit.
