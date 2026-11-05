@@ -18,11 +18,12 @@ use crate::connection::AttestationVerifier;
 pub(crate) struct MockVerifier {}
 
 impl AttestationVerifier for MockVerifier {
-    fn validate(
+    fn verify(
         &self,
         _signing_cert_id: rc_crypto::certificate::id::CertId,
         _signature: rc_crypto::Signature,
         _payload: tokio_util::bytes::Bytes,
+        _endpoint: &rc_x509_trust::EndpointHostname,
     ) -> Result<(), rc_x509_trust::trust_store::VerificationError> {
         unimplemented!()
     }

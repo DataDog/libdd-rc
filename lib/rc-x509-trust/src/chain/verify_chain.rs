@@ -78,7 +78,7 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
 
 /// Failures to verify a certificate chain.
 #[derive(Debug, Error)]
-pub(crate) enum ChainVerifyError {
+pub enum ChainVerifyError {
     /// The certificate is malformed in some way; the error within describes
     /// precisely the cause.
     #[error("a certificate is malformed: {0}")]
@@ -518,13 +518,8 @@ mod tests {
 
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let leaf = UntrustedCert::from(input.leaf.cert().clone());
-        let got = verify_chain(
-            &leaf,
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect("successfully validated chain");
+        let got = verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect("successfully validated chain");
 
         assert_eq!(got.fingerprint(), input.leaf.cert().fingerprint());
     }
@@ -739,13 +734,8 @@ mod tests {
         // Every mutation renders the chain invalid, so verification MUST
         // reject it, for the reason the mutation was designed to provoke.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        let err = verify_chain(
-            &leaf,
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect_err("invalid chain must be rejected");
+        let err = verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect_err("invalid chain must be rejected");
 
         input.assert_err(ChainError::Verify(err));
     }
@@ -777,12 +767,7 @@ mod tests {
         // Every certificate in the chain is valid, and the chain is within the
         // depth limit, so it MUST be accepted.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        verify_chain(
-            &leaf,
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect("a chain within the path depth limit must be accepted");
+        verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect("a chain within the path depth limit must be accepted");
     }
 }
