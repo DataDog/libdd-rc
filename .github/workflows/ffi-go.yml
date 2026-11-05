@@ -49,15 +49,14 @@ jobs:
           # rc-x509-ffi, so would only ever shrink the cache.
           cache-save: false
 
-      - name: Add Go bin to PATH
-        run: echo "/root/go/bin" >> "$GITHUB_PATH"
-
       - name: Verify committed Go protobuf bindings
         working-directory: ffi-hosts/go
         run: |
           rm -rf rcproto
           make generate
-          if [ -n "$(git status --porcelain --untracked-files=all -- rcproto)" ]; then
+          # A separate assignment, so that a failing git status fails the step.
+          status="$(git status --porcelain --untracked-files=all -- rcproto)"
+          if [ -n "$status" ]; then
             git diff -- rcproto
             git status --short --untracked-files=all -- rcproto
             echo "Generated Go protobuf bindings are out of sync; run 'buf generate' and commit ffi-hosts/go/rcproto."
