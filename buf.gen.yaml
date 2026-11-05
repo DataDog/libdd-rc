@@ -17,7 +17,7 @@
 #
 # Run locally with:
 #
-#   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+#   go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
 #   buf generate
 #
 # Generated output is committed under ffi-hosts/go/rcproto so the published Go
