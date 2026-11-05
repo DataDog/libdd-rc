@@ -297,32 +297,21 @@ func TestWithDCHostname(t *testing.T) {
 	}
 }
 
-// closeNotifyingFFIContext reports when Close is called, so tests can wait for
-// a shutdown that finishes in the background.
-type closeNotifyingFFIContext struct {
-	fakeFFIContext
-	closed chan struct{}
-}
-
-func (fc *closeNotifyingFFIContext) Close() error {
-	close(fc.closed)
-	return nil
-}
-
 // TestCloseReturnsWhenContextDone validates that Close stops waiting when
 // its context is done, doesn't free the FFI context while the run loop is still
 // running, and frees it once the loop exits.
 func TestCloseReturnsWhenContextDone(t *testing.T) {
-	ffi := &closeNotifyingFFIContext{closed: make(chan struct{})}
+	ffi := &fakeFFIContext{closed: make(chan struct{})}
 	client := &Client{ffiCtx: ffi}
 
 	// Simulate a run loop that doesn't exit when canceled.
 	client.wg.Add(1)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if err := client.Close(ctx); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Close() = %v, want context.DeadlineExceeded", err)
+	// The run loop never exits, so Close can only return through ctx.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := client.Close(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Close() = %v, want context.Canceled", err)
 	}
 
 	select {
