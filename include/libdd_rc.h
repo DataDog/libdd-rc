@@ -376,15 +376,28 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *u
  Calling this out of order is a debug-build panic; release builds instead
  return [`ConnRet::InvalidState`] and leave the connection unchanged.
 
+ `endpoint_hostname` is the DNS address of the Datadog datacenter this
+ connection was established to (e.g. `config.datadoghq.com`). This value is
+ critical to signature verification and SHOULD match the Datadog domain name
+ for the Remote Config subdomain of the DC this connection is open to.
+
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client
-     library for the duration of the call.
+     library for the duration of the call. `endpoint_hostname` is copied into
+     the connection state; ownership of the buffer backing it is retained by
+     the caller.
 
  # Safety
 
+ `endpoint_hostname` MUST be valid for a read of `endpoint_hostname_len`
+ bytes for the duration of this function call, and MUST reference valid
+ UTF-8.
+
  This call is not concurrency safe.
  */
-conn_ret_t rc_conn_connected(struct FFIConnection *conn);
+conn_ret_t rc_conn_connected(struct FFIConnection *conn,
+                             const uint8_t *endpoint_hostname,
+                             uint32_t endpoint_hostname_len);
 
 /*
  Mark the connection as closed.

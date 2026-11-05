@@ -15,7 +15,7 @@
 use rc_crypto::certificate::Certificate;
 
 /// A root "trust anchor" certificate from which all trust is descended.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RootCertificate(Certificate);
 
 impl RootCertificate {

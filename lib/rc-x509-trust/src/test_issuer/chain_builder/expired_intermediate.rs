@@ -46,7 +46,11 @@ impl ChainMutator for ExpiredIntermediate {
         let target = self.seed % total;
         if index == target {
             // Set notAfter to a date firmly in the past.
-            builder.set_not_after(date_time_ymd(1969, 7, 20));
+            //
+            // This MUST be after the unix epoch - a pre-epoch timestamp cannot
+            // be represented by the verifier, and is rejected as a malformed
+            // time instead of an expired certificate.
+            builder.set_not_after(date_time_ymd(2020, 1, 1));
         }
     }
 

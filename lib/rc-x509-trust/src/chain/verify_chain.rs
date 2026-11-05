@@ -80,26 +80,247 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
 /// Failures to verify a certificate chain.
 #[derive(Debug, Error)]
 pub(crate) enum ChainVerifyError {
-    /// The leaf certificate contains invalid DER.
-    ///
-    /// This should not be possible, but is returned as an error (instead of
-    /// panic) due to the fact it is parsing untrusted input - any discrepancies
-    /// between the X509 parses would present as a DoS vector otherwise.
-    #[error("failed to read leaf cert in chain")]
-    ReadLeaf(webpki::Error),
+    /// The certificate is malformed in some way; the error within describes
+    /// precisely the cause.
+    #[error("a certificate is malformed: {0}")]
+    CertMalformed(webpki::Error),
 
-    /// The candidate chain could not be verified to be trusted.
+    /// A certificate in the chain carries a signature that does not verify
+    /// under the public key of the certificate that claims to have issued it.
     ///
-    /// This likely means a certificate is expired, an EKU constraint was not
-    /// satisfied, a name constraint ("DNS pin") was violated, or an attacker
-    /// has inserted a malicious certificate into client state.
-    #[error("untrusted chain rejected: {0}")]
-    RejectedChain(webpki::Error),
+    /// The certificate parsed correctly and the signature algorithm is
+    /// supported - the signature itself is simply wrong, which means the
+    /// certificate has been tampered with, or forged.
+    #[error("a certificate signature is invalid for the issuer public key")]
+    CertSignatureInvalid,
 
-    /// The leaf certificate has a `dNSName` SAN value that does not match the
-    /// [`EndpointHostname`].
-    #[error("name constraint mismatch: {0}")]
-    NameMismatch(webpki::Error),
+    /// As [`Self::CertSignatureInvalid`], but for the signature over the CRL
+    /// instead of a certificate.
+    #[error("the CRL signature is invalid for the issuer public key")]
+    CrlSignatureInvalid,
+
+    /// The CRL is malformed in some way; the error within describes precisely
+    /// the cause.
+    #[error("the CRL is malformed: {0}")]
+    CrlMalformed(webpki::Error),
+
+    /// Verifying the chain hit an internal limit designed to mitigate malicious
+    /// chains; this chain may or may not be valid.
+    #[error("verifying the chain hit an internal limit: {0}")]
+    ChainWalkLimits(webpki::Error),
+
+    /// The signer certificate is also a CA, which is not an allowed chain
+    /// configuration - only leaf certificates may sign payloads.
+    #[error("the leaf signer certificate has CA:TRUE")]
+    SignerIsCa,
+
+    /// The chain contains a non-leaf certificate that does not have `CA:TRUE`
+    /// in the certificate profile, meaning it is not allowed to issue
+    /// certificates.
+    #[error("a chain intermediate is not allowed to issue child certificates (missing CA:TRUE)")]
+    IntermediateNotCa,
+
+    /// A certificate that forms part of the chain being verified is expired,
+    /// relative to the local clock.
+    #[error(
+        "a certificate is expired (current local epoch is {}, not_after={})", 
+        .current.as_secs(),
+        .not_after.as_secs(),
+    )]
+    CertExpired {
+        current: UnixTime,
+        not_after: UnixTime,
+    },
+
+    /// A certificate that forms part of the chain being verified is not yet
+    /// valid, relative to the local clock.
+    #[error(
+        "a certificate has a validity in the future (current local epoch is {}, not_before={})", 
+        .current.as_secs(),
+        .not_before.as_secs(),
+    )]
+    CertFutureValidity {
+        current: UnixTime,
+        not_before: UnixTime,
+    },
+
+    /// A certificate that forms part of the chain being verified has been
+    /// explicitly revoked / untrusted, and cannot be used for verification.
+    #[error("a certificate in the verification chain is revoked")]
+    CertRevoked,
+
+    /// The CRL being used to check revocations has expired (relative to the
+    /// local clock), and verifications cannot succeed until a new, valid CRL is
+    /// obtained by the client.
+    #[error(
+        "the CRL has expired (current local epoch is {}, next_update={})", 
+        .current.as_secs(),
+        .next_update.as_secs(),
+    )]
+    CrlExpired {
+        current: UnixTime,
+        next_update: UnixTime,
+    },
+
+    /// The [`EndpointHostname`] was not found in the signer certificate SAN
+    /// entries, violating the DC pin. The connected DC is not allowed to sign
+    /// payloads for the provided [`EndpointHostname`].
+    ///
+    /// This is a chain configuration, or [`EndpointHostname`] issue.
+    #[error("DNS entry for '{expected}' not found in signer certificate SANs ({cert:?})")]
+    LeafNameMismatch { expected: String, cert: Vec<String> },
+
+    /// The chain contains an issuer certificate with a `nameConstraint` that is
+    /// violated by a certificate that appears after it in the chain.
+    ///
+    /// This is a chain configuration issue.
+    #[error("a certificate in the verification chain violates an issuer name constraint")]
+    ChainNameConstraint,
+
+    /// The chain has violated an issuer's `pathlen` constraint.
+    ///
+    /// This is a chain configuration issue.
+    #[error("chain violates the pathlen of a issuing certificates")]
+    PathLen,
+
+    /// The chain contains EKU constraints, which does not include the required
+    /// EKUs (`codeSigning`).
+    ///
+    /// This is a chain configuration issue.
+    #[error("required cert EKU was not found (want oids={:?}, got oids={:?}))", .required, .found)]
+    RequiredEKU {
+        required: KeyUsage,
+        found: Vec<Vec<usize>>,
+    },
+
+    /// The [`UntrustedChain`] being verified is constructed by following the
+    /// AKI -> SKI values to provide a candidate chain.
+    ///
+    /// However when verifying the chain, name checks are used to track chain
+    /// delegations instead - the "Issuer" field of a child certificate must
+    /// match the "Subject" field of the issuing parent certificate, up to the
+    /// root (this is the correct RFC-defined mechanism).
+    ///
+    /// This error indicates that a chain built using AKI -> SKI values produced
+    /// a chain that does not hold true when following the name chaining
+    /// algorithm. In practice, this should never happen, and may be an
+    /// indicator of compromise.
+    #[error(
+        "
+        chain building using AKI/SKI succeeded but verifying the chain failed \
+        when following the issuer / subject names\
+    "
+    )]
+    ChainBuildingMismatch,
+
+    /// An input is unsupported - the captured error contains more details.
+    #[error("unsupported: {0}")]
+    Unsupported(webpki::Error),
+
+    /// A catch-all for unknown errors that may be returned by the webpki crate
+    /// in the future.
+    #[error("unknown error: {0}")]
+    Unknown(webpki::Error),
+}
+
+impl From<webpki::Error> for ChainVerifyError {
+    fn from(value: webpki::Error) -> Self {
+        use webpki::Error;
+
+        match value {
+            // Malformed / unexpected inputs.
+            v @ (Error::BadDer
+            | Error::BadDerTime
+            | Error::EmptyEkuExtension
+            | Error::ExtensionValueInvalid
+            | Error::InvalidCertValidity
+            | Error::InvalidSerialNumber
+            | Error::InvalidNetworkMaskConstraint
+            | Error::MalformedDnsIdentifier
+            | Error::MalformedExtensions
+            | Error::MalformedNameConstraint
+            | Error::SignatureAlgorithmMismatch
+            | Error::TrailingData(..)) => Self::CertMalformed(v),
+
+            // A failed signature check against the issuer public key.
+            //
+            // webpki re-maps `InvalidSignatureForPublicKey` to
+            // `InvalidCrlSignatureForPublicKey` for all CRL signature checks,
+            // so these two cases are unambiguous.
+            Error::InvalidSignatureForPublicKey => Self::CertSignatureInvalid,
+            Error::InvalidCrlSignatureForPublicKey => Self::CrlSignatureInvalid,
+
+            v @ (Error::InvalidCrlNumber | Error::IssuerNotCrlSigner) => {
+                Self::CrlMalformed(v)
+            }
+
+            v @ (Error::MaximumNameConstraintComparisonsExceeded
+            | Error::MaximumPathBuildCallsExceeded
+            | Error::MaximumPathDepthExceeded
+            | Error::MaximumSignatureChecksExceeded) => Self::ChainWalkLimits(v),
+
+            // Expiry.
+            Error::CrlExpired { time, next_update } => Self::CrlExpired {
+                current: time,
+                next_update,
+            },
+            Error::CertExpired { time, not_after } => Self::CertExpired {
+                current: time,
+                not_after,
+            },
+            Error::CertNotValidYet { time, not_before } => Self::CertFutureValidity {
+                current: time,
+                not_before,
+            },
+
+            // Explicit revocation
+            Error::CertRevoked => Self::CertRevoked,
+
+            // The chain we resolved does not chain when using name matching.
+            Error::UnknownIssuer => Self::ChainBuildingMismatch,
+
+            // Misc
+            Error::NameConstraintViolation => Self::ChainNameConstraint,
+            Error::PathLenConstraintViolated => Self::PathLen,
+            Error::CaUsedAsEndEntity => Self::SignerIsCa,
+            Error::EndEntityUsedAsCa => Self::IntermediateNotCa,
+            Error::CertNotValidForName(ctx) => Self::LeafNameMismatch {
+                expected: ctx.expected.to_str().to_string(),
+                cert: ctx.presented,
+            },
+            Error::RequiredEkuNotFoundContext(ctx) => Self::RequiredEKU {
+                required: ctx.required,
+                found: ctx.present,
+            },
+
+            // Unsupported
+            v @ (Error::UnknownRevocationStatus | // OCSP
+            Error::UnsupportedCertVersion |
+            Error::UnsupportedCriticalExtension |
+            Error::UnsupportedCrlIssuingDistributionPoint |
+            Error::UnsupportedCrlVersion |
+            Error::UnsupportedDeltaCrl |
+            Error::UnsupportedIndirectCrl |
+            Error::UnsupportedNameType |
+            Error::UnsupportedRevocationReason |
+            Error::UnsupportedRevocationReasonsPartitioning |
+            Error::UnsupportedCrlSignatureAlgorithmContext(
+                ..
+            ) |
+            Error::UnsupportedSignatureAlgorithmContext(
+                ..
+            ) |
+            Error::UnsupportedCrlSignatureAlgorithmForPublicKeyContext(
+                ..
+            ) |
+            Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+                ..
+            )) => Self::Unsupported(v),
+
+            // Catch all to satisfy the non-exhaustive match requirement.
+            v => Self::Unknown(v),
+        }
+    }
 }
 
 /// Attempt to verify the validity of `cert`, using the candidate `chain` to
@@ -137,23 +358,20 @@ pub(crate) fn verify_chain(
         .collect::<Vec<_>>();
 
     // Verify the validity of the candidate chain.
-    let ee = webpki::EndEntityCert::try_from(&leaf_cert).map_err(ChainVerifyError::ReadLeaf)?;
-    let _path = ee
-        .verify_for_usage(
-            ALLOWED_SIGNATURE_ALGORITHMS,
-            &[anchor],
-            &intermediates,
-            UnixTime::now(),
-            eku_policy,
-            None,
-            None,
-        )
-        .map_err(ChainVerifyError::RejectedChain)?;
+    let ee = webpki::EndEntityCert::try_from(&leaf_cert)?;
+    let _path = ee.verify_for_usage(
+        ALLOWED_SIGNATURE_ALGORITHMS,
+        &[anchor],
+        &intermediates,
+        UnixTime::now(),
+        eku_policy,
+        None,
+        None,
+    )?;
 
     // Ensure any DNS name constraints on the intermediates (used to "pin" a
     // certificate to a DC) are valid for the leaf's DNS SAN value.
-    ee.verify_is_valid_for_subject_name(dns_name.as_server_name())
-        .map_err(ChainVerifyError::NameMismatch)?;
+    ee.verify_is_valid_for_subject_name(dns_name.as_server_name())?;
 
     debug!(
         root = root.as_value(),
@@ -172,19 +390,23 @@ mod tests {
     use rcgen::ExtendedKeyUsagePurpose;
 
     use crate::{
-        chain::{build_unverified_chain_for, tests::arbitrary_invalid_chain},
+        chain::{
+            ChainBuildError, MAX_INTERMEDIATES, build_unverified_chain_for,
+            tests::{ChainError, InvalidChain, arbitrary_invalid_chain},
+        },
         test_issuer::{
             CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
             NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
             arbitrary_chain, arbitrary_eku_apply_to, arbitrary_leaf_san_scenario,
             arbitrary_name_constraint_scenario,
         },
-        trust_store::{CertCache, MemoryCertCache},
+        trust_store::{CertCache, MemoryCertCache, RootSet, tests::arbitrary_ordered_root_set},
     };
 
     use super::*;
 
     static CA: TestCA = TestCA::new();
+    static CA2: TestCA = TestCA::new();
 
     /// The default leaf SAN used in [`TestChain::build`].
     const DEFAULT_LEAF_SAN: &str = "leaf.itsallbroken.com";
@@ -202,18 +424,30 @@ mod tests {
         /// root and the leaf.
         #[test]
         fn prop_valid_chain(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             input in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
         ) {
-            test_prop_valid_chain(input);
+            test_prop_valid_chain(roots, input);
         }
 
         /// Generate an invalid chain, by applying a random ChainMutator, each
         /// of which manipulates the chain to produce an invalid input chain.
         #[test]
         fn prop_invalid_chain(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             input in arbitrary_invalid_chain(&CA, 2..=5_u8),
         ) {
-            test_prop_invalid_chain(input);
+            test_prop_invalid_chain(roots, input);
+        }
+
+        /// Generate a valid chain that straddles the path depth limit, and
+        /// assert the limit is enforced.
+        #[test]
+        fn prop_chain_walk_limits(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            input in arbitrary_chain(&CA, 6..=10_u8, ValidChain::default()),
+        ) {
+            test_prop_chain_walk_limits(roots, input);
         }
 
         /// Randomise the set of EKUs on the chain certificates and assert:
@@ -225,10 +459,11 @@ mod tests {
         ///
         #[test]
         fn prop_eku_policy(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             ekus in arbitrary_eku_apply_to(),
             n_intermediates in 0..=5_u8,
         ) {
-            test_prop_eku_policy(ekus, n_intermediates);
+            test_prop_eku_policy(roots, ekus, n_intermediates);
         }
 
         /// Randomise the name constraint configuration of intermediate
@@ -243,6 +478,7 @@ mod tests {
         ///
         #[test]
         fn prop_dc_pin(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             connected_endpoint in prop_oneof![
                     Just("bananas.itsallbroken.com"),
                     Just(LEAF_ENDPOINT_HOSTNAME)
@@ -251,12 +487,12 @@ mod tests {
             san_scenario in arbitrary_leaf_san_scenario(),
             n_intermediates in 1..=5_u8, // Name constrains require an intermediate
         ) {
-            test_prop_dc_pin(connected_endpoint, ns_scenario, san_scenario, n_intermediates);
+            test_prop_dc_pin(roots, connected_endpoint, ns_scenario, san_scenario, n_intermediates);
         }
     }
 
     /// Process a valid chain, expecting success.
-    fn test_prop_valid_chain(input: TestChain) {
+    fn test_prop_valid_chain(roots: RootSet<2>, input: TestChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
 
         // Populate the cache with all the intermediate certificates.
@@ -276,7 +512,7 @@ mod tests {
 
         // Build a chain that connects leaf to root.
         let chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(input.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(input.leaf.cert().clone()),
             &cache,
         )
@@ -297,7 +533,7 @@ mod tests {
 
     /// Process a chain with randomised EKUs, asserting the EKU policy
     /// properties.
-    fn test_prop_eku_policy(ekus: ChainEKUConfig, n_intermediates: u8) {
+    fn test_prop_eku_policy(roots: RootSet<2>, ekus: ChainEKUConfig, n_intermediates: u8) {
         // Generate the chain.
         let chain = TestChain::build(&CA, n_intermediates, &SetEKUs::new(ekus.clone()));
 
@@ -323,12 +559,8 @@ mod tests {
         let untrusted_leaf = UntrustedCert::from(chain.leaf.cert().clone());
 
         // Build the candidate chain from the cache, which ignores EKUs.
-        let candidate_chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
-            &untrusted_leaf,
-            &cache,
-        )
-        .expect("valid chain structure");
+        let candidate_chain = build_unverified_chain_for(&roots, &untrusted_leaf, &cache)
+            .expect("valid chain structure");
 
         // Invariant 1 & 2: RequireCodeSigning requires the codeSigning EKU when
         // the EKU extension IS present, but allows certs that omit EKU entirely
@@ -390,7 +622,7 @@ mod tests {
             // the policy, so an intermediate that declares EKUs while omitting
             // codeSigning rejects the chain regardless of what the leaf says.
             assert!(ekus.intermediates().all(is_not_codesign)); // Test state assertion.
-            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            assert_matches!(result, Err(ChainVerifyError::RequiredEKU { .. }));
             return;
         }
 
@@ -407,18 +639,18 @@ mod tests {
             // because the "all certs have codeSigning" case was checked
             // earlier. The leaf must satisfy the policy itself.
             assert!(ekus.leaf().all(is_not_codesign)); // Test state assertion.
-            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            assert_matches!(result, Err(ChainVerifyError::RequiredEKU { .. }));
             return;
         }
 
         // Then the only remaining case is that either the leaf, or the
         // intermediate is constrained, but lacks a codeSigning EKU.
         if ekus.leaf().count() > 0 && ekus.leaf().all(is_not_codesign) {
-            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            assert_matches!(result, Err(ChainVerifyError::RequiredEKU { .. }));
             return;
         }
         if ekus.intermediates().count() > 0 && ekus.intermediates().all(is_not_codesign) {
-            assert_matches!(result, Err(ChainVerifyError::RejectedChain(_)));
+            assert_matches!(result, Err(ChainVerifyError::RequiredEKU { .. }));
             return;
         }
 
@@ -428,6 +660,7 @@ mod tests {
     /// Assert the name constraint ("DC pin") and leaf SAN scenarios produce the
     /// expected outcome.
     fn test_prop_dc_pin(
+        roots: RootSet<2>,
         connected_endpoint: &str,
         ns_scenario: NameConstraintScenario,
         san_scenario: LeafSanScenario,
@@ -443,7 +676,7 @@ mod tests {
         }
 
         let candidate_chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(chain.leaf.cert().clone()),
             &cache,
         )
@@ -463,7 +696,7 @@ mod tests {
         if !san_scenario.sans().iter().all(|v| ns_scenario.permits(v)) {
             assert_matches!(
                 result,
-                Err(ChainVerifyError::RejectedChain(_)),
+                Err(ChainVerifyError::ChainNameConstraint),
                 "chain with mismatched name constraint must be rejected"
             );
             return;
@@ -474,7 +707,10 @@ mod tests {
         if !san_scenario.sans().contains(&connected_endpoint) {
             assert_matches!(
                 result,
-                Err(ChainVerifyError::NameMismatch(_)),
+                Err(ChainVerifyError::LeafNameMismatch { expected, cert }) => {
+                    assert!(!cert.contains(&expected));
+                    assert_eq!(expected, connected_endpoint);
+                },
                 "leaf that does not assert the connected endpoint must be rejected"
             );
             return;
@@ -483,15 +719,16 @@ mod tests {
         result.expect("chain with valid name constraints and leaf SAN must be accepted");
     }
 
-    /// Process an invalid chain, expecting an error.
-    fn test_prop_invalid_chain(input: TestChain) {
+    /// Process an invalid chain, expecting the specific error the applied
+    /// mutation causes.
+    fn test_prop_invalid_chain(roots: RootSet<2>, input: InvalidChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
         let chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(input.root.cert().clone()),
+            &roots,
             &UntrustedCert::from(input.leaf.cert().clone()),
             &cache,
         );
@@ -504,12 +741,14 @@ mod tests {
                 // verified and MUST be identified as invalid.
                 v
             }
-            Err(_) => {
-                // The chain was rejected at the first step, return early.
-                return;
+            Err(e) => {
+                // The chain was rejected at the first step.
+                return input.assert_err(ChainError::Build(e));
             }
         };
 
+        // Every mutation renders the chain invalid, so verification MUST
+        // reject it, for the reason the mutation was designed to provoke.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let err = verify_chain(
             &CA.root_cert(),
@@ -520,6 +759,43 @@ mod tests {
         )
         .expect_err("invalid chain must be rejected");
 
-        assert_matches!(err, ChainVerifyError::RejectedChain(_));
+        input.assert_err(ChainError::Verify(err));
+    }
+
+    /// Process a valid chain that may exceed the path depth limit.
+    fn test_prop_chain_walk_limits(roots: RootSet<2>, input: TestChain) {
+        let cache = MemoryCertCache::new(1024 * 1024);
+        for identity in &input.intermediates {
+            cache.insert(UntrustedCert::from(identity.cert().clone()));
+        }
+
+        let leaf = UntrustedCert::from(input.leaf.cert().clone());
+
+        // MAX_INTERMEDIATES matches the path depth limit internal to the verifier,
+        // so an over-long chain is rejected here and never reaches
+        // verify_chain().
+        let chain = match build_unverified_chain_for(&roots, &leaf, &cache) {
+            Ok(v) => {
+                assert!(input.intermediates.len() <= MAX_INTERMEDIATES);
+                v
+            }
+            Err(e) => {
+                assert_matches!(e, ChainBuildError::ExcessivelyLongChain);
+                assert!(input.intermediates.len() > MAX_INTERMEDIATES);
+                return;
+            }
+        };
+
+        // Every certificate in the chain is valid, and the chain is within the
+        // depth limit, so it MUST be accepted.
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
+        verify_chain(
+            &CA.root_cert(),
+            leaf,
+            chain,
+            EKUPolicy::RequireCodeSigning,
+            &dns_name,
+        )
+        .expect("a chain within the path depth limit must be accepted");
     }
 }

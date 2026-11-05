@@ -28,6 +28,7 @@ arbitrary = { version = "1", optional = true, features = ["derive"] }
 futures = "0.3.32"
 rc-x509-proto.workspace = true
 rc-x509-trust.workspace = true
+rc-x509-roots.workspace = true
 rc-crypto.workspace = true
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["macros", "rt", "sync", "time"] }
@@ -45,6 +46,7 @@ tokio = { version = "1.52.3", features = ["parking_lot"] }
 assert_matches = "1.5.0"
 proptest = "1.11.0"
 proptest-derive = "0.9.0"
+static_assertions = "1.1.0"
 tokio = { version = "1.52.3", features = ["test-util"] }
 
 [features]

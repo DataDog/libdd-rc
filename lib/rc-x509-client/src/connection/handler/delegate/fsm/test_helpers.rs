@@ -24,10 +24,11 @@ use rc_x509_trust::cert::UntrustedCertBytes;
 use tokio_util::bytes::Bytes;
 
 use crate::{
+    Payload,
     codec::{ClientToServer, DetachedSignature, ServerToClient, tests::SAMPLE_CERT_DER},
     connection::{
         ReconnectionData,
-        handler::{ServerMessageDelegate as _, delegate::MessageDelegate},
+        handler::{AttestationVerifier, ServerMessageDelegate as _, delegate::MessageDelegate},
     },
     host_runtime::CorrelationId,
     mocks::io::{MockIO, MockIOServer},
@@ -38,11 +39,14 @@ use crate::{
 /// [`ClientToServer::ClientHello`] sent by `d`, derive the resulting
 /// [`ConnectionId`] from the client-provided nonce, and deliver the
 /// [`ServerToClient::ClientHelloAck`] response back to `d`.
-pub(crate) async fn do_handshake(
-    d: MessageDelegate,
+pub(crate) async fn do_handshake<V>(
+    d: MessageDelegate<V>,
     client: &mut MockIO,
     server: &mut MockIOServer,
-) -> MessageDelegate {
+) -> MessageDelegate<V>
+where
+    V: AttestationVerifier,
+{
     let d = d.send_hello(client).await;
 
     let client_nonce = assert_matches!(
@@ -95,7 +99,7 @@ pub(crate) fn arbitrary_valid_dispatch_request() -> impl Strategy<Value = Server
         .prop_map(
             |(id, payload, cert_id, signature)| ServerToClient::Dispatch {
                 correlation_id: CorrelationId::new(id),
-                payload,
+                payload: Payload::from(payload),
                 detached_signature: Some(DetachedSignature { cert_id, signature }),
             },
         )

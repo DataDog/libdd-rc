@@ -3,6 +3,8 @@ package libddrcffi
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +13,10 @@ import (
 	protocolv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol"
 	"google.golang.org/protobuf/proto"
 )
+
+// testEndpointHostname is the endpoint hostname reported to Connected in
+// tests.
+const testEndpointHostname = "config.datadoghq.com"
 
 // newFakeConnection builds a Connection backed by conn instead of a real
 // FFIConnection, standing in for X509Context.NewConnection for tests that
@@ -43,7 +49,7 @@ func newTestConnection(t *testing.T) (*Connection, *fakeConn) {
 
 	t.Cleanup(func() { _ = conn.Close() })
 
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
@@ -79,7 +85,7 @@ func TestConnectionRecvBeforeConnected(t *testing.T) {
 // connection has been torn down; the FFIConnection has been freed by then.
 func TestConnectionRecvAfterDisconnected(t *testing.T) {
 	conn := newFakeConnection(&fakeConn{})
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 	if err := conn.Close(); err != nil {
@@ -96,7 +102,7 @@ func TestConnectionRecvAfterDisconnected(t *testing.T) {
 func TestConnectionConnectedTwice(t *testing.T) {
 	conn, _ := newTestConnection(t)
 
-	if err := conn.Connected(); !errors.Is(err, ErrConnectionAlreadyConnected) {
+	if err := conn.Connected(testEndpointHostname); !errors.Is(err, ErrConnectionAlreadyConnected) {
 		t.Fatalf("second Connected() = %v, want ErrConnectionAlreadyConnected", err)
 	}
 }
@@ -111,8 +117,66 @@ func TestConnectionConnectedPropagatesNativeError(t *testing.T) {
 	conn := newFakeConnection(fake)
 	t.Cleanup(func() { _ = conn.Close() })
 
-	if err := conn.Connected(); !errors.Is(err, wantErr) {
+	if err := conn.Connected(testEndpointHostname); !errors.Is(err, wantErr) {
 		t.Fatalf("Connected() = %v, want %v", err, wantErr)
+	}
+}
+
+// TestConnectionConnectedForwardsEndpointHostname verifies the endpoint
+// hostname is passed through to the FFI layer for this connection, as it is
+// per-connection state used to verify the signatures of the messages received
+// over it.
+func TestConnectionConnectedForwardsEndpointHostname(t *testing.T) {
+	fake := &fakeConn{}
+	conn := newFakeConnection(fake)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	if err := conn.Connected("bananas.datadoghq.com"); err != nil {
+		t.Fatalf("Connected() returned error: %v", err)
+	}
+
+	want := []string{"bananas.datadoghq.com"}
+	if got := fake.connectedHostnames; !slices.Equal(got, want) {
+		t.Fatalf("connected() hostnames = %v, want %v", got, want)
+	}
+}
+
+// TestConnectionConnectedValidatesEndpointHostname verifies that an empty or
+// overly long endpoint hostname is rejected without reaching the FFI boundary,
+// where it would be passed as a null pointer (which rc_conn_connected asserts
+// against, aborting the process) or an over-long buffer.
+func TestConnectionConnectedValidatesEndpointHostname(t *testing.T) {
+	tests := []struct {
+		name             string
+		endpointHostname string
+		wantErr          bool
+	}{
+		{name: "valid", endpointHostname: testEndpointHostname, wantErr: false},
+		{name: "max length allowed", endpointHostname: strings.Repeat("a", maxStringLen), wantErr: false},
+		{name: "empty", endpointHostname: "", wantErr: true},
+		{name: "too long", endpointHostname: strings.Repeat("a", maxStringLen+1), wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &fakeConn{}
+			conn := newFakeConnection(fake)
+			t.Cleanup(func() { _ = conn.Close() })
+
+			err := conn.Connected(tt.endpointHostname)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("Connected(%q) returned nil error, want error", tt.endpointHostname)
+				}
+				if fake.connectedCalls != 0 {
+					t.Fatalf("connected() called %d times, want 0", fake.connectedCalls)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Connected(%q) returned error: %v", tt.endpointHostname, err)
+			}
+		})
 	}
 }
 
@@ -276,7 +340,7 @@ func TestDispatchWorkerDrainsQueueOnDisconnect(t *testing.T) {
 	}
 
 	conn := newFakeConnection(&fakeConn{})
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
@@ -370,7 +434,7 @@ func TestDispatchWorkerSurvivesHandlerPanic(t *testing.T) {
 // report the connection as closed; it must never reach the freed handle.
 func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 	conn := newFakeConnection(&fakeConn{})
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
@@ -407,7 +471,7 @@ func TestConnectionRecvConcurrentWithDisconnected(t *testing.T) {
 // queued on it.
 func TestDisconnectedPreservesQueuedOutgoing(t *testing.T) {
 	conn := newFakeConnection(&fakeConn{})
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
@@ -443,7 +507,7 @@ func TestContextCloseClosesOutgoing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 

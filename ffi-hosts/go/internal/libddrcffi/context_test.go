@@ -44,8 +44,8 @@ func TestContextCloseTwice(t *testing.T) {
 // TestInitValidatesAppNameAndVersion verifies that Init rejects empty or
 // overly long appName/version strings without reaching the FFI boundary.
 func TestInitValidatesAppNameAndVersion(t *testing.T) {
-	tooLong := strings.Repeat("a", maxAppNameOrVersionLen+1)
-	maxLen := strings.Repeat("a", maxAppNameOrVersionLen)
+	tooLong := strings.Repeat("a", maxStringLen+1)
+	maxLen := strings.Repeat("a", maxStringLen)
 
 	tests := []struct {
 		name    string
@@ -94,7 +94,7 @@ func TestConnectionLifecycle(t *testing.T) {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
 
-	if err := conn.Connected(); err != nil {
+	if err := conn.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestContextCloseForceDisconnectsOpenConnections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConnection() returned error: %v", err)
 	}
-	if err := connected.Connected(); err != nil {
+	if err := connected.Connected(testEndpointHostname); err != nil {
 		t.Fatalf("Connected() returned error: %v", err)
 	}
 

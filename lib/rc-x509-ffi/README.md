@@ -83,8 +83,16 @@ unsafe extern "C" fn do_send(
 }
 unsafe { rc_conn_send_callback(conn, do_send, ptr::null()) };
 
-// Mark the connection as available.
-unsafe { rc_conn_connected(conn) };
+// Mark the connection as available, providing the DNS address of the Datadog
+// datacenter this connection was established to.
+let endpoint_hostname = "config.datadoghq.com";
+unsafe {
+    rc_conn_connected(
+        conn,
+        endpoint_hostname.as_ptr(),
+        endpoint_hostname.len() as u32,
+    )
+};
 
 //
 // At this point, I/O is allowed to flow in either direction.

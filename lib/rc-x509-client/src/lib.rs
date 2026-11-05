@@ -20,12 +20,17 @@ mod build_version;
 pub mod codec;
 pub mod connection;
 pub mod dispatch;
+mod endpoint;
 pub mod entrypoint;
 pub mod host_runtime;
 mod metrics;
+mod payload;
 mod shutdown_signal;
 
 pub use abort_on_drop::*;
+pub use app_info::*;
+pub use endpoint::*;
+pub use payload::*;
 pub use shutdown_signal::*;
 
 #[cfg(test)]

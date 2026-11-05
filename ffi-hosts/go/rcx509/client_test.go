@@ -10,15 +10,25 @@ import (
 // TestValidateURLAcceptsValidURLs is the happy path test for URLs passed
 // to NewClient.
 func TestValidateURLAcceptsValidURLs(t *testing.T) {
-	urls := []string{
-		"ws://example.com",
-		"wss://example.com",
-		"wss://example.com:443/path",
+	tests := []struct {
+		url          string
+		wantHostname string
+	}{
+		{url: "ws://example.com", wantHostname: "example.com"},
+		{url: "wss://example.com", wantHostname: "example.com"},
+		{url: "wss://example.com:443/path", wantHostname: "example.com"},
 	}
 
-	for _, u := range urls {
-		if err := validateURL(u); err != nil {
-			t.Errorf("validateURL(%q) returned unexpected error: %v", u, err)
+	for _, tt := range tests {
+		got, err := parseURL(tt.url)
+		if err != nil {
+			t.Errorf("validateURL(%q) returned unexpected error: %v", tt.url, err)
+			continue
+		}
+		// The parsed URL is the source of the endpoint hostname passed to the
+		// FFI layer, so the host must come back free of any port.
+		if got.Hostname() != tt.wantHostname {
+			t.Errorf("validateURL(%q) hostname = %q, want %q", tt.url, got.Hostname(), tt.wantHostname)
 		}
 	}
 }
@@ -38,7 +48,7 @@ func TestValidateURLRejectsInvalidURLs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateURL(tt.url); err == nil {
+			if _, err := parseURL(tt.url); err == nil {
 				t.Errorf("validateURL(%q) expected an error, got nil", tt.url)
 			}
 		})
@@ -257,6 +267,29 @@ func TestShouldResetBackoffAtThreshold(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldResetBackoff(tt.duration); got != tt.want {
 				t.Errorf("shouldResetBackoff(%v) = %v, want %v", tt.duration, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWithDCHostname(t *testing.T) {
+	testCases := []struct {
+		input string
+	}{
+		{
+			input: "config.datadoghq.com",
+		},
+		{
+			input: "bananas", // Any value is passed through
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.input, func(t *testing.T) {
+			var opts options
+			WithDCHostname(tt.input)(&opts)
+
+			if opts.endpoint != tt.input {
+				t.Errorf("endpoint = %v, want %v", opts.endpoint, tt.input)
 			}
 		})
 	}

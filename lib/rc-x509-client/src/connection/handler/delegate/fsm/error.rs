@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Debug;
+
 use tracing::debug;
 
 use crate::connection::handler::SendToServer;
@@ -31,15 +33,16 @@ impl Error {
     pub(crate) const IS_HANDSHAKE_COMPLETE: bool = true;
 }
 
-impl<IO> ServerMessageDelegate<IO> for Fsm<Error>
+impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<Error, V>
 where
     IO: SendToServer,
+    V: Debug + Send + Sync,
 {
-    async fn send_hello(self, _reply: &mut IO) -> State {
+    async fn send_hello(self, _reply: &mut IO) -> State<V> {
         unreachable!("send_hello called outside the pre-handshake phase")
     }
 
-    async fn process(self, _msg: ServerToClient, _reply: &mut IO) -> State {
+    async fn process(self, _msg: ServerToClient, _reply: &mut IO) -> State<V> {
         debug!("dropping message due to protocol error");
         State::Error(self)
     }

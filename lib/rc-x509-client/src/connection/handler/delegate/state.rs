@@ -12,27 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Debug;
+
 use crate::{
     codec::{ProtocolError, ServerToClient},
     connection::handler::{
-        SendToServer,
+        AttestationVerifier, SendToServer,
         delegate::fsm::{Active, Error, Fsm, Handshaking, PreHandshake, ServerMessageDelegate},
     },
 };
 
 /// The current typestate of the [`Fsm`] for the connection.
 #[derive(Debug)]
-pub(crate) enum State {
+pub(crate) enum State<V> {
     /// No nonce has been generated and no `ClientHello` has been sent.
-    PreHandshake(Fsm<PreHandshake>),
+    PreHandshake(Fsm<PreHandshake, V>),
 
     /// The `ClientHello` has been sent and the client is waiting for the
     /// server to return the `ClientHelloAck`.
-    Handshaking(Fsm<Handshaking>),
+    Handshaking(Fsm<Handshaking, V>),
 
     /// The handshake completed successfully - the connection is accepting
     /// dispatch requests.
-    Active(Fsm<Active>),
+    Active(Fsm<Active, V>),
 
     /// The connection has experienced a protocol error and all future messages
     /// are ignored.
@@ -53,19 +55,23 @@ pub(crate) enum State {
     ///
     /// [`ClientToServer::ClientProtocolError`]:
     ///     rc_x509_proto::protocol::v1::ClientToServer
-    Error(Fsm<Error>),
+    Error(Fsm<Error, V>),
 }
 
-impl State {
+impl<V> State<V>
+where
+    V: Debug + Send + Sync,
+{
     /// Send a `ClientHello` handshake message, dispatching to whichever phase
     /// `self` currently is.
     ///
     /// # Panics
     ///
     /// Panics if this is not the first call to `self`.
-    pub(crate) async fn send_hello<IO>(self, reply: &mut IO) -> State
+    pub(crate) async fn send_hello<IO>(self, reply: &mut IO) -> State<V>
     where
         IO: SendToServer,
+        V: AttestationVerifier,
     {
         match self {
             State::PreHandshake(s) => s.send_hello(reply).await,
@@ -77,9 +83,10 @@ impl State {
 
     /// Process the decoded `msg`, dispatching to whichever phase `self`
     /// currently is.
-    pub(crate) async fn process<IO>(self, msg: ServerToClient, reply: &mut IO) -> State
+    pub(crate) async fn process<IO>(self, msg: ServerToClient, reply: &mut IO) -> State<V>
     where
         IO: SendToServer,
+        V: AttestationVerifier,
     {
         match self {
             State::PreHandshake(s) => s.process(msg, reply).await,
@@ -92,7 +99,7 @@ impl State {
     /// Log and report a protocol error `reason` to the backend, and
     /// transition to the terminal [`Error`] phase, dispatching to whichever
     /// phase `self` currently is.
-    pub(crate) async fn protocol_error<IO>(self, reply: &mut IO, reason: ProtocolError) -> State
+    pub(crate) async fn protocol_error<IO>(self, reply: &mut IO, reason: ProtocolError) -> State<V>
     where
         IO: SendToServer,
     {

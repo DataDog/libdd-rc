@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -24,6 +24,16 @@ var ErrAlreadyStarted = errors.New("rcx509: client already started")
 // already been closed.
 var ErrClientClosed = errors.New("rcx509: client is closed")
 
+// HandlerFunc handles a request for one service URI (a fully-qualified gRPC
+// method name) and returns the response payload. Handlers run on an
+// rcx509-owned goroutine, and MUST NOT take more than 30s to execute (else ctx
+// is cancelled, and the RPC endpoint is marked unhealthy and subject to rate
+// limiting).
+//
+// If the returned err error is non-nil, the RPC endpoint MAY be marked as
+// unhealthy and rate limited, affecting future delivery.
+type HandlerFunc = libddrcffi.HandlerFunc
+
 // Client manages a connection between the RC x509 backend and the local
 // rc-x509-client subsystem.
 //
@@ -34,6 +44,11 @@ type Client struct {
 	ffiCtx FFIContext
 
 	url string
+
+	// endpointHostname is the DNS address of the Datadog DC reported to the
+	// FFI layer for each connection it establishes, used to verify the
+	// signatures of the messages received over that connection.
+	endpointHostname string
 
 	// Allows for better unit testing
 	dialer WebsocketDialer
@@ -57,6 +72,13 @@ type Client struct {
 type options struct {
 	apiKey     string
 	httpClient *http.Client
+
+	// The "endpoint" (DNS hostname) being connected to.
+	//
+	// This is required to match SAN entries in the certificate chain during
+	// signature validation, and should be set to the DC the client is connected
+	// to.
+	endpoint string
 }
 
 // Option configures optional Client behaviour.
@@ -76,6 +98,20 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(o *options) { o.httpClient = client }
 }
 
+// WithDCHostname sets the DNS address used when verifying signatures from the
+// Datadog DC that issued them (e.g. config.datadoghq.com).
+//
+// If this value does not match the DNS address of the Datadog DC that signed a
+// message, a verification error will occur.
+//
+// By default, this value is extracted from the URL passed to NewClient, but in
+// cases where this may differ from the DC address (i.e. when dialling to an
+// non-transparent proxy) this option allows the verification hostname to be
+// changed.
+func WithDCHostname(endpoint string) Option {
+	return func(o *options) { o.endpoint = endpoint }
+}
+
 // NewClient initializes a new Client backed by its own instance of the
 // rc-x509-client subsystem. The connection is not started until explicited
 // requested by the user.
@@ -85,13 +121,16 @@ func WithHTTPClient(client *http.Client) Option {
 // appName and version identify the host application, and are reported to the
 // backend as part of the connection handshake.
 func NewClient(rawURL, appName, version string, opts ...Option) (*Client, error) {
-	var cfg options
-	for _, opt := range opts {
-		opt(&cfg)
+	u, err := parseURL(rawURL)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := validateURL(rawURL); err != nil {
-		return nil, err
+	var cfg options
+	cfg.endpoint = u.Hostname()
+
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 
 	ctx, err := libddrcffi.Init(appName, version)
@@ -99,11 +138,12 @@ func NewClient(rawURL, appName, version string, opts ...Option) (*Client, error)
 		return nil, err
 	}
 	return &Client{
-		ffiCtx:  &ffiContext{ctx},
-		url:     rawURL,
-		dialer:  &CoderWebsocketDialer{APIKey: cfg.apiKey, HTTPClient: cfg.httpClient},
-		backoff: newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
-		sleep:   sleepCtx,
+		ffiCtx:           &ffiContext{ctx},
+		url:              rawURL,
+		endpointHostname: cfg.endpoint,
+		dialer:           &CoderWebsocketDialer{APIKey: cfg.apiKey, HTTPClient: cfg.httpClient},
+		backoff:          newBackoff(defaultInitialBackoff, defaultMaxBackoff, defaultBackoffMultiplier),
+		sleep:            sleepCtx,
 	}, nil
 }
 
@@ -177,7 +217,7 @@ func (c *Client) Close() error {
 // RegisterHandler registers the provided function to be called when dispatch
 // messages matching the given uri (the fully-qualified gRPC method name) are
 // processed by the backend.
-func (c *Client) RegisterHandler(uri string, fn libddrcffi.HandlerFunc) error {
+func (c *Client) RegisterHandler(uri string, fn HandlerFunc) error {
 	return libddrcffi.RegisterHandler(uri, fn)
 }
 
@@ -202,10 +242,10 @@ func (c *Client) run(ctx context.Context) {
 	for {
 		conn, ws, err := c.establishConnection(ctx)
 		if err != nil {
-			log.Printf("failed to establish connection: %v", err)
+			slog.Warn("rcx509: failed to establish connection", "error", err)
 
 			if ctx.Err() != nil {
-				log.Printf("closing run because of context err: %v", ctx.Err())
+				slog.Debug("rcx509: closing run because of context err", "error", ctx.Err())
 				return
 			}
 
@@ -218,12 +258,12 @@ func (c *Client) run(ctx context.Context) {
 		start := time.Now()
 		err = c.runSession(ctx, conn, ws)
 		if err != nil {
-			log.Printf("session closed: %v", err)
+			slog.Info("rcx509: session closed", "error", err)
 		}
 
 		// Err handles both errors, and the context being canceled.
 		if ctx.Err() != nil {
-			log.Printf("closing run because of context err: %v", ctx.Err())
+			slog.Debug("rcx509: closing run because of context err", "error", ctx.Err())
 			return
 		}
 
@@ -237,20 +277,20 @@ func (c *Client) run(ctx context.Context) {
 	}
 }
 
-// validateURL reports an error if rawURL is not a ws:// or wss:// URL with a
-// non-empty host.
-func validateURL(rawURL string) error {
+// parseURL parses rawURL, returning an error if it is not a ws:// or wss://
+// URL with a non-empty host.
+func parseURL(rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("rcx509: invalid url: %w", err)
+		return nil, fmt.Errorf("rcx509: invalid url: %w", err)
 	}
 	if u.Scheme != "ws" && u.Scheme != "wss" {
-		return fmt.Errorf("rcx509: url scheme must be ws or wss, got %q", u.Scheme)
+		return nil, fmt.Errorf("rcx509: url scheme must be ws or wss, got %q", u.Scheme)
 	}
 	if u.Host == "" {
-		return errors.New("rcx509: url must have a non-empty host")
+		return nil, errors.New("rcx509: url must have a non-empty host")
 	}
-	return nil
+	return u, nil
 }
 
 // shouldResetBackoff reports whether a session that stayed up for

@@ -14,8 +14,9 @@
 # limitations under the License.
 
 # Copies the aws-lc-fips-sys crypto lib built by `cargo build -p rc-x509-ffi`
-# to a version-agnostic name next to librc_x509_ffi.a, so bridge.go's LDFLAGS
-# don't need updating when the aws-lc-fips-sys version in Cargo.lock changes.
+# to a version-agnostic name next to librc_x509_ffi.a, so the Makefile's
+# CGO_LDFLAGS don't need updating when the aws-lc-fips-sys version in
+# Cargo.lock changes.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../.."

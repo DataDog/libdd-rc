@@ -13,18 +13,21 @@
 // limitations under the License.
 
 use rc_crypto::certificate::id::IssuerCertId;
-use rc_x509_roots::RootCertificate;
 use thiserror::Error;
 use tracing::{debug, error, trace};
 use valuable::Valuable;
 
-use crate::{cert::UntrustedCert, chain::UntrustedChain, trust_store::CertCache};
+use crate::{
+    cert::UntrustedCert,
+    chain::UntrustedChain,
+    trust_store::{CertCache, RootSet},
+};
 
-/// The absolute maximum allowed length of any chain from root to leaf,
-/// including root and excluding leaf.
+/// The absolute maximum number of intermediate certificates allowed in any
+/// chain, excluding both the root and the leaf.
 ///
-/// Chain lengths over this value will fail validation.
-pub const MAX_CHAIN_LEN: usize = 20;
+/// Chains containing more intermediates than this value will fail validation.
+pub const MAX_INTERMEDIATES: usize = 6;
 
 /// Errors during chain building.
 #[derive(Debug, Error)]
@@ -34,17 +37,18 @@ pub enum ChainBuildError {
     #[error("intermediate certificate is missing from the trust store (cert ID: {0})")]
     MissingIntermediate(IssuerCertId),
 
-    /// A chain was provided that has >= [`MAX_CHAIN_LEN`] number of
+    /// A chain was provided that has more than [`MAX_INTERMEDIATES`] intermediate
     /// certificates in the path from root to leaf.
     ///
     /// Chain building was aborted to avoid a potential DoS vector.
-    #[error("refused to validate chain with >{MAX_CHAIN_LEN} nodes")]
+    #[error("refused to validate chain with >{MAX_INTERMEDIATES} intermediates")]
     ExcessivelyLongChain,
 }
 
 /// Build a candidate chain from `cert` to `root`, using entries in `cache`.
 ///
-/// The returned chain MUST be cryptographically verified before use.
+/// The returned chain MUST be cryptographically verified before use. The chain
+/// includes both the leaf, and appropriate root.
 ///
 /// All certificates necessary to build the chain must be present in `cache`, or
 /// a [`ChainBuildError::MissingIntermediate`] error is returned.
@@ -85,27 +89,29 @@ pub enum ChainBuildError {
 /// Where `<leaf>` and `<cert>` are implicit and not present in the returned
 /// chain - they must be passed into any subsequent calls that use the
 /// [`UntrustedChain`].
-pub(crate) fn build_unverified_chain_for<T>(
-    root: &RootCertificate,
+pub(crate) fn build_unverified_chain_for<'a, const N: usize, T>(
+    roots: &'a RootSet<N>,
     cert: &UntrustedCert,
     cache: &T,
-) -> Result<UntrustedChain, ChainBuildError>
+) -> Result<UntrustedChain<'a>, ChainBuildError>
 where
     T: CertCache,
 {
+    let root;
     let mut next_cert_id = cert.issuer_cert_id().to_owned();
     let mut chain = vec![];
     loop {
         // If the next cert ID to resolve is the same as the cert ID in the
         // root, the candidate chain is complete (but unverified).
-        if next_cert_id.as_dangerous_comparable() == root.cert_id().as_dangerous_comparable() {
+        if let Some(v) = roots.find(next_cert_id.as_dangerous_comparable()) {
+            root = v;
             break;
         }
 
         // Guard against a maliciously long chain that would result in
         // excessive memory / CPU utilisation by bounding the length of
         // "chain" and aborting if it his a threshold.
-        if chain.len() > MAX_CHAIN_LEN {
+        if chain.len() >= MAX_INTERMEDIATES {
             error!(
                 cert = cert.as_value(),
                 chain_len = %chain.len(),
@@ -138,33 +144,36 @@ where
         chain.push(issuer_cert);
     }
 
-    Ok(UntrustedChain::from(chain))
+    Ok(UntrustedChain::new(root, chain))
 }
 
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
+    use rc_x509_roots::RootCertificate;
 
     use crate::{
         chain::tests::arbitrary_invalid_chain_spuriously_built,
         test_issuer::{
             CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
         },
-        trust_store::MemoryCertCache,
+        trust_store::{MemoryCertCache, tests::arbitrary_ordered_root_set},
     };
 
     use super::*;
 
     static CA: TestCA = TestCA::new();
+    static CA2: TestCA = TestCA::new();
 
     /// The root always chains to itself.
     #[test]
     fn test_root_chain_root() {
         let cache = MemoryCertCache::new(1024 * 1024);
 
+        let roots = RootSet::new([CA.root_cert()]);
         let got = build_unverified_chain_for(
-            &CA.root_cert(),
+            &roots,
             &UntrustedCert::from(CA.root().cert().clone()),
             &cache,
         )
@@ -182,7 +191,7 @@ mod tests {
 
         // Generate a chain of N-1 intermediates in the cache.
         let mut last = None;
-        for i in 0..=(MAX_CHAIN_LEN + 1) {
+        for i in 0..=(MAX_INTERMEDIATES + 1) {
             let intermediate = CertBuilder::new_intermediate(
                 format!("Intermediate {}", i + 1),
                 last.as_ref().unwrap_or(CA.root()),
@@ -200,7 +209,7 @@ mod tests {
             .build();
 
         let err = build_unverified_chain_for(
-            &CA.root_cert(),
+            &RootSet::new([CA.root_cert()]),
             &UntrustedCert::from(leaf.cert().clone()),
             &cache,
         )
@@ -301,8 +310,11 @@ mod tests {
             .build();
 
         // Chain building succeeds in returning an UntrustedChain.
+        let roots = RootSet::new([RootCertificate::from_trusted_cert(
+            legit_root.cert().clone(),
+        )]);
         let chain = build_unverified_chain_for(
-            &RootCertificate::from_trusted_cert(legit_root.cert().clone()),
+            &roots,
             &UntrustedCert::from(evil_leaf.cert().clone()),
             &cache,
         )
@@ -323,6 +335,7 @@ mod tests {
         /// the input.
         #[test]
         fn prop_valid_chain_building(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             chain in arbitrary_chain(&CA, 0..5_u8, ValidChain::default()),
         ) {
             let cache = MemoryCertCache::new(1024 * 1024);
@@ -345,7 +358,7 @@ mod tests {
 
             // Build a chain that connects leaf to root.
             let got = build_unverified_chain_for(
-                &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+                &roots,
                 &UntrustedCert::from(chain.leaf.cert().clone()),
                 &cache,
             )
@@ -366,6 +379,7 @@ mod tests {
         /// identifying the missing certificate is returned.
         #[test]
         fn prop_missing_intermediate(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             n_intermediates in 1..3_u8, // Always at least one intermediate
             seed in any::<u8>(),
         ) {
@@ -383,7 +397,7 @@ mod tests {
             }
 
             let err = build_unverified_chain_for(
-                &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+                &roots,
                 &UntrustedCert::from(chain.leaf.cert().clone()),
                 &cache,
             )
@@ -403,6 +417,7 @@ mod tests {
         /// not detected until later verification.
         #[test]
         fn prop_spuriously_accepted_invalid_chains(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
             chain in arbitrary_invalid_chain_spuriously_built(&CA, 2..5_u8),
         ) {
             let cache = MemoryCertCache::new(1024 * 1024);
@@ -415,7 +430,7 @@ mod tests {
             // Chain building succeeds because it cannot verify the mutations
             // applied by the randomly selected ChainMutator.
             let _got = build_unverified_chain_for(
-                &RootCertificate::from_trusted_cert(chain.root.cert().clone()),
+                &roots,
                 &UntrustedCert::from(chain.leaf.cert().clone()),
                 &cache,
             )

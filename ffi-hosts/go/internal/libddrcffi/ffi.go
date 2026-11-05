@@ -1,19 +1,16 @@
 package libddrcffi
 
-// NOTE: rc-crypto defaults to the "fips" feature, and AWS-LC's FIPS-validated
-// crypto module ships only as a shared object (never a static archive) since
-// it must verify its own binary at load time. librc_x509_ffi.a is linked
-// statically, but the FIPS crypto module must still be linked dynamically;
-// `make libffi` copies the version-named lib (e.g.
-// libaws_lc_fips_0_13_16_crypto) to the version-agnostic
-// libaws_lc_fips_crypto next to librc_x509_ffi.a in target/release, so the
-// -laws_lc_fips_crypto link below stays valid across aws-lc-fips-sys version
-// bumps in Cargo.lock.
+// These directives name the libraries to link, not where to find them: the
+// build supplies library locations and any runtime search path through
+// CGO_LDFLAGS (see the Makefile). The include path only exists in a libdd-rc
+// checkout; other builds supply it through CGO_CFLAGS.
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../../include
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -liconv -framework CoreFoundation -framework Security -lm -Wl,-rpath,${SRCDIR}/../../../../target/release
-#cgo linux LDFLAGS: -L${SRCDIR}/../../../../target/release -lrc_x509_ffi -laws_lc_fips_crypto -lpthread -ldl -lm -Wl,-rpath,${SRCDIR}/../../../../target/release
+#cgo LDFLAGS: -lrc_x509_ffi
+#cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security -lm
+#cgo linux LDFLAGS: -lpthread -ldl -lm
+#cgo windows LDFLAGS: -lbcrypt -lntdll -luserenv -lws2_32
 #include "libdd_rc.h"
 
 extern DispatchRet goDispatchCb(uint64_t correlation_id, uint8_t *data, uint32_t length, void *user_data);
@@ -23,7 +20,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"runtime/cgo"
 	"unsafe"
 
@@ -41,8 +38,10 @@ const (
 // Connection's state machine and worker plumbing without linking the native
 // library.
 type nativeConn interface {
-	// connected reports the connection as established to rc-x509-client.
-	connected() error
+	// connected reports the connection as established to rc-x509-client,
+	// along with the DNS address of the Datadog datacenter it was established
+	// to. endpointHostname must be non-empty.
+	connected(endpointHostname string) error
 
 	// recv passes data received from the RC delivery backend into
 	// rc-x509-client. data must be non-empty.
@@ -81,15 +80,25 @@ func newCgoConn(ctxPtr *C.Ctx, userData unsafe.Pointer) (*cgoConn, error) {
 	// Our send callback is generic, so we can go ahead and set this for the
 	// newly established connection.
 	if ret := C.rc_conn_send_callback(ptr, C.SendCb(C.goSendCb), userData); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_send_callback returned %v", ret)
+		slog.Error("ddrc: rc_conn_send_callback failed", "ret", ret)
 	}
 
 	return &cgoConn{ptr: ptr}, nil
 }
 
-func (c *cgoConn) connected() error {
-	if ret := C.rc_conn_connected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_connected returned %v", ret)
+func (c *cgoConn) connected(endpointHostname string) error {
+	// rc_conn_connected only requires the buffer to be valid for the duration
+	// of the call: it copies the string before returning, so it can be passed
+	// directly without allocating C memory first.
+	endpointHostnameBytes := []byte(endpointHostname)
+
+	ret := C.rc_conn_connected(
+		c.ptr,
+		(*C.uint8_t)(unsafe.Pointer(&endpointHostnameBytes[0])),
+		C.uint32_t(len(endpointHostnameBytes)),
+	)
+	if ret != C.CONN_RET_T_SUCCESS {
+		slog.Warn("ddrc: rc_conn_connected failed", "ret", ret)
 		return fmt.Errorf("ddrc: rc_conn_connected returned %v", ret)
 	}
 	return nil
@@ -104,7 +113,7 @@ func (c *cgoConn) recv(data []byte) error {
 
 func (c *cgoConn) disconnected() {
 	if ret := C.rc_conn_disconnected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_disconnected returned %v", ret)
+		slog.Warn("ddrc: rc_conn_disconnected failed", "ret", ret)
 	}
 }
 
@@ -117,12 +126,12 @@ func (c *cgoConn) dispatchResult(correlationID uint64, encoded []byte) {
 }
 
 func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
-	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.int(errorCode))
+	C.rc_conn_dispatch_error(c.ptr, C.uint64_t(correlationID), C.DispatchHostError(errorCode))
 }
 
 func (c *cgoConn) free() {
 	if ret := C.rc_conn_free(c.ptr); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_free returned %v", ret)
+		slog.Warn("ddrc: rc_conn_free failed", "ret", ret)
 	}
 }
 

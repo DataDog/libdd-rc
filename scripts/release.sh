@@ -113,7 +113,7 @@ print -Pn "%F{yellow}proceed?%f [y/N] " >&2
 read -r CONFIRM
 [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echoe "%F{red}aborted%f"; exit 1; }
 
-echoe "performing dry run publish for each crate"
+echoe "performing dry run publish for each crate (this can take a while)"
 
 cargo publish --dry-run --workspace > publish.log 2>&1 \
 	|| { cat publish.log; exit 1; }
@@ -132,5 +132,15 @@ git push origin "$TAG"
 echoe "creating GitHub release"
 gh release create "$TAG" --title "$TAG" --generate-notes
 
-echoe "publish complete - switching to workflow view"
-gh run watch "$(gh run list -w publish --limit 1 --json databaseId -q '.[0].databaseId')" --exit-status
+echoe "publish complete - wait to switch to workflow view"
+RUN_ID=""
+for ATTEMPT in {1..60}; do
+	RUN_ID=$(gh run list -w publish --event release --branch "$TAG" --limit 1 --json databaseId -q '.[0].databaseId // empty')
+	[[ -n "$RUN_ID" ]] && break
+	sleep 5
+done
+if [[ -z "$RUN_ID" ]]; then
+	echoe "%F{red}timed out waiting for the publish workflow for $TAG%f"
+	exit 1
+fi
+gh run watch "$RUN_ID" --exit-status

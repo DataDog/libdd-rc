@@ -21,10 +21,9 @@ use rc_x509_proto::{DecodeError, protocol::v1};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::TrySendError};
 use tokio_stream::wrappers::ReceiverStream;
-use tokio_util::bytes::Bytes;
 use tracing::warn;
 
-use crate::host_runtime::CorrelationId;
+use crate::{Payload, host_runtime::CorrelationId};
 
 /// The maximum number of dispatch payloads that can be queued in memory,
 /// waiting for the [`DispatchStream`] to consume.
@@ -44,7 +43,7 @@ pub struct Dispatch {
     pub correlation_id: CorrelationId,
 
     /// The attestation-verified, encoded [`v1::DispatchRequestPayload`].
-    pub payload: Bytes,
+    pub payload: Payload,
 }
 
 /// The result of processing a [`Dispatch`].
@@ -362,14 +361,14 @@ mod tests {
         publisher
             .dispatch(Dispatch {
                 correlation_id,
-                payload: Bytes::from_static(&[1, 2, 3]),
+                payload: Payload::from(&[1, 2, 3]),
             })
             .await
             .expect("queue has capacity");
 
         let got = stream.next().await.expect("must have queued request");
         assert_eq!(got.correlation_id, correlation_id);
-        assert_eq!(got.payload, Bytes::from_static(&[1, 2, 3]));
+        assert_eq!(got.payload, Payload::from(&[1, 2, 3]));
     }
 
     /// [`DispatchPublisher::take_recv_stream`] only yields the stream on the
@@ -439,7 +438,7 @@ mod tests {
         let err = publisher
             .dispatch(Dispatch {
                 correlation_id,
-                payload: Bytes::from_static(&[9]),
+                payload: Payload::from(&[9]),
             })
             .await
             .expect_err("request queue closed");
@@ -464,7 +463,7 @@ mod tests {
             publisher
                 .dispatch(Dispatch {
                     correlation_id: CorrelationId::new(i as u64),
-                    payload: Bytes::new(),
+                    payload: Payload::from(&[]),
                 })
                 .await
                 .expect("queue has capacity");
@@ -474,7 +473,7 @@ mod tests {
         let err = publisher
             .dispatch(Dispatch {
                 correlation_id,
-                payload: Bytes::new(),
+                payload: Payload::from(&[]),
             })
             .await
             .expect_err("queue is full");

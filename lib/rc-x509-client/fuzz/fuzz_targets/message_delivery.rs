@@ -51,7 +51,7 @@ use std::{
 use futures::Stream;
 use libfuzzer_sys::fuzz_target;
 use rc_x509_client::{
-    ShutdownSignal,
+    AppInfo, EndpointHostname, ShutdownSignal,
     codec::{ClientToServer, DecodingError, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::new_dispatcher_interconnect,
@@ -97,7 +97,7 @@ async fn run(msgs: Vec<ServerToClient>) {
     let (events_tx, events_rx) = mpsc::channel(1);
 
     // Initialise the library entrypoint.
-    let entrypoint = Main::new("rc-x509-client-fuzz".to_string(), "0.0.0".to_string());
+    let entrypoint = Main::new(AppInfo::new("rc-x509-client-fuzz", "0.0.0"));
     let driver = tokio::spawn(entrypoint.entrypoint(shutdown, ReceiverStream::new(events_rx)));
 
     // Init a dispatch interconnect, and keep it alive by holding onto all
@@ -107,7 +107,9 @@ async fn run(msgs: Vec<ServerToClient>) {
     // Drive the initialisation of a connection actor.
     events_tx
         .send(ConnectionUpdate::new(ConnectionEvent::Connected(
-            io, publisher,
+            io,
+            publisher,
+            EndpointHostname::from("config.datadoghq.com"),
         )))
         .await
         .expect("channel alive");

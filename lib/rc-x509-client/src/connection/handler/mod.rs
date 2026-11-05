@@ -16,7 +16,12 @@ mod actor;
 mod delegate;
 mod hello;
 mod traits;
+mod verifier;
+
+#[cfg(test)]
+pub(crate) mod mock_verifier;
 
 pub(crate) use actor::*;
 pub(crate) use delegate::MessageDelegate;
 use traits::*;
+pub use verifier::*;

@@ -17,7 +17,7 @@ use std::{ops::Deref, time::Duration};
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::{
-    AbortOnDrop, ShutdownCtl, ShutdownSignal,
+    AbortOnDrop, AppInfo, EndpointHostname, Payload, ShutdownCtl, ShutdownSignal,
     codec::{ClientToServer, DecodingError, DetachedSignature, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
@@ -52,7 +52,7 @@ impl TestClient {
     pub fn new() -> Self {
         let (signal, stop) = ShutdownSignal::new();
 
-        let client = Main::new("test".to_string(), "0.0.0".to_string());
+        let client = Main::new(AppInfo::new("test", "0.0.0"));
 
         let (event_tx, event_rx) = mpsc::channel(1);
         let handle = AbortOnDrop::from(tokio::spawn(
@@ -86,6 +86,7 @@ impl TestClient {
             .send(ConnectionUpdate::new(ConnectionEvent::Connected(
                 io,
                 dispatch_publisher,
+                EndpointHostname::from("config.itsallbroken.com"),
             )))
             .await
             .expect("notify: connection connected");
@@ -185,7 +186,7 @@ impl TestConn {
             .clone()
             .expect("handshake must be performed before dispatching");
 
-        let payload = encode(&v1::DispatchRequestPayload {
+        let payload = Payload::from(encode(&v1::DispatchRequestPayload {
             connection_id: Some(connection_id),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 MagicTunnelRequest {
@@ -193,7 +194,7 @@ impl TestConn {
                     request,
                 },
             )),
-        });
+        }));
 
         self.send(Ok(ServerToClient::Dispatch {
             correlation_id,
@@ -291,8 +292,8 @@ impl TestDispatch {
     }
 
     /// The raw application payload carried by this dispatch request.
-    pub fn payload(&self) -> Bytes {
-        self.dispatch.payload.clone()
+    pub fn payload(&self) -> &Payload {
+        &self.dispatch.payload
     }
 
     /// Decode this dispatch's payload, asserting it was routed for
@@ -301,7 +302,8 @@ impl TestDispatch {
     ///
     /// [`MagicTunnel`]: v1::dispatch_request_payload::Payload::MagicTunnel
     pub fn assume_magic_tunnel(&self, connection_id: &v1::ConnectionId) -> (String, Bytes) {
-        let got: v1::DispatchRequestPayload = decode(self.payload()).expect("valid message");
+        let got: v1::DispatchRequestPayload =
+            decode(self.payload().as_bytes().clone()).expect("valid message");
 
         assert_matches!(got.connection_id, Some(id) => {
             assert_eq!(&id, connection_id);

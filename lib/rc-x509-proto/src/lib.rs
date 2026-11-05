@@ -44,6 +44,18 @@ pub(crate) mod rc {
                         "/rc.x509.magic_tunnel.remote_config.v1.serde.rs"
                     ));
                 }
+                pub mod rc_secrets {
+                    pub mod v1 {
+                        include!(concat!(
+                            env!("OUT_DIR"),
+                            "/rc.x509.magic_tunnel.remote_config.rc_secrets.v1.rs"
+                        ));
+                        include!(concat!(
+                            env!("OUT_DIR"),
+                            "/rc.x509.magic_tunnel.remote_config.rc_secrets.v1.serde.rs"
+                        ));
+                    }
+                }
             }
             pub mod agent_integrations {
                 pub mod remote_queries {
@@ -107,6 +119,20 @@ where
     T::decode(buf)
 }
 
+impl core::fmt::Debug
+    for magic_tunnel::remote_config::rc_secrets::v1::PrepareSecretDeliveryResponse
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PrepareSecretDeliveryResponse")
+            .field("status", &self.status)
+            .field("token", &"<redacted>")
+            .field("public_key", &self.public_key)
+            .field("key_type", &self.key_type)
+            .field("key_validity", &self.key_validity)
+            .finish()
+    }
+}
+
 /// A value generator for [`Bytes`] fields on protobuf types (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
 pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
@@ -133,6 +159,13 @@ where
 pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<pbjson_types::Timestamp>> {
     proptest::prelude::any::<(i64, i32)>()
         .prop_map(|(seconds, nanos)| Some(pbjson_types::Timestamp { seconds, nanos }))
+}
+
+/// A value generator for [`pbjson_types::Duration`] fields (to satisfy the
+/// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+pub(crate) fn arbitrary_duration() -> impl Strategy<Value = Option<pbjson_types::Duration>> {
+    proptest::prelude::any::<(i64, i32)>()
+        .prop_map(|(seconds, nanos)| Some(pbjson_types::Duration { seconds, nanos }))
 }
 
 #[cfg(test)]
@@ -163,6 +196,19 @@ mod tests {
             decode::<ServerToClient>(got).expect("must round trip"),
             payload
         );
+    }
+
+    #[test]
+    fn test_prepare_secret_delivery_response_debug_redacts_token() {
+        let resp = magic_tunnel::remote_config::rc_secrets::v1::PrepareSecretDeliveryResponse {
+            token: "super-secret-token".to_string(),
+            ..Default::default()
+        };
+
+        let got = format!("{resp:?}");
+        assert!(!got.contains("super-secret-token"), "{got}");
+        assert!(got.contains("<redacted>"), "{got}");
+        assert_eq!(resp.token, "super-secret-token");
     }
 
     /// A struct that contains all primitive protobuf types.

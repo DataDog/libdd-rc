@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use rc_crypto::{certificate::Certificate, keys::PrivateKey};
-use rcgen::{CertificateParams, CertifiedIssuer, ExtendedKeyUsagePurpose};
+use rcgen::{CertificateParams, CertifiedIssuer, CustomExtension, ExtendedKeyUsagePurpose, IsCa};
 use time::OffsetDateTime;
 
 use crate::test_issuer::Identity;
@@ -42,6 +42,12 @@ pub(crate) struct Params {
 
     /// Override the Extended Key Usages.
     pub(super) extended_key_usages: Option<Vec<ExtendedKeyUsagePurpose>>,
+
+    /// Override the `basicConstraints` CA assertion set by the template.
+    pub(super) is_ca: Option<IsCa>,
+
+    /// Additional extensions to place in the certificate.
+    pub(super) custom_extensions: Vec<CustomExtension>,
 }
 
 impl Params {
@@ -65,6 +71,14 @@ impl Params {
         if let Some(ekus) = self.extended_key_usages {
             tbs.extended_key_usages = ekus;
         }
+
+        // Applied here rather than in the templates, because every template
+        // assigns `is_ca` unconditionally as part of its role.
+        if let Some(is_ca) = self.is_ca {
+            tbs.is_ca = is_ca;
+        }
+
+        tbs.custom_extensions.extend(self.custom_extensions);
 
         let issuer =
             CertifiedIssuer::signed_by(tbs, self.key, parent.issuer()).expect("signed cert");
@@ -97,6 +111,8 @@ where
                 not_before: None,
                 not_after: None,
                 extended_key_usages: None,
+                is_ca: None,
+                custom_extensions: vec![],
             },
             template,
         }
@@ -120,6 +136,17 @@ where
     /// Set the `notAfter` validity bound.
     pub(crate) fn set_not_after(&mut self, not_after: OffsetDateTime) {
         self.params.not_after = Some(not_after);
+    }
+
+    /// Override the `basicConstraints` CA assertion the template would
+    /// otherwise set for this certificate's role.
+    pub(crate) fn set_is_ca(&mut self, is_ca: IsCa) {
+        self.params.is_ca = Some(is_ca);
+    }
+
+    /// Place an additional extension in the certificate.
+    pub(crate) fn add_custom_extension(&mut self, ext: CustomExtension) {
+        self.params.custom_extensions.push(ext);
     }
 
     /// Set the Extended Key Usages for the certificate.

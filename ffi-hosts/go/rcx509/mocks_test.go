@@ -132,6 +132,7 @@ type fakeFFIConnection struct {
 	outgoing chan []byte
 
 	connectedErr    error
+	connectedHost   string
 	disconnectedErr error
 	recvErr         error
 
@@ -139,7 +140,8 @@ type fakeFFIConnection struct {
 	outgoingClosed    bool
 }
 
-func (fc *fakeFFIConnection) Connected() error {
+func (fc *fakeFFIConnection) Connected(endpointHostname string) error {
+	fc.connectedHost = endpointHostname
 	return fc.connectedErr
 }
 

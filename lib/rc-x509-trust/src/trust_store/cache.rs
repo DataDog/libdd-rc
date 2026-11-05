@@ -57,7 +57,9 @@ impl MemoryCertCache {
             certs: Cache::builder()
                 .max_capacity(approx_max_bytes)
                 .time_to_idle(PURGE_AFTER)
-                .weigher(|_id, cert: &Arc<UntrustedCert>| -> u32 { weight_estimator(cert) })
+                .weigher(|_id, cert: &Arc<UntrustedCert>| -> u32 {
+                    weight_estimator(cert.as_der_slice().len())
+                })
                 .build(),
         }
     }
@@ -102,9 +104,7 @@ impl CertCache for MemoryCertCache {
 /// Approximate the memory usage of `cert` for cache accounting purposes.
 ///
 /// See [`MemoryCertCache::new()`].
-fn weight_estimator(cert: &UntrustedCert) -> u32 {
-    let der_len = cert.as_der_slice().len();
-
+fn weight_estimator(der_len: usize) -> u32 {
     // Approximately account for overhead by applying a 25% multiplier; the DER
     // slice is not the only data in an `UntrustedCert`.
     u32::try_from((der_len * 5) / 4).unwrap_or(u32::MAX)
@@ -279,10 +279,10 @@ mod tests {
                 unique_inputs.push(cert);
             }
 
-            let total_weight: u64 = unique_inputs.iter().map(|v| u64::from(weight_estimator(v))).sum();
+            let total_weight: u64 = unique_inputs.iter().map(|v| u64::from(weight_estimator(v.as_der_slice().len()))).sum();
             let max_weight: u64 = unique_inputs
                 .iter()
-                .map(|v| u64::from(weight_estimator(v)))
+                .map(|v| u64::from(weight_estimator(v.as_der_slice().len())))
                 .max()
                 .expect("at least one input");
 
@@ -316,7 +316,7 @@ mod tests {
             // maximally sized entry.
             let cached_weight: u64 = cached_entries
                 .iter()
-                .map(|v| u64::from(weight_estimator(v)))
+                .map(|v| u64::from(weight_estimator(v.as_der_slice().len())))
                 .sum();
             assert!(
                 cached_weight <= cap + max_weight,
@@ -338,5 +338,22 @@ mod tests {
                 assert!(cached_entries.len() < unique_inputs.len());
             }
         }
+    }
+
+    /// A very rough estimation of the entry count for the cert cache.
+    #[test]
+    fn test_cert_cache_bounds() {
+        // The byte size of a certificate sampled from production.
+        //
+        // This is the raw DER byte size - the actual memory usage will be
+        // larger than this due to representation overhead and fragmentation.
+        const APPROX_CERT_SIZE: usize = 500;
+
+        // A 2MiB cache.
+        const CAPACITY_BYTES: usize = 1024 * 1024 * 2;
+
+        // Can hold this many certs (very roughly).
+        let approx_count = CAPACITY_BYTES / weight_estimator(APPROX_CERT_SIZE) as usize;
+        assert_eq!(approx_count, 3355);
     }
 }

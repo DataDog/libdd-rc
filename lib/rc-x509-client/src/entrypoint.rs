@@ -17,6 +17,8 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
+use rc_x509_roots::{R1, R2};
+use rc_x509_trust::trust_store::{CertCache, MemoryCertCache, TrustStore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -24,7 +26,7 @@ use tokio::pin;
 
 use crate::{
     AbortOnDrop, ShutdownSignal,
-    app_info::{AppInfo, AppName, AppVersion},
+    app_info::AppInfo,
     connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate},
     host_runtime::Connection,
     metrics::InstanceMetrics,
@@ -32,6 +34,16 @@ use crate::{
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
 pub const GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// 1 MiB in bytes.
+const MIB: usize = 1024 * 1024;
+
+/// The approximate upper bound on the certificate cache memory usage.
+///
+/// This value should account for the absolute number of live signer certs in
+/// use at any one time, plus any intermediates, else risks unnecessary extra
+/// round trips to obtain evicted, in-use certificates.
+const APPROX_MAX_CACHE_BYTES: usize = 2 * MIB;
 
 /// Defines the library entrypoint that is invoked by the FFI host.
 pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
@@ -67,11 +79,9 @@ pub struct Main {
 }
 
 impl Main {
-    /// Construct a new [`Main`] entrypoint, reporting `app_name` and
-    /// `version` to the backend as part of the connection handshake.
-    pub fn new(app_name: String, version: String) -> Self {
-        let app_info = AppInfo::new(AppName::from(app_name), AppVersion::from(version));
-
+    /// Construct a new [`Main`] entrypoint, reporting `app_info` to the backend
+    /// as part of the connection handshake.
+    pub fn new(app_info: AppInfo) -> Self {
         Self { app_info }
     }
 }
@@ -90,8 +100,15 @@ where
         info!(
             version = %env!("CARGO_PKG_VERSION"),
             commit = %metrics.version().commit().unwrap_or("unknown"),
+            app_name = %self.app_info.name(),
+            app_version = %self.app_info.version(),
             "starting rc-x509-client instance"
         );
+
+        let trust_store = Arc::new(TrustStore::new(
+            [R1.clone(), R2.clone()],
+            MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
+        ));
 
         // Begin processing the connection events.
         let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
@@ -99,6 +116,7 @@ where
             conn_events,
             metrics,
             self.app_info,
+            trust_store,
         )));
 
         // Wait forever for the shutdown signal.
@@ -126,13 +144,15 @@ where
 ///
 /// `incoming` is closed to signal this function should close any existing
 /// connections and exit.
-async fn handle_connection_events<IO>(
+async fn handle_connection_events<const N: usize, IO, T>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     metrics: Arc<InstanceMetrics>,
     app_info: AppInfo,
+    trust_store: Arc<TrustStore<N, T>>,
 ) where
     IO: Connection,
+    T: CertCache,
 {
     debug!("starting connection event handler");
 
@@ -170,7 +190,12 @@ async fn handle_connection_events<IO>(
 
         match event.into_event() {
             ConnectionEvent::Init => debug!("new connection registered"),
-            ConnectionEvent::Connected(io, mut dispatch) => {
+            ConnectionEvent::Connected(io, mut dispatch, endpoint_hostname) => {
+                debug!(
+                    verification_hostname = %endpoint_hostname,
+                    "connection established"
+                );
+
                 let stop = shutdown.child_token();
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
                 let delegate = MessageDelegate::new(
@@ -178,6 +203,7 @@ async fn handle_connection_events<IO>(
                     Arc::clone(&metrics),
                     dispatch,
                     app_info.clone(), // Refclone
+                    Arc::clone(&trust_store),
                 );
                 let conn = ConnectionActor::new(
                     io,

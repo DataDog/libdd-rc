@@ -70,12 +70,17 @@ message MagicTunnelResponse {
     // URI.
     bytes response = 1;
 
-    // The handler implementation returned an execution error.
+    // The handler implementation returned a fatal execution error (e.g. a
+    // panic).
+    //
+    // Strongly prefer returning a response payload that contains a structured
+    // error response. Returning a `handler_error` indicates the handler is
+    // unhealthy, and MAY be subject to rate limiting and affect future delivery
+    // attempts.
     //
     // This is returned to the backend for debugging and logging purposes.
     // Integrations SHOULD NOT parse this string (or any error string) to
-    // classify failures. Instead prefer returning a response payload that
-    // contains a structured error response.
+    // classify failures - there is no guarantee of backwards compatibility.
     string handler_error = 2;
   }
 }

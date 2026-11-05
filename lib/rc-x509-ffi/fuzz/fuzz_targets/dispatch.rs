@@ -56,6 +56,9 @@ use rc_x509_client::{
 use rc_x509_ffi::*;
 use rc_x509_proto::{decode, protocol::v1};
 
+/// The endpoint hostname reported for the fuzzed connection.
+const ENDPOINT_HOSTNAME: &str = "config.itsallbroken.com";
+
 fuzz_target!(|v: (&[u8], &[u8])| {
     // Incoming data from the server containing a dispatch request.
     let message = v.0;
@@ -138,7 +141,13 @@ fuzz_target!(|v: (&[u8], &[u8])| {
     let tx_ptr = Box::into_raw(tx);
     let conn = unsafe { rc_conn_new(&mut *ctx as _, do_dispatch, dispatch_tx_ptr as _) };
     unsafe { rc_conn_send_callback(conn, do_send, tx_ptr as _) };
-    unsafe { rc_conn_connected(conn) };
+    unsafe {
+        rc_conn_connected(
+            conn,
+            ENDPOINT_HOSTNAME.as_ptr(),
+            ENDPOINT_HOSTNAME.len() as _,
+        )
+    };
 
     // Push data into the client.
     let ret = unsafe { rc_conn_recv(conn, message.as_ptr(), message.len() as _) };
@@ -235,7 +244,7 @@ where
         pin_mut!(conn_events);
 
         while let Some(event) = conn_events.next().await {
-            if let ConnectionEvent::Connected(io, dispatch) = event.into_event() {
+            if let ConnectionEvent::Connected(io, dispatch, _hostname) = event.into_event() {
                 tokio::task::spawn(handle_conn(io, dispatch));
             }
         }
