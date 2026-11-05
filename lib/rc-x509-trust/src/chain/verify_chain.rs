@@ -771,7 +771,7 @@ mod tests {
 
         let leaf = UntrustedCert::from(input.leaf.cert().clone());
 
-        // MAX_CHAIN_LEN matches the path depth limit internal to the verifier,
+        // MAX_INTERMEDIATES matches the path depth limit internal to the verifier,
         // so an over-long chain is rejected here and never reaches
         // verify_chain().
         let chain = match build_unverified_chain_for(&roots, &leaf, &cache) {
