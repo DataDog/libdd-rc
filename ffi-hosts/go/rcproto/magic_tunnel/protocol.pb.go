@@ -205,12 +205,17 @@ type MagicTunnelResponse_Response struct {
 }
 
 type MagicTunnelResponse_HandlerError struct {
-	// The handler implementation returned an execution error.
+	// The handler implementation returned a fatal execution error (e.g. a
+	// panic).
+	//
+	// Strongly prefer returning a response payload that contains a structured
+	// error response. Returning a `handler_error` indicates the handler is
+	// unhealthy, and MAY be subject to rate limiting and affect future delivery
+	// attempts.
 	//
 	// This is returned to the backend for debugging and logging purposes.
 	// Integrations SHOULD NOT parse this string (or any error string) to
-	// classify failures. Instead prefer returning a response payload that
-	// contains a structured error response.
+	// classify failures - there is no guarantee of backwards compatibility.
 	HandlerError string `protobuf:"bytes,2,opt,name=handler_error,json=handlerError,proto3,oneof"`
 }
 
