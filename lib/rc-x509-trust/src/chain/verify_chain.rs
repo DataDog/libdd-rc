@@ -390,7 +390,10 @@ mod tests {
     use rcgen::ExtendedKeyUsagePurpose;
 
     use crate::{
-        chain::{build_unverified_chain_for, tests::arbitrary_invalid_chain},
+        chain::{
+            ChainBuildError, MAX_INTERMEDIATES, build_unverified_chain_for,
+            tests::{ChainError, InvalidChain, arbitrary_invalid_chain},
+        },
         test_issuer::{
             CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
             NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
@@ -435,6 +438,16 @@ mod tests {
             input in arbitrary_invalid_chain(&CA, 2..=5_u8),
         ) {
             test_prop_invalid_chain(roots, input);
+        }
+
+        /// Generate a valid chain that straddles the path depth limit, and
+        /// assert the limit is enforced.
+        #[test]
+        fn prop_chain_walk_limits(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            input in arbitrary_chain(&CA, 6..=10_u8, ValidChain::default()),
+        ) {
+            test_prop_chain_walk_limits(roots, input);
         }
 
         /// Randomise the set of EKUs on the chain certificates and assert:
@@ -706,8 +719,9 @@ mod tests {
         result.expect("chain with valid name constraints and leaf SAN must be accepted");
     }
 
-    /// Process an invalid chain, expecting an error.
-    fn test_prop_invalid_chain(roots: RootSet<2>, input: TestChain) {
+    /// Process an invalid chain, expecting the specific error the applied
+    /// mutation causes.
+    fn test_prop_invalid_chain(roots: RootSet<2>, input: InvalidChain) {
         let cache = MemoryCertCache::new(1024 * 1024);
         for identity in &input.intermediates {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
@@ -727,12 +741,14 @@ mod tests {
                 // verified and MUST be identified as invalid.
                 v
             }
-            Err(_) => {
-                // The chain was rejected at the first step, return early.
-                return;
+            Err(e) => {
+                // The chain was rejected at the first step.
+                return input.assert_err(ChainError::Build(e));
             }
         };
 
+        // Every mutation renders the chain invalid, so verification MUST
+        // reject it, for the reason the mutation was designed to provoke.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let err = verify_chain(
             &CA.root_cert(),
@@ -743,19 +759,43 @@ mod tests {
         )
         .expect_err("invalid chain must be rejected");
 
-        // Each mutation maps onto a distinct rejection reason:
-        //
-        //   * ForgedLeaf / ForgedIntermediate -> CertSignatureInvalid
-        //   * PathLenViolation -> PathLen
-        //   * Expired{Leaf,Intermediate} -> CertExpired
-        //   * FutureValid{Leaf,Intermediate} -> CertFutureValidity
-        //
-        assert_matches!(
-            err,
-            ChainVerifyError::CertSignatureInvalid
-                | ChainVerifyError::PathLen
-                | ChainVerifyError::CertExpired { .. }
-                | ChainVerifyError::CertFutureValidity { .. }
-        );
+        input.assert_err(ChainError::Verify(err));
+    }
+
+    /// Process a valid chain that may exceed the path depth limit.
+    fn test_prop_chain_walk_limits(roots: RootSet<2>, input: TestChain) {
+        let cache = MemoryCertCache::new(1024 * 1024);
+        for identity in &input.intermediates {
+            cache.insert(UntrustedCert::from(identity.cert().clone()));
+        }
+
+        let leaf = UntrustedCert::from(input.leaf.cert().clone());
+
+        // MAX_INTERMEDIATES matches the path depth limit internal to the verifier,
+        // so an over-long chain is rejected here and never reaches
+        // verify_chain().
+        let chain = match build_unverified_chain_for(&roots, &leaf, &cache) {
+            Ok(v) => {
+                assert!(input.intermediates.len() <= MAX_INTERMEDIATES);
+                v
+            }
+            Err(e) => {
+                assert_matches!(e, ChainBuildError::ExcessivelyLongChain);
+                assert!(input.intermediates.len() > MAX_INTERMEDIATES);
+                return;
+            }
+        };
+
+        // Every certificate in the chain is valid, and the chain is within the
+        // depth limit, so it MUST be accepted.
+        let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
+        verify_chain(
+            &CA.root_cert(),
+            leaf,
+            chain,
+            EKUPolicy::RequireCodeSigning,
+            &dns_name,
+        )
+        .expect("a chain within the path depth limit must be accepted");
     }
 }

@@ -1,0 +1,47 @@
+// Copyright 2026-Present Datadog, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use crate::test_issuer::{
+    CertBuilder, ChainMutator, TestChain,
+    template::{intermediate::IntermediateTemplate, leaf::LeafTemplate},
+    unknown_critical_extension,
+};
+
+/// Produces a [`TestChain`] whose leaf certificate carries an extension that
+/// is marked critical, but which the verifier does not understand.
+///
+/// RFC 5280 § 4.2 requires a certificate to be rejected when it contains a
+/// critical extension the verifier cannot process - the issuer has asserted
+/// that honouring the extension is mandatory, so the certificate cannot
+/// safely be used by a verifier that would ignore it.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct CriticalExtensionLeaf {}
+
+impl ChainMutator for CriticalExtensionLeaf {
+    fn intermediate<'a>(
+        &self,
+        _builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        _index: u8,
+        _total: u8,
+    ) {
+    }
+
+    fn leaf<'a>(&self, builder: &mut CertBuilder<LeafTemplate<'a>>) {
+        builder.add_custom_extension(unknown_critical_extension());
+    }
+
+    fn complete(&self, chain: TestChain) -> TestChain {
+        chain
+    }
+}

@@ -23,11 +23,11 @@ use crate::{
     trust_store::{CertCache, RootSet},
 };
 
-/// The absolute maximum allowed length of any chain from root to leaf,
-/// including root and excluding leaf.
+/// The absolute maximum number of intermediate certificates allowed in any
+/// chain, excluding both the root and the leaf.
 ///
-/// Chain lengths over this value will fail validation.
-pub const MAX_CHAIN_LEN: usize = 20;
+/// Chains containing more intermediates than this value will fail validation.
+pub const MAX_INTERMEDIATES: usize = 6;
 
 /// Errors during chain building.
 #[derive(Debug, Error)]
@@ -37,11 +37,11 @@ pub enum ChainBuildError {
     #[error("intermediate certificate is missing from the trust store (cert ID: {0})")]
     MissingIntermediate(IssuerCertId),
 
-    /// A chain was provided that has >= [`MAX_CHAIN_LEN`] number of
+    /// A chain was provided that has more than [`MAX_INTERMEDIATES`] intermediate
     /// certificates in the path from root to leaf.
     ///
     /// Chain building was aborted to avoid a potential DoS vector.
-    #[error("refused to validate chain with >{MAX_CHAIN_LEN} nodes")]
+    #[error("refused to validate chain with >{MAX_INTERMEDIATES} intermediates")]
     ExcessivelyLongChain,
 }
 
@@ -111,7 +111,7 @@ where
         // Guard against a maliciously long chain that would result in
         // excessive memory / CPU utilisation by bounding the length of
         // "chain" and aborting if it his a threshold.
-        if chain.len() > MAX_CHAIN_LEN {
+        if chain.len() >= MAX_INTERMEDIATES {
             error!(
                 cert = cert.as_value(),
                 chain_len = %chain.len(),
@@ -191,7 +191,7 @@ mod tests {
 
         // Generate a chain of N-1 intermediates in the cache.
         let mut last = None;
-        for i in 0..=(MAX_CHAIN_LEN + 1) {
+        for i in 0..=(MAX_INTERMEDIATES + 1) {
             let intermediate = CertBuilder::new_intermediate(
                 format!("Intermediate {}", i + 1),
                 last.as_ref().unwrap_or(CA.root()),
