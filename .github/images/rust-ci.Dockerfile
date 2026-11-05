@@ -52,6 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     # licence scripts in CI
     jq \
+    # actions/checkout, and the ffi-go workflow's generated-code drift check
+    git \
     ##################
     # Crate deps
     \
@@ -79,7 +81,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PATH="${HOME}/go/bin:${PATH}"
 # protoc well-known-types include path, see the apt install step above.
 ENV PROTOC_INCLUDE="/usr/include"
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+# Pinned to the version that generated the committed ffi-hosts/go/rcproto
+# bindings: the ffi-go workflow regenerates them and fails on any difference.
+# go install verifies the module against the Go checksum database.
+RUN GOBIN=/usr/local/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
 
 RUN rustup component add clippy rustfmt \
     && rustup toolchain install nightly \
