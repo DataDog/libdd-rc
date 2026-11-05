@@ -20,7 +20,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"runtime/cgo"
 	"unsafe"
 
@@ -80,7 +80,7 @@ func newCgoConn(ctxPtr *C.Ctx, userData unsafe.Pointer) (*cgoConn, error) {
 	// Our send callback is generic, so we can go ahead and set this for the
 	// newly established connection.
 	if ret := C.rc_conn_send_callback(ptr, C.SendCb(C.goSendCb), userData); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_send_callback returned %v", ret)
+		slog.Error("ddrc: rc_conn_send_callback failed", "ret", ret)
 	}
 
 	return &cgoConn{ptr: ptr}, nil
@@ -98,7 +98,7 @@ func (c *cgoConn) connected(endpointHostname string) error {
 		C.uint32_t(len(endpointHostnameBytes)),
 	)
 	if ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_connected returned %v", ret)
+		slog.Warn("ddrc: rc_conn_connected failed", "ret", ret)
 		return fmt.Errorf("ddrc: rc_conn_connected returned %v", ret)
 	}
 	return nil
@@ -113,7 +113,7 @@ func (c *cgoConn) recv(data []byte) error {
 
 func (c *cgoConn) disconnected() {
 	if ret := C.rc_conn_disconnected(c.ptr); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_disconnected returned %v", ret)
+		slog.Warn("ddrc: rc_conn_disconnected failed", "ret", ret)
 	}
 }
 
@@ -131,7 +131,7 @@ func (c *cgoConn) dispatchError(correlationID uint64, errorCode int) {
 
 func (c *cgoConn) free() {
 	if ret := C.rc_conn_free(c.ptr); ret != C.CONN_RET_T_SUCCESS {
-		log.Printf("ddrc: rc_conn_free returned %v", ret)
+		slog.Warn("ddrc: rc_conn_free failed", "ret", ret)
 	}
 }
 

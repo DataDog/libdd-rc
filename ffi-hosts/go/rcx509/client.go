@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -242,10 +242,10 @@ func (c *Client) run(ctx context.Context) {
 	for {
 		conn, ws, err := c.establishConnection(ctx)
 		if err != nil {
-			log.Printf("failed to establish connection: %v", err)
+			slog.Warn("rcx509: failed to establish connection", "error", err)
 
 			if ctx.Err() != nil {
-				log.Printf("closing run because of context err: %v", ctx.Err())
+				slog.Debug("rcx509: closing run because of context err", "error", ctx.Err())
 				return
 			}
 
@@ -258,12 +258,12 @@ func (c *Client) run(ctx context.Context) {
 		start := time.Now()
 		err = c.runSession(ctx, conn, ws)
 		if err != nil {
-			log.Printf("session closed: %v", err)
+			slog.Info("rcx509: session closed", "error", err)
 		}
 
 		// Err handles both errors, and the context being canceled.
 		if ctx.Err() != nil {
-			log.Printf("closing run because of context err: %v", ctx.Err())
+			slog.Debug("rcx509: closing run because of context err", "error", ctx.Err())
 			return
 		}
 
