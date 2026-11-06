@@ -54,6 +54,8 @@ jobs:
         run: |
           rm -rf rcproto
           make generate
+          # The checkout is owned by the runner user, not the container's root.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           # A separate assignment, so that a failing git status fails the step.
           status="$(git status --porcelain --untracked-files=all -- rcproto)"
           if [ -n "$status" ]; then
