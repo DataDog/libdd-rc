@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use rc_crypto::certificate::Certificate;
-use rc_x509_roots::RootCertificate;
 use rustls_pki_types::{CertificateDer, SignatureVerificationAlgorithm, UnixTime};
 use thiserror::Error;
 use tracing::debug;
@@ -79,7 +78,7 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
 
 /// Failures to verify a certificate chain.
 #[derive(Debug, Error)]
-pub(crate) enum ChainVerifyError {
+pub enum ChainVerifyError {
     /// The certificate is malformed in some way; the error within describes
     /// precisely the cause.
     #[error("a certificate is malformed: {0}")]
@@ -339,16 +338,15 @@ impl From<webpki::Error> for ChainVerifyError {
 ///
 /// [RFC 5280 § 4.2.1.10]:
 ///     https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.10
-pub(crate) fn verify_chain(
-    root: &RootCertificate,
-    cert: UntrustedCert,
+pub(crate) fn verify_chain<'a>(
+    cert: &'a UntrustedCert,
     chain: UntrustedChain,
     eku_policy: EKUPolicy,
     dns_name: &EndpointHostname,
-) -> Result<Certificate, ChainVerifyError> {
+) -> Result<&'a Certificate, ChainVerifyError> {
     let leaf_cert = CertificateDer::from(cert.as_der_slice());
 
-    let root_cert = CertificateDer::from(root.as_der_slice());
+    let root_cert = CertificateDer::from(chain.root().as_der_slice());
     let anchor = anchor_from_trusted_cert(&root_cert).expect("root is always valid");
 
     let intermediates = chain
@@ -374,13 +372,13 @@ pub(crate) fn verify_chain(
     ee.verify_is_valid_for_subject_name(dns_name.as_server_name())?;
 
     debug!(
-        root = root.as_value(),
+        root = chain.root().as_value(),
         leaf = cert.as_value(),
         intermediates = chain.as_value(),
         "accepted certificate as valid"
     );
 
-    Ok(cert.into_trusted())
+    Ok(cert.as_trusted())
 }
 
 #[cfg(test)]
@@ -519,14 +517,9 @@ mod tests {
         .expect("valid chain");
 
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        let got = verify_chain(
-            &CA.root_cert(),
-            UntrustedCert::from(input.leaf.cert().clone()),
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect("successfully validated chain");
+        let leaf = UntrustedCert::from(input.leaf.cert().clone());
+        let got = verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect("successfully validated chain");
 
         assert_eq!(got.fingerprint(), input.leaf.cert().fingerprint());
     }
@@ -555,7 +548,6 @@ mod tests {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
-        let root_cert = CA.root_cert();
         let untrusted_leaf = UntrustedCert::from(chain.leaf.cert().clone());
 
         // Build the candidate chain from the cache, which ignores EKUs.
@@ -574,8 +566,7 @@ mod tests {
         //
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
         let result = verify_chain(
-            &root_cert,
-            untrusted_leaf,
+            &untrusted_leaf,
             candidate_chain,
             EKUPolicy::RequireCodeSigning,
             &dns_name,
@@ -675,17 +666,13 @@ mod tests {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
-        let candidate_chain = build_unverified_chain_for(
-            &roots,
-            &UntrustedCert::from(chain.leaf.cert().clone()),
-            &cache,
-        )
-        .expect("valid chain structure");
+        let leaf = UntrustedCert::from(chain.leaf.cert().clone());
+        let candidate_chain =
+            build_unverified_chain_for(&roots, &leaf, &cache).expect("valid chain structure");
 
         let dns_name = EndpointHostname::try_from(connected_endpoint.to_owned()).unwrap();
         let result = verify_chain(
-            &CA.root_cert(),
-            UntrustedCert::from(chain.leaf.cert().clone()),
+            &leaf,
             candidate_chain,
             EKUPolicy::RequireCodeSigning,
             &dns_name,
@@ -727,11 +714,8 @@ mod tests {
             cache.insert(UntrustedCert::from(identity.cert().clone()));
         }
 
-        let chain = build_unverified_chain_for(
-            &roots,
-            &UntrustedCert::from(input.leaf.cert().clone()),
-            &cache,
-        );
+        let leaf = UntrustedCert::from(input.leaf.cert().clone());
+        let chain = build_unverified_chain_for(&roots, &leaf, &cache);
 
         let chain = match chain {
             Ok(v) => {
@@ -750,14 +734,8 @@ mod tests {
         // Every mutation renders the chain invalid, so verification MUST
         // reject it, for the reason the mutation was designed to provoke.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        let err = verify_chain(
-            &CA.root_cert(),
-            UntrustedCert::from(input.leaf.cert().clone()),
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect_err("invalid chain must be rejected");
+        let err = verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect_err("invalid chain must be rejected");
 
         input.assert_err(ChainError::Verify(err));
     }
@@ -789,13 +767,7 @@ mod tests {
         // Every certificate in the chain is valid, and the chain is within the
         // depth limit, so it MUST be accepted.
         let dns_name = EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap();
-        verify_chain(
-            &CA.root_cert(),
-            leaf,
-            chain,
-            EKUPolicy::RequireCodeSigning,
-            &dns_name,
-        )
-        .expect("a chain within the path depth limit must be accepted");
+        verify_chain(&leaf, chain, EKUPolicy::RequireCodeSigning, &dns_name)
+            .expect("a chain within the path depth limit must be accepted");
     }
 }

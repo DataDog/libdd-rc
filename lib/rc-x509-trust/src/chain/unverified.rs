@@ -50,6 +50,11 @@ impl<'a> UntrustedChain<'a> {
     pub(crate) fn as_slice(&self) -> &[Arc<UntrustedCert>] {
         &self.1
     }
+
+    /// Return a reference to the trust anchor / root of this chain.
+    pub(crate) fn root(&self) -> &RootCertificate {
+        self.0
+    }
 }
 
 impl<'a> Valuable for UntrustedChain<'a> {
