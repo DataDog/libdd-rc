@@ -52,6 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     # licence scripts in CI
     jq \
+    # actions/checkout, and the ffi-go workflow's generated-code drift check
+    git \
     ##################
     # Crate deps
     \
@@ -79,7 +81,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PATH="${HOME}/go/bin:${PATH}"
 # protoc well-known-types include path, see the apt install step above.
 ENV PROTOC_INCLUDE="/usr/include"
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+# https://github.com/protocolbuffers/protobuf-go
+#
+# Pinned to the version that generated the committed ffi-hosts/go/rcproto
+# bindings: the ffi-go workflow regenerates them and fails on any difference.
+RUN VERSION="1.36.11" && \
+    SHA256="6ad8f8fc11b96dc4deb176f7ee84af40e15d32e4608594bcc3534b7824a3dc71" && \
+    curl -sSL \
+    "https://github.com/protocolbuffers/protobuf-go/releases/download/v${VERSION}/protoc-gen-go.v${VERSION}.linux.amd64.tar.gz" \
+    -o /tmp/protoc-gen-go.tar.gz && \
+    echo "${SHA256}  /tmp/protoc-gen-go.tar.gz" | sha256sum -c - && \
+    tar -xzf /tmp/protoc-gen-go.tar.gz -C /usr/local/bin protoc-gen-go && \
+    rm /tmp/protoc-gen-go.tar.gz
 
 RUN rustup component add clippy rustfmt \
     && rustup toolchain install nightly \
