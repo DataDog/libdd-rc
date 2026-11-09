@@ -13,10 +13,10 @@
 // limitations under the License.
 
 use bytes::Bytes;
-use rc_crypto::{Signature, certificate::id::CertId};
+use rc_crypto::{Signature, certificate::id::CertId, keys::SignatureVerifyErr};
 use rc_x509_roots::RootCertificate;
 use thiserror::Error;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 use valuable::Valuable;
 
 use crate::{
@@ -45,6 +45,11 @@ pub enum VerificationError {
     /// discarded.
     #[error("chain verify error: {0}")]
     ChainVerify(#[from] ChainVerifyError),
+
+    /// The chain was valid and trusted, but the signature did not originate
+    /// from the indicated leaf / signer certificate.
+    #[error("signature verify error: {0}")]
+    Signature(#[from] SignatureVerifyErr),
 }
 
 /// A [`TrustStore`] provides payload signature verification using a cache of
@@ -103,7 +108,7 @@ where
         &self,
         signing_cert_id: CertId,
         signature: Signature,
-        _payload: Bytes,
+        payload: Bytes,
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
         let leaf = self
@@ -128,14 +133,15 @@ where
         );
 
         // Verify the chain is valid - see `verify_chain()` for the specifics.
-        match verify_chain(
+        let cert = match verify_chain(
             &leaf,
             candidate_chain,
             EKUPolicy::RequireCodeSigning,
             endpoint,
         ) {
             Ok(cert) => {
-                // Success - the chain is valid, continue to signature checks.
+                // Success - the chain is valid and trusted for use in this
+                // function call only, continue to signature checks.
 
                 debug!(
                     %signature,
@@ -143,6 +149,8 @@ where
                     signer_cert = cert.as_value(),
                     "chain verified as trusted"
                 );
+
+                cert
             }
             Err(e) => {
                 // The chain is invalid, and not because of a missing
@@ -160,9 +168,35 @@ where
             }
         };
 
-        // TODO: signature checks
+        // Finally, verify the signature against the known-valid chain, which
+        // may or may not have produced the signature.
+        match cert.public_key().verify(&payload, &signature) {
+            Ok(()) => {
+                // Success - this signature is valid.
 
-        Ok(())
+                debug!(
+                    %signature,
+                    %endpoint,
+                    signer_cert = cert.as_value(),
+                    "signature verified"
+                );
+
+                Ok(())
+            }
+            Err(e) => {
+                // This signature was not produced by the `signing_cert_id`.
+
+                error!(
+                    error=%e,
+                    %signature,
+                    %endpoint,
+                    signer_cert = leaf.as_value(),
+                    "signature verification failure"
+                );
+
+                Err(VerificationError::Signature(e))
+            }
+        }
     }
 }
 
@@ -194,8 +228,9 @@ mod tests {
         fn prop_verify(
             roots in arbitrary_ordered_root_set(&CA, &CA2),
             input in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
+            data in crate::tests::arbitrary_bytes(0..1025),
         ) {
-            test_prop_verify(roots, input);
+            test_prop_verify(roots, input, data);
         }
 
         /// Process a chain that is missing a random certificate in the local
@@ -230,9 +265,40 @@ mod tests {
         ) {
             test_prop_invalid_chain(roots, input);
         }
+
+        /// Assert a valid chain paired with an invalid signature causes an
+        /// error to be returned.
+        #[test]
+        fn prop_bad_signature(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            input in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
+            data in crate::tests::arbitrary_bytes(0..1025),
+            sig in crate::tests::arbitrary_bytes(1..=120),
+        ) {
+            let sig = Signature::try_from(&*sig).unwrap();
+            test_prop_bad_signature(roots, input, data, sig);
+        }
+
+        /// Assert a payload signed by a different leaf is not accepted when
+        /// claiming it is from another cert.
+        #[test]
+        fn prop_valid_mismatched_signature(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            chain in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
+            unrelated_chain in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
+            data in crate::tests::arbitrary_bytes(0..1025),
+        ) {
+            // Sign the payload using "unrelated_chain", which produces a valid
+            // signature, just not from the leaf we're going to claim is the
+            // signer.
+            let sig = unrelated_chain.leaf.sign(&data);
+            drop(unrelated_chain);
+
+            test_prop_bad_signature(roots, chain, data, sig);
+        }
     }
 
-    fn test_prop_verify(roots: RootSet<2>, chain: TestChain) {
+    fn test_prop_verify(roots: RootSet<2>, chain: TestChain, data: Bytes) {
         let cache = MemoryCertCache::new(1024 * 1024);
         let store = TrustStore::new(roots.into_array(), cache);
 
@@ -246,12 +312,15 @@ mod tests {
                 .map(|v| UntrustedCert::from(v.cert().clone())),
         );
 
+        // Generate a valid signature for the random payload data.
+        let signature = chain.leaf.sign(&data);
+
         // verify!
         store
             .verify(
                 chain.leaf.cert().cert_id().clone(),
-                Signature::try_from(&[42_u8][..]).expect("well formed"),
-                Default::default(),
+                signature,
+                data,
                 &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
             )
             .expect("valid chain")
@@ -287,6 +356,7 @@ mod tests {
             VerificationError::MissingLeafCert(_) => unreachable!(),
             VerificationError::ChainBuild(e) => ChainError::Build(e),
             VerificationError::ChainVerify(e) => ChainError::Verify(e),
+            VerificationError::Signature(_) => unreachable!(), // Fails before this
         });
     }
 
@@ -354,5 +424,32 @@ mod tests {
             want.as_dangerous_comparable(),
             got.as_dangerous_comparable()
         );
+    }
+
+    fn test_prop_bad_signature(roots: RootSet<2>, chain: TestChain, data: Bytes, sig: Signature) {
+        let cache = MemoryCertCache::new(1024 * 1024);
+        let store = TrustStore::new(roots.into_array(), cache);
+
+        // Populate the trust store with all the intermediates & leaf
+        // certificate.
+        store.add(
+            chain
+                .intermediates
+                .iter()
+                .chain(iter::once(&chain.leaf))
+                .map(|v| UntrustedCert::from(v.cert().clone())),
+        );
+
+        // verify!
+        let err = store
+            .verify(
+                chain.leaf.cert().cert_id().clone(),
+                sig,
+                data,
+                &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
+            )
+            .expect_err("invalid signature");
+
+        assert_matches!(err, VerificationError::Signature(SignatureVerifyErr));
     }
 }
