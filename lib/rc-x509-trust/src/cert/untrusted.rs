@@ -88,8 +88,8 @@ impl UntrustedCert {
     }
 
     /// Unwrap the [`UntrustedCert`], marking it as trusted at the type level.
-    pub(crate) fn into_trusted(self) -> Certificate {
-        self.0
+    pub(crate) fn as_trusted(&self) -> &Certificate {
+        &self.0
     }
 }
 

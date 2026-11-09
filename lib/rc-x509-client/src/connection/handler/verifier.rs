@@ -15,7 +15,10 @@
 use std::sync::Arc;
 
 use rc_crypto::{Signature, certificate::id::CertId};
-use rc_x509_trust::trust_store::{TrustStore, VerificationError};
+use rc_x509_trust::{
+    EndpointHostname,
+    trust_store::{TrustStore, VerificationError},
+};
 use tokio_util::bytes::Bytes;
 
 /// An abstract verifier of payload signatures.
@@ -28,11 +31,15 @@ pub trait AttestationVerifier: std::fmt::Debug + Send + Sync {
     /// Returns [`Ok`] iff this `payload` can be cryptographically proven to
     /// have been signed by `signing_cert_id`, and which chains to an explicitly
     /// trusted root.
-    fn validate(
+    ///
+    /// The signer certificate MUST be authorised to sign payloads for
+    /// `endpoint`.
+    fn verify(
         &self,
         signing_cert_id: CertId,
         signature: Signature,
         payload: Bytes,
+        endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError>;
 }
 
@@ -40,13 +47,14 @@ impl<T> AttestationVerifier for Arc<T>
 where
     T: AttestationVerifier,
 {
-    fn validate(
+    fn verify(
         &self,
         signing_cert_id: CertId,
         signature: Signature,
         payload: Bytes,
+        endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
-        T::validate(self, signing_cert_id, signature, payload)
+        T::verify(self, signing_cert_id, signature, payload, endpoint)
     }
 }
 
@@ -55,12 +63,13 @@ impl<const N: usize, T> AttestationVerifier for TrustStore<N, T>
 where
     T: rc_x509_trust::trust_store::CertCache,
 {
-    fn validate(
+    fn verify(
         &self,
         signing_cert_id: CertId,
         signature: Signature,
         payload: Bytes,
+        endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
-        TrustStore::validate(self, signing_cert_id, signature, payload)
+        TrustStore::verify(self, signing_cert_id, signature, payload, endpoint)
     }
 }
