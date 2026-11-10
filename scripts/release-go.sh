@@ -32,7 +32,7 @@ function echoe {
 }
 
 VERSION="${1:-}"
-if [[ ! "$VERSION" =~ '^v[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
+if [[ ! "$VERSION" =~ '^v[01]\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' ]]; then
 	echoe "%F{red}usage: $0 vX.Y.Z%f"
 	exit 1
 fi
