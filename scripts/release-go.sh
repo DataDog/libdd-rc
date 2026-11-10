@@ -55,7 +55,11 @@ COMMIT=$(git rev-list -n 1 "$CRATE_TAG")
 echoe "this release will point at: %F{blue}$(git show --no-patch --oneline "$COMMIT")%f (crate release $CRATE_TAG)"
 
 # Find what has changed in this release.
-CHANGES=$(git log --oneline "$LAST_TAG..$COMMIT" -- ffi-hosts/go)
+if [[ -n "$LAST_TAG" ]]; then
+	CHANGES=$(git log --oneline "$LAST_TAG..$COMMIT" -- ffi-hosts/go)
+else
+	CHANGES=$(git log --oneline "$COMMIT" -- ffi-hosts/go)
+fi
 if [[ -z "$CHANGES" ]]; then
 	echoe "%F{red}no changes to ffi-hosts/go between $LAST_TAG and crate release $CRATE_TAG - aborting%f"
 	echoe "if ffi-hosts/go has changed on main since, run release.sh first"
