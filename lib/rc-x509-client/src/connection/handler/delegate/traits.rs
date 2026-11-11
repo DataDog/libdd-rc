@@ -27,6 +27,8 @@ pub(crate) trait ServerMessageDelegate<IO, V>: Debug + Send + Sync + Sized
 where
     IO: SendToServer,
 {
+    const IS_HANDSHAKE_COMPLETE: bool;
+
     /// Send a `ClientHello` handshake message.
     ///
     /// # Panics

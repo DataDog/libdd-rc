@@ -41,6 +41,8 @@ where
     IO: SendToServer,
     V: Debug + Send + Sync,
 {
+    const IS_HANDSHAKE_COMPLETE: bool = Handshaking::IS_HANDSHAKE_COMPLETE;
+
     async fn send_hello(self, _reply: &mut IO) -> State<V> {
         unreachable!("send_hello called outside the pre-handshake phase")
     }
