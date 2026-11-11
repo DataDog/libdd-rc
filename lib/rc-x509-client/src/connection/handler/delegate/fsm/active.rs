@@ -46,6 +46,8 @@ where
     IO: SendToServer,
     V: AttestationVerifier,
 {
+    const IS_HANDSHAKE_COMPLETE: bool = Active::IS_HANDSHAKE_COMPLETE;
+
     async fn send_hello(self, _reply: &mut IO) -> State<V> {
         unreachable!("send_hello called outside the pre-handshake phase")
     }

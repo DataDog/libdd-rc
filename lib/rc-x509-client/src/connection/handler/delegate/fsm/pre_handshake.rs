@@ -69,6 +69,8 @@ where
     IO: SendToServer,
     V: Debug + Send + Sync,
 {
+    const IS_HANDSHAKE_COMPLETE: bool = PreHandshake::IS_HANDSHAKE_COMPLETE;
+
     /// Send a `ClientHello`, (re)starting the handshake and transitioning to
     /// [`Handshaking`] with a freshly generated nonce.
     async fn send_hello(self, reply: &mut IO) -> State<V> {
