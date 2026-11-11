@@ -25,6 +25,20 @@ pub use endpoint_hostname::*;
 #[cfg(test)]
 pub(crate) mod test_issuer;
 
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+    use proptest::prelude::*;
+
+    /// A value generator for [`Bytes`] fields on protobuf types (to satisfy the
+    /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+    pub(crate) fn arbitrary_bytes(
+        size: impl Into<prop::collection::SizeRange>,
+    ) -> impl Strategy<Value = Bytes> {
+        prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
+    }
+}
+
 #[cfg(feature = "fuzzing")]
 mod fuzzing {
     use arbitrary::Arbitrary;

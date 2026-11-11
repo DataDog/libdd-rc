@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use rc_crypto::{certificate::Certificate, keys::PrivateKey};
+use rc_crypto::{Signature, Signer, certificate::Certificate, keys::PrivateKey};
 
 /// An [`Identity`] is a [`Certificate`] and the signing key for it.
 #[derive(Debug)]
@@ -35,6 +35,10 @@ impl Identity {
 
     pub(crate) fn cert(&self) -> &Certificate {
         &self.cert
+    }
+
+    pub(crate) fn sign(&self, data: &[u8]) -> Signature {
+        self.issuer().key().sign(data)
     }
 
     pub(super) fn issuer(&self) -> &rcgen::CertifiedIssuer<'static, PrivateKey> {
