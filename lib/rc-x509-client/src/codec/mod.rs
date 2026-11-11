@@ -18,7 +18,9 @@
 //! on-wire representation.
 
 mod client_to_server;
+mod protocol_errors;
 mod server_to_client;
 
 pub use client_to_server::*;
+pub use protocol_errors::*;
 pub use server_to_client::*;
