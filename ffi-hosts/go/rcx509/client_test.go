@@ -74,7 +74,7 @@ func TestStartCloseConcurrentDoesNotOrphanRunLoop(t *testing.T) {
 		started <- client.Start()
 	}()
 
-	if err := client.Close(); err != nil {
+	if err := client.Close(context.Background()); err != nil {
 		t.Fatalf("Close() returned unexpected error: %v", err)
 	}
 
@@ -107,7 +107,7 @@ func TestCloseBeforeStartPreventsSubsequentStart(t *testing.T) {
 		ffiCtx: &fakeFFIContext{},
 	}
 
-	if err := client.Close(); err != nil {
+	if err := client.Close(context.Background()); err != nil {
 		t.Fatalf("Close() returned unexpected error: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestCloseFreesFFIContextWithoutStart(t *testing.T) {
 		ffiCtx: ffi,
 	}
 
-	if err := client.Close(); err != nil {
+	if err := client.Close(context.Background()); err != nil {
 		t.Fatalf("Close() returned unexpected error: %v", err)
 	}
 
@@ -138,7 +138,9 @@ func TestCloseFreesFFIContextWithoutStart(t *testing.T) {
 // TestCloseFreesFFIContextExactlyOnceAfterStart validates that after a
 // Start/Close cycle, the FFI context is freed exactly once.
 func TestCloseFreesFFIContextExactlyOnceAfterStart(t *testing.T) {
-	ffi := &fakeFFIContext{}
+	// The run loop may reach a dial before Close cancels it, so it needs a
+	// connection to close when that dial fails.
+	ffi := &fakeFFIContext{conn: newFakeFFIConnection()}
 	client := &Client{
 		url:     "ws://example.com",
 		dialer:  &fakeWebsocketDialer{dialErr: errors.New("no backend available")},
@@ -152,7 +154,7 @@ func TestCloseFreesFFIContextExactlyOnceAfterStart(t *testing.T) {
 		started <- client.Start()
 	}()
 
-	if err := client.Close(); err != nil {
+	if err := client.Close(context.Background()); err != nil {
 		t.Fatalf("Close() returned unexpected error: %v", err)
 	}
 
@@ -169,7 +171,7 @@ func TestCloseFreesFFIContextExactlyOnceAfterStart(t *testing.T) {
 		t.Fatalf("ffiCtx.Close() called %d times, want 1", ffi.closeCalls)
 	}
 
-	if err := client.Close(); !errors.Is(err, ErrClientClosed) {
+	if err := client.Close(context.Background()); !errors.Is(err, ErrClientClosed) {
 		t.Fatalf("second Close() = %v, want ErrClientClosed", err)
 	}
 	if ffi.closeCalls != 1 {
@@ -292,5 +294,40 @@ func TestWithDCHostname(t *testing.T) {
 				t.Errorf("endpoint = %v, want %v", opts.endpoint, tt.input)
 			}
 		})
+	}
+}
+
+// TestCloseReturnsWhenContextDone validates that Close stops waiting when
+// its context is done, doesn't free the FFI context while the run loop is still
+// running, and frees it once the loop exits.
+func TestCloseReturnsWhenContextDone(t *testing.T) {
+	ffi := &fakeFFIContext{closed: make(chan struct{})}
+	client := &Client{ffiCtx: ffi}
+
+	// Simulate a run loop that doesn't exit when canceled.
+	client.wg.Add(1)
+
+	// The run loop never exits, so Close can only return through ctx.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := client.Close(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Close() = %v, want context.Canceled", err)
+	}
+
+	select {
+	case <-ffi.closed:
+		t.Fatal("FFI context freed while the run loop was still running")
+	default:
+	}
+
+	client.wg.Done()
+	select {
+	case <-ffi.closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("FFI context not freed after the run loop exited")
+	}
+
+	if err := client.Close(context.Background()); !errors.Is(err, ErrClientClosed) {
+		t.Fatalf("second Close() = %v, want ErrClientClosed", err)
 	}
 }

@@ -188,9 +188,12 @@ func (c *Client) Start() error {
 // Close sends a signal to the management loop to shutdown operations, waits
 // for the system to terminate, and releases the FFI context.
 //
+// If ctx is done before shutdown completes, Close returns ctx.Err() and the
+// remaining shutdown finishes in the background.
+//
 // Close is safe to call whether or not Start was ever called, as the FFI context
 // still needs to be cleaned up even if Start() was never invoked.
-func (c *Client) Close() error {
+func (c *Client) Close(ctx context.Context) error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -204,14 +207,22 @@ func (c *Client) Close() error {
 		cancel()
 	}
 
-	// Wait for done
-	c.wg.Wait()
+	done := make(chan error, 1)
+	go func() {
+		// Wait for done
+		c.wg.Wait()
+		done <- c.ffiCtx.Close()
+	}()
 
-	if err := c.ffiCtx.Close(); err != nil {
-		return fmt.Errorf("rcx509: failed to shut down client: %w", err)
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("rcx509: failed to shut down client: %w", err)
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-
-	return nil
 }
 
 // RegisterHandler registers the provided function to be called when dispatch
