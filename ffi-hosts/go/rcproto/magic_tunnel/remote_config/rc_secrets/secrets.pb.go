@@ -139,6 +139,111 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{1}
 }
 
+type DeliverPOCSecretRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ConnectionId        string                 `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	EncryptionContextId string                 `protobuf:"bytes,2,opt,name=encryption_context_id,json=encryptionContextId,proto3" json:"encryption_context_id,omitempty"`
+	Ciphertext          []byte                 `protobuf:"bytes,3,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *DeliverPOCSecretRequest) Reset() {
+	*x = DeliverPOCSecretRequest{}
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeliverPOCSecretRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeliverPOCSecretRequest) ProtoMessage() {}
+
+func (x *DeliverPOCSecretRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeliverPOCSecretRequest.ProtoReflect.Descriptor instead.
+func (*DeliverPOCSecretRequest) Descriptor() ([]byte, []int) {
+	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *DeliverPOCSecretRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *DeliverPOCSecretRequest) GetEncryptionContextId() string {
+	if x != nil {
+		return x.EncryptionContextId
+	}
+	return ""
+}
+
+func (x *DeliverPOCSecretRequest) GetCiphertext() []byte {
+	if x != nil {
+		return x.Ciphertext
+	}
+	return nil
+}
+
+type DeliverPOCSecretResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True only after consuming the context and checking the decrypted dummy value.
+	Acknowledged  bool `protobuf:"varint,1,opt,name=acknowledged,proto3" json:"acknowledged,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeliverPOCSecretResponse) Reset() {
+	*x = DeliverPOCSecretResponse{}
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeliverPOCSecretResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeliverPOCSecretResponse) ProtoMessage() {}
+
+func (x *DeliverPOCSecretResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeliverPOCSecretResponse.ProtoReflect.Descriptor instead.
+func (*DeliverPOCSecretResponse) Descriptor() ([]byte, []int) {
+	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DeliverPOCSecretResponse) GetAcknowledged() bool {
+	if x != nil {
+		return x.Acknowledged
+	}
+	return false
+}
+
 // A request for a client to prepare to receive a secret.
 type PrepareSecretDeliveryRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -156,7 +261,7 @@ type PrepareSecretDeliveryRequest struct {
 
 func (x *PrepareSecretDeliveryRequest) Reset() {
 	*x = PrepareSecretDeliveryRequest{}
-	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[0]
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -168,7 +273,7 @@ func (x *PrepareSecretDeliveryRequest) String() string {
 func (*PrepareSecretDeliveryRequest) ProtoMessage() {}
 
 func (x *PrepareSecretDeliveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[0]
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -181,7 +286,7 @@ func (x *PrepareSecretDeliveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareSecretDeliveryRequest.ProtoReflect.Descriptor instead.
 func (*PrepareSecretDeliveryRequest) Descriptor() ([]byte, []int) {
-	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{0}
+	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PrepareSecretDeliveryRequest) GetConnectionId() string {
@@ -241,7 +346,7 @@ type PrepareSecretDeliveryResponse struct {
 
 func (x *PrepareSecretDeliveryResponse) Reset() {
 	*x = PrepareSecretDeliveryResponse{}
-	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[1]
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +358,7 @@ func (x *PrepareSecretDeliveryResponse) String() string {
 func (*PrepareSecretDeliveryResponse) ProtoMessage() {}
 
 func (x *PrepareSecretDeliveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[1]
+	mi := &file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -266,7 +371,7 @@ func (x *PrepareSecretDeliveryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareSecretDeliveryResponse.ProtoReflect.Descriptor instead.
 func (*PrepareSecretDeliveryResponse) Descriptor() ([]byte, []int) {
-	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{1}
+	return file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PrepareSecretDeliveryResponse) GetStatus() PrepareSecretDeliveryStatus {
@@ -308,7 +413,15 @@ var File_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto protoref
 
 const file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDesc = "" +
 	"\n" +
-	">rc/x509/magic_tunnel/remote_config/rc_secrets/v1/secrets.proto\x120rc.x509.magic_tunnel.remote_config.rc_secrets.v1\x1a\x1egoogle/protobuf/duration.proto\"\x91\x01\n" +
+	">rc/x509/magic_tunnel/remote_config/rc_secrets/v1/secrets.proto\x120rc.x509.magic_tunnel.remote_config.rc_secrets.v1\x1a\x1egoogle/protobuf/duration.proto\"\x92\x01\n" +
+	"\x17DeliverPOCSecretRequest\x12#\n" +
+	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x122\n" +
+	"\x15encryption_context_id\x18\x02 \x01(\tR\x13encryptionContextId\x12\x1e\n" +
+	"\n" +
+	"ciphertext\x18\x03 \x01(\fR\n" +
+	"ciphertext\">\n" +
+	"\x18DeliverPOCSecretResponse\x12\"\n" +
+	"\facknowledged\x18\x01 \x01(\bR\facknowledged\"\x91\x01\n" +
 	"\x1cPrepareSecretDeliveryRequest\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x122\n" +
 	"\x15encryption_context_id\x18\x02 \x01(\tR\x13encryptionContextId\x12\x18\n" +
@@ -328,9 +441,10 @@ const file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDes
 	"\aKeyType\x12\x18\n" +
 	"\x14KEY_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fKEY_TYPE_NACL_SEALED_BOX_X25519\x10\x01\x12 \n" +
-	"\x1cKEY_TYPE_MLKEM768_AES256_GCM\x10\x022\xcb\x01\n" +
+	"\x1cKEY_TYPE_MLKEM768_AES256_GCM\x10\x022\xf7\x02\n" +
 	"\x0eSecretsService\x12\xb8\x01\n" +
-	"\x15PrepareSecretDelivery\x12N.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest\x1aO.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponseBdZbgithub.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config/rc_secrets;rcsecretsv1b\x06proto3"
+	"\x15PrepareSecretDelivery\x12N.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest\x1aO.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse\x12\xa9\x01\n" +
+	"\x10DeliverPOCSecret\x12I.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretRequest\x1aJ.rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretResponseBdZbgithub.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel/remote_config/rc_secrets;rcsecretsv1b\x06proto3"
 
 var (
 	file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDescOnce sync.Once
@@ -345,22 +459,26 @@ func file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDesc
 }
 
 var file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_goTypes = []any{
 	(PrepareSecretDeliveryStatus)(0),      // 0: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryStatus
 	(KeyType)(0),                          // 1: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.KeyType
-	(*PrepareSecretDeliveryRequest)(nil),  // 2: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest
-	(*PrepareSecretDeliveryResponse)(nil), // 3: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse
-	(*durationpb.Duration)(nil),           // 4: google.protobuf.Duration
+	(*DeliverPOCSecretRequest)(nil),       // 2: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretRequest
+	(*DeliverPOCSecretResponse)(nil),      // 3: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretResponse
+	(*PrepareSecretDeliveryRequest)(nil),  // 4: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest
+	(*PrepareSecretDeliveryResponse)(nil), // 5: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse
+	(*durationpb.Duration)(nil),           // 6: google.protobuf.Duration
 }
 var file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_depIdxs = []int32{
 	0, // 0: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.status:type_name -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryStatus
 	1, // 1: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.key_type:type_name -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.KeyType
-	4, // 2: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.key_validity:type_name -> google.protobuf.Duration
-	2, // 3: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.PrepareSecretDelivery:input_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest
-	3, // 4: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.PrepareSecretDelivery:output_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
+	6, // 2: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.key_validity:type_name -> google.protobuf.Duration
+	4, // 3: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.PrepareSecretDelivery:input_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryRequest
+	2, // 4: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.DeliverPOCSecret:input_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretRequest
+	5, // 5: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.PrepareSecretDelivery:output_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse
+	3, // 6: rc.x509.magic_tunnel.remote_config.rc_secrets.v1.SecretsService.DeliverPOCSecret:output_type -> rc.x509.magic_tunnel.remote_config.rc_secrets.v1.DeliverPOCSecretResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -377,7 +495,7 @@ func file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_init() 
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDesc), len(file_rc_x509_magic_tunnel_remote_config_rc_secrets_v1_secrets_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
