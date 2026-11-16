@@ -35,7 +35,6 @@ When the `rc-x509-proto` schema changes, regenerate and commit `rcproto` from
 the repository root:
 
 ```sh
-go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
 buf generate
 git add ffi-hosts/go/rcproto
 ```
