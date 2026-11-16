@@ -201,7 +201,7 @@ unicode-ident,https://github.com/dtolnay/unicode-ident,MIT OR Apache-2.0 OR Unic
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 untrusted,https://github.com/briansmith/untrusted,ISC,Brian Smith <brian@briansmith.org>
 utf8parse,https://github.com/alacritty/vte,Apache-2.0 OR MIT,Joe Wilm <joe@jwilm.com>, Christian Duerr <contact@christianduerr.com>
-uuid,https://github.com/uuid-rs/uuid,Apache-2.0 OR MIT,Ashley Mannix<ashleymannix@live.com.au>, Dylan DPC<dylan.dpc@gmail.com>, Hunar Roop Kahlon<hunar.roop@gmail.com>
+uuid,https://github.com/uuid-rs/uuid,Apache-2.0 OR MIT,N/A
 valuable,https://github.com/tokio-rs/valuable,MIT,N/A
 valuable-derive,https://github.com/tokio-rs/valuable,MIT,N/A
 version_check,https://github.com/SergioBenitez/version_check,MIT OR Apache-2.0,Sergio Benitez <sb@sergio.bz>
