@@ -86,7 +86,7 @@ impl TestClient {
             .send(ConnectionUpdate::new(ConnectionEvent::Connected(
                 io,
                 dispatch_publisher,
-                EndpointHostname::from("config.itsallbroken.com"),
+                EndpointHostname::try_from("config.itsallbroken.com".to_string()).unwrap(),
             )))
             .await
             .expect("notify: connection connected");

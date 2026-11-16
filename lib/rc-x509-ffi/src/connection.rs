@@ -287,7 +287,9 @@ pub unsafe extern "C" fn rc_conn_dispatch_error(
 /// `endpoint_hostname` is the DNS address of the Datadog datacenter this
 /// connection was established to (e.g. `config.datadoghq.com`). This value is
 /// critical to signature verification and SHOULD match the Datadog domain name
-/// for the Remote Config subdomain of the DC this connection is open to.
+/// for the Remote Config subdomain of the DC this connection is open to. If
+/// this value is not a valid DNS address, [`ConnRet::InvalidEndpoint`] is
+/// returned and the connection is not marked as connected.
 ///
 ///   * Called by: `host runtime`.
 ///   * Ownership: passes mutable reference of [`FFIConnection`] to client
@@ -311,13 +313,28 @@ pub unsafe extern "C" fn rc_conn_connected(
     assert!(!conn.is_null());
     assert!(!endpoint_hostname.is_null());
 
-    let endpoint_hostname =
-        unsafe { slice::from_raw_parts(endpoint_hostname, endpoint_hostname_len as usize) };
-    let endpoint_hostname =
-        str::from_utf8(endpoint_hostname).expect("endpoint_hostname must be valid UTF-8");
+    let endpoint = {
+        let endpoint_hostname =
+            unsafe { slice::from_raw_parts(endpoint_hostname, endpoint_hostname_len as usize) };
+        let endpoint_hostname =
+            str::from_utf8(endpoint_hostname).expect("endpoint_hostname must be valid UTF-8");
+
+        match EndpointHostname::try_from(endpoint_hostname.to_string()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(
+                    error = %e,
+                    %endpoint_hostname,
+                    "invalid endpoint provided to connection"
+                );
+
+                return ConnRet::InvalidEndpoint;
+            }
+        }
+    };
 
     let conn = unsafe { &mut *conn };
-    conn.set_connected(EndpointHostname::from(endpoint_hostname))
+    conn.set_connected(endpoint)
 }
 
 /// Mark the connection as closed.
@@ -534,6 +551,9 @@ pub enum ConnRet {
     /// The connection was not in a valid state for this call, e.g. it was
     /// called out of the expected lifecycle order. The call had no effect.
     InvalidState = 1,
+
+    /// The endpoint hostname was an invalid DNS address.
+    InvalidEndpoint = 2,
 }
 
 /// A container to hold the callback context pointer for a [`SendCb`] call.
@@ -1651,7 +1671,8 @@ mod tests {
         // Connected.
         let conn_ref = unsafe { &mut *conn };
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            conn_ref.set_connected(EndpointHostname::from(ENDPOINT_HOSTNAME))
+            conn_ref
+                .set_connected(EndpointHostname::try_from(ENDPOINT_HOSTNAME.to_string()).unwrap())
         }));
 
         if cfg!(debug_assertions) {
@@ -1662,6 +1683,65 @@ mod tests {
         assert_matches!(unsafe { &*conn }.state, State::Init);
 
         unsafe {
+            rc_conn_free(conn);
+            rc_free(ctx);
+        }
+    }
+
+    /// An endpoint hostname that is not a valid DNS name MUST be rejected with
+    /// the `InvalidEndpoint` sentinel, leaving the connection unchanged so the
+    /// host can retry the transition.
+    #[test]
+    fn test_conn_connected_invalid_endpoint() {
+        const INVALID_ENDPOINT_HOSTNAME: &str = "https://config.datadoghq.com";
+
+        unsafe extern "C" fn do_send(
+            _data: *const u8,
+            _length: u32,
+            _user_data: *const c_void,
+        ) -> SendRet {
+            SendRet::Unknown
+        }
+
+        let app_name = "test";
+        let version = "0.0.0";
+        let ctx = unsafe {
+            rc_init(
+                app_name.as_ptr(),
+                app_name.len() as u32,
+                version.as_ptr(),
+                version.len() as u32,
+            )
+        };
+        let conn = unsafe { rc_conn_new(ctx, noop_dispatch, ptr::null()) };
+
+        let got = unsafe {
+            rc_conn_send_callback(conn, do_send, ptr::null());
+            rc_conn_connected(
+                conn,
+                INVALID_ENDPOINT_HOSTNAME.as_ptr(),
+                INVALID_ENDPOINT_HOSTNAME.len() as u32,
+            )
+        };
+
+        assert_matches!(got, ConnRet::InvalidEndpoint);
+
+        // The connection MUST remain in the pre-call state, and therefore
+        // still accept a subsequent (valid) call to rc_conn_connected().
+        assert_matches!(unsafe { &*conn }.state, State::Configured { .. });
+
+        let got = unsafe {
+            rc_conn_connected(
+                conn,
+                ENDPOINT_HOSTNAME.as_ptr(),
+                ENDPOINT_HOSTNAME.len() as u32,
+            )
+        };
+        assert_matches!(got, ConnRet::Success);
+        assert_matches!(unsafe { &*conn }.state, State::Connected { .. });
+
+        unsafe {
+            rc_conn_disconnected(conn);
             rc_conn_free(conn);
             rc_free(ctx);
         }
