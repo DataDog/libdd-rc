@@ -27,4 +27,11 @@ impl AttestationVerifier for MockVerifier {
     ) -> Result<(), rc_x509_trust::trust_store::VerificationError> {
         unimplemented!()
     }
+
+    fn add<U>(&self, _certs: U)
+    where
+        U: Iterator<Item = rc_x509_trust::cert::UntrustedCert>,
+    {
+        // It does nothing!
+    }
 }
