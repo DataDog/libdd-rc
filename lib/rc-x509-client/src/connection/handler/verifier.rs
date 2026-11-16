@@ -20,7 +20,8 @@ use rc_x509_trust::{
     cert::UntrustedCert,
     trust_store::{TrustStore, VerificationError},
 };
-use tokio_util::bytes::Bytes;
+
+use crate::Payload;
 
 /// An abstract verifier of payload signatures.
 ///
@@ -39,9 +40,9 @@ pub trait AttestationVerifier: std::fmt::Debug + Send + Sync {
         &self,
         signing_cert_id: CertId,
         signature: Signature,
-        payload: Bytes,
+        payload: Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<(), VerificationError>;
+    ) -> Result<Payload, VerificationError>;
 
     /// Add the provided `certs` to the pool of certificates that are used to
     /// verify payload signatures.
@@ -58,9 +59,9 @@ where
         &self,
         signing_cert_id: CertId,
         signature: Signature,
-        payload: Bytes,
+        payload: Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<Payload, VerificationError> {
         T::verify(self, signing_cert_id, signature, payload, endpoint)
     }
 
@@ -81,10 +82,17 @@ where
         &self,
         signing_cert_id: CertId,
         signature: Signature,
-        payload: Bytes,
+        payload: Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<(), VerificationError> {
-        TrustStore::verify(self, signing_cert_id, signature, payload, endpoint)
+    ) -> Result<Payload, VerificationError> {
+        TrustStore::verify(
+            self,
+            signing_cert_id,
+            signature,
+            payload.as_bytes(),
+            endpoint,
+        )
+        .map(|_| payload)
     }
 
     fn add<U>(&self, certs: U)

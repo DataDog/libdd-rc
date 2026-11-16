@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bytes::Bytes;
 use rc_crypto::{Signature, certificate::id::CertId, keys::SignatureVerifyErr};
 use rc_x509_roots::RootCertificate;
 use thiserror::Error;
@@ -108,7 +107,7 @@ where
         &self,
         signing_cert_id: CertId,
         signature: Signature,
-        payload: Bytes,
+        payload: &[u8],
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
         let leaf = self
@@ -170,7 +169,7 @@ where
 
         // Finally, verify the signature against the known-valid chain, which
         // may or may not have produced the signature.
-        match cert.public_key().verify(&payload, &signature) {
+        match cert.public_key().verify(payload, &signature) {
             Ok(()) => {
                 // Success - this signature is valid.
 
@@ -230,7 +229,7 @@ mod tests {
             input in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
             data in crate::tests::arbitrary_bytes(0..1025),
         ) {
-            test_prop_verify(roots, input, data);
+            test_prop_verify(roots, input, &data);
         }
 
         /// Process a chain that is missing a random certificate in the local
@@ -276,7 +275,7 @@ mod tests {
             sig in crate::tests::arbitrary_bytes(1..=120),
         ) {
             let sig = Signature::try_from(&*sig).unwrap();
-            test_prop_bad_signature(roots, input, data, sig);
+            test_prop_bad_signature(roots, input, &data, sig);
         }
 
         /// Assert a payload signed by a different leaf is not accepted when
@@ -294,11 +293,11 @@ mod tests {
             let sig = unrelated_chain.leaf.sign(&data);
             drop(unrelated_chain);
 
-            test_prop_bad_signature(roots, chain, data, sig);
+            test_prop_bad_signature(roots, chain, &data, sig);
         }
     }
 
-    fn test_prop_verify(roots: RootSet<2>, chain: TestChain, data: Bytes) {
+    fn test_prop_verify(roots: RootSet<2>, chain: TestChain, data: &[u8]) {
         let cache = MemoryCertCache::new(1024 * 1024);
         let store = TrustStore::new(roots.into_array(), cache);
 
@@ -313,7 +312,7 @@ mod tests {
         );
 
         // Generate a valid signature for the random payload data.
-        let signature = chain.leaf.sign(&data);
+        let signature = chain.leaf.sign(data);
 
         // verify!
         store
@@ -426,7 +425,7 @@ mod tests {
         );
     }
 
-    fn test_prop_bad_signature(roots: RootSet<2>, chain: TestChain, data: Bytes, sig: Signature) {
+    fn test_prop_bad_signature(roots: RootSet<2>, chain: TestChain, data: &[u8], sig: Signature) {
         let cache = MemoryCertCache::new(1024 * 1024);
         let store = TrustStore::new(roots.into_array(), cache);
 

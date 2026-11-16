@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::connection::AttestationVerifier;
+use crate::{Payload, connection::AttestationVerifier};
 
 #[derive(Debug, Default)]
 pub(crate) struct MockVerifier {}
@@ -22,9 +22,9 @@ impl AttestationVerifier for MockVerifier {
         &self,
         _signing_cert_id: rc_crypto::certificate::id::CertId,
         _signature: rc_crypto::Signature,
-        _payload: tokio_util::bytes::Bytes,
+        _payload: Payload,
         _endpoint: &rc_x509_trust::EndpointHostname,
-    ) -> Result<(), rc_x509_trust::trust_store::VerificationError> {
+    ) -> Result<Payload, rc_x509_trust::trust_store::VerificationError> {
         unimplemented!()
     }
 
