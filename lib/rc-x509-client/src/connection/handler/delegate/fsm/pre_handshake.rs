@@ -17,6 +17,7 @@
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use rc_x509_trust::EndpointHostname;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -52,12 +53,14 @@ impl<V> Fsm<PreHandshake, V> {
         dispatch: DispatchPublisher,
         app_info: AppInfo,
         verifier: V,
+        endpoint_hostname: EndpointHostname,
     ) -> Self {
         Self {
             metrics,
             stop,
             dispatch,
             verifier,
+            endpoint_hostname,
             state: PreHandshake { app_info },
         }
     }

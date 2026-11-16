@@ -14,6 +14,7 @@
 
 use std::sync::Arc;
 
+use rc_x509_trust::EndpointHostname;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
@@ -43,10 +44,16 @@ where
         metrics: Arc<InstanceMetrics>,
         dispatch: DispatchPublisher,
         app_info: AppInfo,
+        endpoint_hostname: EndpointHostname,
         verifier: V,
     ) -> Self {
         Self(State::PreHandshake(fsm::Fsm::new(
-            metrics, stop, dispatch, app_info, verifier,
+            metrics,
+            stop,
+            dispatch,
+            app_info,
+            verifier,
+            endpoint_hostname,
         )))
     }
 
@@ -72,7 +79,11 @@ where
         let msg = match msg {
             Ok(v) => v,
             Err(e) => {
-                warn!(error=%e, "dropping invalid message from server");
+                warn!(
+                    error=%e,
+                    endpoint_hostname = %state.endpoint_hostname(),
+                    "dropping invalid message from server"
+                );
 
                 return state
                     .protocol_error(reply, ProtocolError::DeserialisationFailed(e.to_string()))
@@ -125,7 +136,7 @@ mod tests {
             mock_verifier::MockVerifier,
         },
         dispatch::new_dispatcher_interconnect,
-        mocks::io::new_io_pair,
+        mocks::{io::new_io_pair, mock_endpoint_hostname},
     };
 
     use super::*;
@@ -140,6 +151,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -161,6 +173,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "opaque 1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -233,6 +246,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -268,6 +282,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -417,6 +432,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -463,6 +479,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -519,6 +536,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -580,6 +598,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -610,6 +629,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -664,6 +684,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 
@@ -737,6 +758,7 @@ mod tests {
             Arc::new(InstanceMetrics::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
             MockVerifier::default(),
         );
 

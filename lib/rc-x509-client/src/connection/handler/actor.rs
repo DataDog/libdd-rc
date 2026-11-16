@@ -190,7 +190,7 @@ mod tests {
         codec::ClientToServer,
         connection::{handler::delegate::MessageDelegate, mock_verifier::MockVerifier},
         dispatch::new_dispatcher_interconnect,
-        mocks::io::new_io_pair,
+        mocks::{io::new_io_pair, mock_endpoint_hostname},
     };
 
     use super::*;
@@ -213,6 +213,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
@@ -250,6 +251,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
@@ -287,6 +289,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
@@ -324,6 +327,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
@@ -388,6 +392,7 @@ mod tests {
                 Arc::clone(&metrics),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
+                mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,

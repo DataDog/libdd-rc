@@ -15,3 +15,10 @@
 #![allow(dead_code)]
 
 pub(crate) mod io;
+
+use crate::EndpointHostname;
+
+/// A placeholder [`EndpointHostname`] for tests.
+pub(crate) fn mock_endpoint_hostname() -> EndpointHostname {
+    EndpointHostname::try_from("bananas.example.com".to_string()).unwrap()
+}
