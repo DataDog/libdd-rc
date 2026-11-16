@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -47,7 +48,7 @@ func main() {
 	fmt.Println("Press Enter to exit...")
 	fmt.Scanln()
 
-	client.Close()
+	client.Close(context.Background())
 }
 
 func enableLogging() {

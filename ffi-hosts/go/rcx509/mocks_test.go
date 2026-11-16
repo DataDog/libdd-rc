@@ -112,6 +112,9 @@ type fakeFFIContext struct {
 	closeErr     error
 	newConnCalls int
 	closeCalls   int
+
+	// closed, if set, is closed by Close.
+	closed chan struct{}
 }
 
 func (fc *fakeFFIContext) NewConnection() (FFIConnection, error) {
@@ -124,6 +127,9 @@ func (fc *fakeFFIContext) NewConnection() (FFIConnection, error) {
 
 func (fc *fakeFFIContext) Close() error {
 	fc.closeCalls++
+	if fc.closed != nil {
+		close(fc.closed)
+	}
 	return fc.closeErr
 }
 
