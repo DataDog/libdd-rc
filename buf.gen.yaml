@@ -34,6 +34,7 @@ plugins:
   - local:
       - env
       - GOTOOLCHAIN=go1.26.0
+      - GOWORK=off
       - go
       - run
       - -C
