@@ -15,16 +15,30 @@
 # Generates Go bindings for the rc-x509-proto message types, consumed by the
 # ffi-hosts/go/ddrc package for protobuf-typed dispatch.
 #
-# Run locally with:
+# Run from the repository root with:
 #
-#   go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
 #   buf generate
 #
 # Generated output is committed under ffi-hosts/go/rcproto so the published Go
 # module contains every package imported by ffi-hosts/go. Regenerate and commit
 # the bindings whenever the rc-x509-proto schema changes.
+#
+# protoc-gen-go is not taken from $PATH: it is built with `go run` so the
+# output is reproducible across machines.
+#
+#   * The Go toolchain is pinned with GOTOOLCHAIN, because protoc-gen-go formats
+#     its output with the standard library's go/format, and formatting changes
+#     between Go releases (e.g. Go 1.27 reformats doc comments).
 version: v2
 plugins:
-  - local: protoc-gen-go
+  - local:
+      - env
+      - GOTOOLCHAIN=go1.26.0
+      - GOWORK=off
+      - go
+      - run
+      - -C
+      - ffi-hosts/go
+      - google.golang.org/protobuf/cmd/protoc-gen-go
     out: ffi-hosts/go
     opt: module=github.com/DataDog/libdd-rc/ffi-hosts/go
