@@ -59,7 +59,9 @@ where
                 State::Active(self)
             }
 
-            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+            ServerToClient::CertificatePush(certs) => self.handle_cert_push(reply, certs).await,
+
+            ServerToClient::SetReconnectionData(..) => {
                 // TODO: implement.
                 State::Active(self)
             }
@@ -89,7 +91,7 @@ where
 
 impl<V> Fsm<Active, V>
 where
-    V: Debug + Send + Sync,
+    V: AttestationVerifier,
 {
     /// Process a [`ServerToClient::Dispatch`] request, verifying the
     /// attached [`DetachedSignature`] before forwarding `payload` to the

@@ -22,10 +22,13 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     app_info::AppInfo,
     codec::{ClientToServer, ProtocolError, ServerToClient},
-    connection::handler::{
-        SendToServer,
-        delegate::{retry_send, state::State},
-        hello::build_hello,
+    connection::{
+        AttestationVerifier,
+        handler::{
+            SendToServer,
+            delegate::{retry_send, state::State},
+            hello::build_hello,
+        },
     },
     dispatch::DispatchPublisher,
     metrics::InstanceMetrics,
@@ -67,7 +70,7 @@ impl PreHandshake {
 impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<PreHandshake, V>
 where
     IO: SendToServer,
-    V: Debug + Send + Sync,
+    V: AttestationVerifier,
 {
     const IS_HANDSHAKE_COMPLETE: bool = PreHandshake::IS_HANDSHAKE_COMPLETE;
 
@@ -87,7 +90,9 @@ where
                 State::PreHandshake(self)
             }
 
-            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+            ServerToClient::CertificatePush(certs) => self.handle_cert_push(reply, certs).await,
+
+            ServerToClient::SetReconnectionData(..) => {
                 // TODO: implement.
                 State::PreHandshake(self)
             }

@@ -14,7 +14,14 @@
 
 //! Codec for outgoing [`ClientToServer`] messages.
 
-use rc_x509_proto::protocol::v1;
+use rc_x509_proto::protocol::v1::{
+    self,
+    client_protocol_error::{
+        CertIdInvalidLength, DeserialisationFailed, DispatchBeforeHandshake,
+        DispatchMissingSignature, HandshakeAckBeforeHello, HandshakeConnectionIdRejected,
+        HandshakeDuplicateAck,
+    },
+};
 
 use crate::host_runtime::CorrelationId;
 
@@ -57,11 +64,26 @@ pub enum ProtocolError {
 
     /// A dispatch request did not contain any signature.
     DispatchMissingSignature(CorrelationId),
+
+    /// A certificate push from the server could not be processed.
+    CertPush(CertPush),
+}
+
+/// The set of faults that can occur whilst processing a certificate push from
+/// the server.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+pub enum CertPush {
+    /// A pushed certificate was not parsable as DER.
+    ///
+    /// The attached `String` is reported to the server as a parse error
+    /// message.
+    InvalidDer(String),
 }
 
 impl From<ProtocolError> for v1::client_protocol_error::Error {
     fn from(reason: ProtocolError) -> Self {
-        use rc_x509_proto::protocol::v1::client_protocol_error::*;
+        use rc_x509_proto::protocol::v1::client_protocol_error::Error;
 
         match reason {
             ProtocolError::HandshakeAckBeforeHello => {
@@ -87,6 +109,15 @@ impl From<ProtocolError> for v1::client_protocol_error::Error {
             ProtocolError::DispatchMissingSignature(id) => {
                 Error::DispatchMissingSignature(DispatchMissingSignature {
                     correlation_id: id.get(),
+                })
+            }
+            ProtocolError::CertPush(CertPush::InvalidDer(err)) => {
+                Error::CertPush(v1::client_protocol_error::CertPush {
+                    error: Some(v1::client_protocol_error::cert_push::Error::InvalidDer(
+                        rc_x509_proto::protocol::v1::client_protocol_error::cert_push::InvalidDer {
+                            error_msg: err,
+                        },
+                    )),
                 })
             }
         }

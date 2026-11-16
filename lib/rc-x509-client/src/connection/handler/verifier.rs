@@ -17,6 +17,7 @@ use std::sync::Arc;
 use rc_crypto::{Signature, certificate::id::CertId};
 use rc_x509_trust::{
     EndpointHostname,
+    cert::UntrustedCert,
     trust_store::{TrustStore, VerificationError},
 };
 use tokio_util::bytes::Bytes;
@@ -41,6 +42,12 @@ pub trait AttestationVerifier: std::fmt::Debug + Send + Sync {
         payload: Bytes,
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError>;
+
+    /// Add the provided `certs` to the pool of certificates that are used to
+    /// verify payload signatures.
+    fn add<U>(&self, certs: U)
+    where
+        U: Iterator<Item = UntrustedCert>;
 }
 
 impl<T> AttestationVerifier for Arc<T>
@@ -55,6 +62,13 @@ where
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
         T::verify(self, signing_cert_id, signature, payload, endpoint)
+    }
+
+    fn add<U>(&self, certs: U)
+    where
+        U: Iterator<Item = UntrustedCert>,
+    {
+        T::add(self, certs)
     }
 }
 
@@ -71,5 +85,12 @@ where
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
         TrustStore::verify(self, signing_cert_id, signature, payload, endpoint)
+    }
+
+    fn add<U>(&self, certs: U)
+    where
+        U: Iterator<Item = UntrustedCert>,
+    {
+        TrustStore::add(self, certs);
     }
 }

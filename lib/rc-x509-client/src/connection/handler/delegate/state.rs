@@ -58,6 +58,30 @@ pub(crate) enum State<V> {
     Error(Fsm<Error, V>),
 }
 
+impl<V> From<Fsm<PreHandshake, V>> for State<V> {
+    fn from(v: Fsm<PreHandshake, V>) -> Self {
+        Self::PreHandshake(v)
+    }
+}
+
+impl<V> From<Fsm<Handshaking, V>> for State<V> {
+    fn from(v: Fsm<Handshaking, V>) -> Self {
+        Self::Handshaking(v)
+    }
+}
+
+impl<V> From<Fsm<Active, V>> for State<V> {
+    fn from(v: Fsm<Active, V>) -> Self {
+        Self::Active(v)
+    }
+}
+
+impl<V> From<Fsm<Error, V>> for State<V> {
+    fn from(v: Fsm<Error, V>) -> Self {
+        Self::Error(v)
+    }
+}
+
 impl<V> State<V>
 where
     V: Debug + Send + Sync,
