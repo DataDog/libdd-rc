@@ -231,6 +231,21 @@ message ClientProtocolError {
     }
   }
 
+  message VerifySignatureFailed {}
+
+  // A certificate push produced a fatal error.
+  message CertPush {
+    // The certificate could not be parsed from the DER bytes sent to the
+    // client.
+    message InvalidDer {
+      string error_msg = 1;
+    }
+
+    oneof error {
+      InvalidDer invalid_der = 1;
+    }
+  }
+
   // The reported protocol error, including error-specific context if
   // appropriate.
   oneof error {
@@ -243,6 +258,8 @@ message ClientProtocolError {
     DispatchMissingSignature dispatch_missing_signature = 8;
     ExcessivelyLongChain excessively_long_chain = 9;
     VerifyChainFailed verify_chain_failed = 10;
+    VerifySignatureFailed verify_signature_failed = 11;
+    CertPush cert_push = 12;
   }
 
   // True if the client believes the handshake has completed successfully

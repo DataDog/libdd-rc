@@ -195,10 +195,7 @@ pub(crate) fn filter_implemented(
     input: impl Strategy<Value = ServerToClient>,
 ) -> impl Strategy<Value = ServerToClient> {
     input.prop_filter("implemented filter", |v| {
-        !matches!(
-            v,
-            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..)
-        )
+        !matches!(v, ServerToClient::SetReconnectionData(..))
     })
 }
 

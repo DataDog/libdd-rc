@@ -14,14 +14,18 @@
 
 use std::{fmt::Debug, sync::Arc};
 
+use rc_x509_trust::cert::UntrustedCertBytes;
 use tokio_util::sync::CancellationToken;
-use tracing::{trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use crate::{
     codec::{ClientToServer, ProtocolError},
-    connection::handler::{
-        SendToServer,
-        delegate::{retry_send, state::State},
+    connection::{
+        AttestationVerifier,
+        handler::{
+            SendToServer,
+            delegate::{fsm::ServerMessageDelegate, retry_send, state::State},
+        },
     },
     dispatch::DispatchPublisher,
     metrics::InstanceMetrics,
@@ -91,5 +95,43 @@ where
         .await;
 
         State::Error(self.into_state(Error))
+    }
+
+    /// The server is pushing certificates to cache.
+    pub(crate) async fn handle_cert_push<IO>(
+        self,
+        reply: &mut IO,
+        certs: Vec<UntrustedCertBytes>,
+    ) -> State<V>
+    where
+        IO: SendToServer,
+        V: AttestationVerifier,
+        Self: ServerMessageDelegate<IO, V>,
+        State<V>: From<Self>,
+    {
+        let certs = certs
+            .into_iter()
+            .map(UntrustedCertBytes::parse)
+            .collect::<Result<Vec<_>, _>>();
+
+        match certs {
+            Ok(v) => {
+                debug!(n = v.len(), "processing batched cert push");
+
+                self.verifier.add(v.into_iter());
+
+                State::from(self)
+            }
+            Err(e) => {
+                error!(error=%e, "failed to parse certificate");
+
+                self.protocol_error(
+                    <Self as ServerMessageDelegate<IO, V>>::IS_HANDSHAKE_COMPLETE,
+                    reply,
+                    ProtocolError::CertPush(crate::codec::CertPush::InvalidDer(e.to_string())),
+                )
+                .await
+            }
+        }
     }
 }

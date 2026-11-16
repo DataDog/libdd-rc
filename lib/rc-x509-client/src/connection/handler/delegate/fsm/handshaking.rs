@@ -19,9 +19,12 @@ use tracing::{debug, error};
 
 use crate::{
     codec::{ClientToServer, ProtocolError, ServerToClient},
-    connection::handler::{
-        SendToServer,
-        delegate::{retry_send, state::State},
+    connection::{
+        AttestationVerifier,
+        handler::{
+            SendToServer,
+            delegate::{retry_send, state::State},
+        },
     },
 };
 
@@ -39,7 +42,7 @@ impl Handshaking {
 impl<IO, V> ServerMessageDelegate<IO, V> for Fsm<Handshaking, V>
 where
     IO: SendToServer,
-    V: Debug + Send + Sync,
+    V: AttestationVerifier,
 {
     const IS_HANDSHAKE_COMPLETE: bool = Handshaking::IS_HANDSHAKE_COMPLETE;
 
@@ -54,7 +57,9 @@ where
                 State::Handshaking(self)
             }
 
-            ServerToClient::CertificatePush(..) | ServerToClient::SetReconnectionData(..) => {
+            ServerToClient::CertificatePush(certs) => self.handle_cert_push(reply, certs).await,
+
+            ServerToClient::SetReconnectionData(..) => {
                 // TODO: implement.
                 State::Handshaking(self)
             }

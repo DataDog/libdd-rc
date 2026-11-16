@@ -110,11 +110,12 @@ mod tests {
     use futures::FutureExt;
     use proptest::prelude::*;
     use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
+    use rc_x509_trust::cert::UntrustedCertBytes;
     use tokio_util::bytes::Bytes;
 
     use crate::{
         build_version::BuildVersion,
-        codec::ClientToServer,
+        codec::{CertPush, ClientToServer, tests::SAMPLE_CERT_DER},
         connection::{
             handler::delegate::fsm::test_helpers::{
                 any_server_to_client, arbitrary_invalid_dispatch_request, do_handshake,
@@ -249,6 +250,49 @@ mod tests {
                 assert_matches!(reason, ProtocolError::DeserialisationFailed(msg) => {
                     // Error message is reported to the server:
                     assert_eq!(msg, DecodingError::NoMessage.to_string());
+                });
+            }
+        );
+
+        assert_matches!(d.state(), State::Error(..));
+    }
+
+    /// A batch push of certificates causes a protocol violation if any one of
+    /// them cannot be parsed into a valid certificate.
+    #[tokio::test]
+    async fn test_bad_der_is_protocol_violation() {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
+            AppInfo::new("bananas", "1.0.0"),
+            MockVerifier::default(),
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        d = d
+            .process(
+                Ok(ServerToClient::CertificatePush(vec![
+                    UntrustedCertBytes::new(SAMPLE_CERT_DER),
+                    UntrustedCertBytes::new(vec![42]),
+                ])),
+                &mut client,
+            )
+            .await;
+
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete
+            }) => {
+                assert!(!is_handshake_complete);
+                assert_matches!(reason, ProtocolError::CertPush(CertPush::InvalidDer(e)) => {
+                    // Error message is reported to the server:
+                    assert_eq!(e, "invalid der when parsing x509 cert: Parsing requires 1 bytes/chars");
                 });
             }
         );
