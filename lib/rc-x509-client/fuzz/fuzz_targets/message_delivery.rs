@@ -65,7 +65,7 @@ use rc_x509_client::{
     entrypoint::{LibraryEntrypoint, Main},
     host_runtime::{Connection, ConnectionErr},
 };
-use rc_x509_client::{Payload, ProdSealed, connection::AttestationVerifier};
+use rc_x509_client::{Payload, connection::AttestationVerifier};
 use rc_x509_trust::{cert::UntrustedCert, trust_store::VerificationError};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
@@ -85,9 +85,15 @@ fn runtime() -> &'static tokio::runtime::Runtime {
     })
 }
 
+#[cfg(not(debug_assertions))]
+async fn run(msgs: Vec<ServerToClient>) {
+    panic!("this fuzz harness requires debug_assertions to be enabled (dev build)")
+}
+
 /// Initialise a connection actor via the [`Main::entrypoint()`], deliver `msgs`
 /// to it, and then trigger a graceful shutdown once all messages have been
 /// processed.
+#[cfg(debug_assertions)]
 async fn run(msgs: Vec<ServerToClient>) {
     // This channel is closed by FuzzIO when the last message is read by the
     // actor.
@@ -105,13 +111,8 @@ async fn run(msgs: Vec<ServerToClient>) {
     let (shutdown, shutdown_ctl) = ShutdownSignal::new();
     let (events_tx, events_rx) = mpsc::channel(1);
 
-    let client = cfg_select! {
-        debug_assertions => {
-            Main::new(AppInfo::new("rc-x509-client-fuzz", "0.0.0"))
-                .with_testing_verifier(AlwaysYesVerifier) // Skip signature checks.
-        }
-        _ => compile_error!("this fuzz harness requires debug_assertions to be enabled (dev build)"),
-    };
+    let client = Main::new(AppInfo::new("rc-x509-client-fuzz", "0.0.0"))
+        .with_testing_verifier(AlwaysYesVerifier); // Skip signature checks.
 
     let driver = tokio::spawn(client.entrypoint(shutdown, ReceiverStream::new(events_rx)));
 
@@ -184,10 +185,13 @@ impl Stream for MessageStream {
 /// An [`AttestationVerifier`] that accepts all payloads without validating
 /// their signatures.
 #[derive(Debug)]
+#[cfg(debug_assertions)]
 struct AlwaysYesVerifier;
 
-impl ProdSealed for AlwaysYesVerifier {}
+#[cfg(debug_assertions)]
+impl rc_x509_client::ProdSealed for AlwaysYesVerifier {}
 
+#[cfg(debug_assertions)]
 impl AttestationVerifier for AlwaysYesVerifier {
     fn verify(
         &self,
