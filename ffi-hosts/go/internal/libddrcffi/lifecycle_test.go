@@ -37,6 +37,24 @@ func TestConnLifecycleMarkConnected(t *testing.T) {
 	})
 }
 
+func TestConnLifecycleUnmarkConnected(t *testing.T) {
+	var l connLifecycle
+	if err := l.markConnected(); err != nil {
+		t.Fatalf("markConnected() = %v, want nil", err)
+	}
+	l.unmarkConnected()
+
+	if err := l.checkRecvable(); !errors.Is(err, ErrConnectionNotConnected) {
+		t.Fatalf("checkRecvable() after unmarkConnected() = %v, want ErrConnectionNotConnected", err)
+	}
+	if err := l.markConnected(); err != nil {
+		t.Fatalf("markConnected() after unmarkConnected() = %v, want nil", err)
+	}
+	if err := l.markConnected(); !errors.Is(err, ErrConnectionAlreadyConnected) {
+		t.Fatalf("second markConnected() = %v, want ErrConnectionAlreadyConnected", err)
+	}
+}
+
 func TestConnLifecycleMarkClosed(t *testing.T) {
 	t.Run("reports wasConnected false when never connected", func(t *testing.T) {
 		var l connLifecycle
