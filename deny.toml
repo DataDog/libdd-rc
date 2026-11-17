@@ -52,3 +52,9 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
 # Allow git sources (if needed, can be empty list to deny all)
 allow-git = []
+
+[advisories]
+ignore = [
+    # chrono unmaintained; https://rustsec.org/advisories/RUSTSEC-2026-0543
+    { id = "RUSTSEC-2026-0543", reason = "indirect dependency with little use" },
+]
