@@ -49,6 +49,10 @@ enum conn_ret_t
      called out of the expected lifecycle order. The call had no effect.
      */
     CONN_RET_T_INVALID_STATE = 1,
+    /*
+     The endpoint hostname was an invalid DNS address.
+     */
+    CONN_RET_T_INVALID_ENDPOINT = 2,
 };
 #if __STDC_VERSION__ >= 202311L
 typedef enum conn_ret_t conn_ret_t;
@@ -379,7 +383,9 @@ typedef send_ret_t (*SendCb)(const uint8_t *data, uint32_t length, const void *u
  `endpoint_hostname` is the DNS address of the Datadog datacenter this
  connection was established to (e.g. `config.datadoghq.com`). This value is
  critical to signature verification and SHOULD match the Datadog domain name
- for the Remote Config subdomain of the DC this connection is open to.
+ for the Remote Config subdomain of the DC this connection is open to. If
+ this value is not a valid DNS address, [`ConnRet::InvalidEndpoint`] is
+ returned and the connection is not marked as connected.
 
    * Called by: `host runtime`.
    * Ownership: passes mutable reference of [`FFIConnection`] to client

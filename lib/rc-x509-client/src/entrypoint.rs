@@ -192,7 +192,7 @@ async fn handle_connection_events<const N: usize, IO, T>(
             ConnectionEvent::Init => debug!("new connection registered"),
             ConnectionEvent::Connected(io, mut dispatch, endpoint_hostname) => {
                 debug!(
-                    verification_hostname = %endpoint_hostname,
+                    %endpoint_hostname,
                     "connection established"
                 );
 
@@ -203,6 +203,7 @@ async fn handle_connection_events<const N: usize, IO, T>(
                     Arc::clone(&metrics),
                     dispatch,
                     app_info.clone(), // Refclone
+                    endpoint_hostname,
                     Arc::clone(&trust_store),
                 );
                 let conn = ConnectionActor::new(

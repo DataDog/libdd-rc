@@ -14,6 +14,8 @@
 
 use std::fmt::Debug;
 
+use rc_x509_trust::EndpointHostname;
+
 use crate::{
     codec::{ProtocolError, ServerToClient},
     connection::handler::{
@@ -144,6 +146,17 @@ where
                 s.protocol_error(Error::IS_HANDSHAKE_COMPLETE, reply, reason)
                     .await
             }
+        }
+    }
+
+    /// Return the connected [`EndpointHostname`] this FSM is using to verify
+    /// against.
+    pub(crate) fn endpoint_hostname(&self) -> &EndpointHostname {
+        match self {
+            State::PreHandshake(s) => s.endpoint_hostname(),
+            State::Handshaking(s) => s.endpoint_hostname(),
+            State::Active(s) => s.endpoint_hostname(),
+            State::Error(s) => s.endpoint_hostname(),
         }
     }
 }

@@ -122,6 +122,67 @@ func TestConnectionConnectedPropagatesNativeError(t *testing.T) {
 	}
 }
 
+// TestConnectionConnectedNativeErrorThenClose verifies that a connection whose
+// native connected() call failed is not treated as connected: rc-x509-client
+// remains in the configured state, so Close must not call disconnected()
+// (which panics in that state, aborting the process) and Recv must be
+// rejected rather than forwarded.
+func TestConnectionConnectedNativeErrorThenClose(t *testing.T) {
+	fake := &fakeConn{connectedErr: errors.New("invalid endpoint")}
+	conn := newFakeConnection(fake)
+
+	if err := conn.Connected(testEndpointHostname); err == nil {
+		t.Fatal("Connected() returned nil error, want error")
+	}
+
+	if err := conn.Recv([]byte{0x01}); !errors.Is(err, ErrConnectionNotConnected) {
+		t.Fatalf("Recv() = %v, want ErrConnectionNotConnected", err)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if fake.disconnectedCalls != 0 {
+		t.Fatalf("disconnected() called %d times, want 0", fake.disconnectedCalls)
+	}
+	if fake.freeCalls != 1 {
+		t.Fatalf("free() called %d times, want 1", fake.freeCalls)
+	}
+}
+
+// TestConnectionConnectedNativeErrorThenRetry verifies that Connected can be
+// retried after the native connected() call fails, as rc-x509-client remains
+// in the configured state and will accept a subsequent valid call.
+func TestConnectionConnectedNativeErrorThenRetry(t *testing.T) {
+	fake := &fakeConn{connectedErr: errors.New("invalid endpoint")}
+	conn := newFakeConnection(fake)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	if err := conn.Connected("bad"); err == nil {
+		t.Fatal("first Connected() returned nil error, want error")
+	}
+
+	fake.mu.Lock()
+	fake.connectedErr = nil
+	fake.mu.Unlock()
+
+	if err := conn.Connected(testEndpointHostname); err != nil {
+		t.Fatalf("retried Connected() returned error: %v", err)
+	}
+
+	want := []string{"bad", testEndpointHostname}
+	if got := fake.connectedHostnames; !slices.Equal(got, want) {
+		t.Fatalf("connected() hostnames = %v, want %v", got, want)
+	}
+
+	if err := conn.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if fake.disconnectedCalls != 1 {
+		t.Fatalf("disconnected() called %d times, want 1", fake.disconnectedCalls)
+	}
+}
+
 // TestConnectionConnectedForwardsEndpointHostname verifies the endpoint
 // hostname is passed through to the FFI layer for this connection, as it is
 // per-connection state used to verify the signatures of the messages received

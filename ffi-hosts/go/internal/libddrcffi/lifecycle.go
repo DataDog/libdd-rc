@@ -25,6 +25,11 @@ func (l *connLifecycle) markConnected() error {
 	return nil
 }
 
+// unmarkConnected marks the connection as disconnected.
+func (l *connLifecycle) unmarkConnected() {
+	l.connected = false
+}
+
 // markClosed transitions to closed, or reports that it already was.
 // wasConnected reports whether markConnected had previously succeeded,
 // which callers need to decide whether rc_conn_disconnected may be called:

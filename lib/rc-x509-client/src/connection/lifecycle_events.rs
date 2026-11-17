@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{dispatch::DispatchPublisher, endpoint::EndpointHostname};
+use crate::{EndpointHostname, dispatch::DispatchPublisher};
 
 /// Lifecycle events for a single I/O connection brokered by the FFI host.
 ///

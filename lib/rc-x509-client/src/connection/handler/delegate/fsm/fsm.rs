@@ -14,7 +14,7 @@
 
 use std::{fmt::Debug, sync::Arc};
 
-use rc_x509_trust::cert::UntrustedCertBytes;
+use rc_x509_trust::{EndpointHostname, cert::UntrustedCertBytes};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace, warn};
 
@@ -47,6 +47,8 @@ pub(crate) struct Fsm<S, V> {
     /// [`AttestationVerifier`]:
     ///     crate::connection::handler::delegate::traits::AttestationVerifier
     pub(super) verifier: V,
+    /// The [`EndpointHostname`] passed to the verifier to enforce the DC pin.
+    pub(super) endpoint_hostname: EndpointHostname,
 
     pub(super) state: S,
 }
@@ -67,6 +69,7 @@ where
             stop: self.stop,
             dispatch: self.dispatch,
             verifier: self.verifier,
+            endpoint_hostname: self.endpoint_hostname,
             state,
         }
     }
@@ -82,7 +85,11 @@ where
     where
         IO: SendToServer,
     {
-        warn!(error = ?reason, "protocol error");
+        warn!(
+            error = ?reason,
+            endpoint_hostname = %self.endpoint_hostname,
+            "protocol error"
+        );
 
         retry_send(
             io,
@@ -133,5 +140,11 @@ where
                 .await
             }
         }
+    }
+
+    /// Return the connected [`EndpointHostname`] this FSM is using to verify
+    /// against.
+    pub(crate) fn endpoint_hostname(&self) -> &EndpointHostname {
+        &self.endpoint_hostname
     }
 }

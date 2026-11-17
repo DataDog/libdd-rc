@@ -109,7 +109,7 @@ async fn run(msgs: Vec<ServerToClient>) {
         .send(ConnectionUpdate::new(ConnectionEvent::Connected(
             io,
             publisher,
-            EndpointHostname::from("config.datadoghq.com"),
+            EndpointHostname::try_from("config.datadoghq.com".to_string()).unwrap(),
         )))
         .await
         .expect("channel alive");

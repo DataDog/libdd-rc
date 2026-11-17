@@ -172,3 +172,53 @@ func TestConnectionDisconnectedWithoutConnected(t *testing.T) {
 		t.Fatalf("second Close() = %v, want ErrConnectionClosed", err)
 	}
 }
+
+// TestConnectionInvalidEndpointHostnameThenCloseOrRetry verifies that when
+// rc-x509-client rejects an endpoint hostname, the connection is left usable:
+// it can be retried with a valid hostname, and closing it without a
+// successful Connected does not call rc_conn_disconnected on a connection
+// that is still in the configured state (which aborts debug builds).
+func TestConnectionInvalidEndpointHostnameThenCloseOrRetry(t *testing.T) {
+	// Passes the Go-side length checks, but is not a valid DNS name because it
+	// is a URI (with protocol and slashes), not a DNS name. The valid input for
+	// this string would be "config.datadoghq.com".
+	const invalidEndpointHostname = "https://config.datadoghq.com"
+
+	ctx, err := Init("test", "0.0.0")
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+	defer func() { _ = ctx.Close() }()
+
+	t.Run("close", func(t *testing.T) {
+		conn, err := ctx.NewConnection()
+		if err != nil {
+			t.Fatalf("NewConnection() returned error: %v", err)
+		}
+		if err := conn.Connected(invalidEndpointHostname); err == nil {
+			t.Fatal("Connected() with invalid hostname returned nil error, want error")
+		}
+		if err := conn.Close(); err != nil {
+			t.Fatalf("Close() returned error: %v", err)
+		}
+	})
+
+	t.Run("retry", func(t *testing.T) {
+		conn, err := ctx.NewConnection()
+		if err != nil {
+			t.Fatalf("NewConnection() returned error: %v", err)
+		}
+		if err := conn.Connected(invalidEndpointHostname); err == nil {
+			t.Fatal("Connected() with invalid hostname returned nil error, want error")
+		}
+		if err := conn.Connected(testEndpointHostname); err != nil {
+			t.Fatalf("retried Connected() returned error: %v", err)
+		}
+		if err := conn.Recv([]byte{0x01, 0x02, 0x03}); err != nil {
+			t.Fatalf("Recv() returned error: %v", err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Fatalf("Close() returned error: %v", err)
+		}
+	})
+}

@@ -130,6 +130,9 @@ func (c *Connection) Connected(endpointHostname string) error {
 		return err
 	}
 	if err := c.state.conn.connected(endpointHostname); err != nil {
+		// rc-x509-client remains in the configured state when it rejects
+		// the transition (e.g. an invalid endpoint hostname).
+		c.lifecycle.unmarkConnected()
 		return err
 	}
 
