@@ -67,6 +67,11 @@ type Client struct {
 	started bool
 	closed  bool
 	cancel  context.CancelFunc
+
+	// hostTagsMu serializes SetHostTags calls so the FFI layer sees them in
+	// order, and guards the last set it accepted.
+	hostTagsMu sync.Mutex
+	hostTags   []string
 }
 
 type options struct {

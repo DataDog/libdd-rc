@@ -114,6 +114,37 @@ func (c *X509Context) Close() error {
 	return nil
 }
 
+// ErrHostTagsUnsupported is returned by SetHostTags until rc-x509-client
+// exposes rc_set_host_tags.
+var ErrHostTagsUnsupported = errors.New("ddrc: host tags are not supported by this version of rc-x509-client")
+
+// SetHostTags replaces the full set of host tags rc-x509-client reports for
+// this context.
+//
+// DRAFT: it will call this proposed FFI function, which doesn't exist yet:
+//
+//	// Replace the full set of host tags reported by this client instance.
+//	// Copies the tags; the caller keeps ownership of the buffers. Each tag
+//	// MUST be valid UTF-8. Callable at any time after rc_init, including
+//	// before any connection exists. count == 0 clears the tags.
+//	host_tags_ret_t rc_set_host_tags(const struct Ctx *ctx,
+//	                                 const uint8_t *const *tags,
+//	                                 const uint32_t *tag_lens,
+//	                                 uint32_t count);
+//
+// rc-x509-client keeps the latest set per Ctx and reports it on every
+// connection, including after reconnects, and again whenever it changes. The
+// Go side calls this only when the set changes, and has no reconnect logic.
+func (c *X509Context) SetHostTags(_ []string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.closed {
+		return ErrContextClosed
+	}
+	return ErrHostTagsUnsupported
+}
+
 // forget drops the context's record of a connection that has been released.
 func (c *X509Context) forget(conn *Connection) {
 	c.mu.Lock()

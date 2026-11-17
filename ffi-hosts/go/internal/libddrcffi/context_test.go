@@ -172,3 +172,23 @@ func TestConnectionDisconnectedWithoutConnected(t *testing.T) {
 		t.Fatalf("second Close() = %v, want ErrConnectionClosed", err)
 	}
 }
+
+// TestContextSetHostTags verifies SetHostTags reports that host tags are not
+// supported yet on an open context, and ErrContextClosed once closed.
+func TestContextSetHostTags(t *testing.T) {
+	ctx, err := Init("test", "0.0.0")
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+
+	if err := ctx.SetHostTags([]string{"env:prod"}); !errors.Is(err, ErrHostTagsUnsupported) {
+		t.Fatalf("SetHostTags() = %v, want ErrHostTagsUnsupported", err)
+	}
+
+	if err := ctx.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if err := ctx.SetHostTags([]string{"env:prod"}); !errors.Is(err, ErrContextClosed) {
+		t.Fatalf("SetHostTags() after Close() = %v, want ErrContextClosed", err)
+	}
+}
