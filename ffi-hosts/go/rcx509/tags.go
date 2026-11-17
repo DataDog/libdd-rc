@@ -9,9 +9,7 @@ import (
 //
 // Tags use the usual "key:value" format. They are trimmed, empty tags are
 // dropped, and duplicates are removed; a call with the same set as the last
-// successful one does nothing. rc-x509-client reports the latest set on every
-// connection, so SetHostTags may be called at any time, including before
-// Start and while disconnected.
+// successful one does nothing.
 func (c *Client) SetHostTags(tags []string) error {
 	normalized := normalizeTags(tags)
 
