@@ -64,18 +64,22 @@ impl Display for EndpointHostname {
 mod tests {
     use super::*;
 
+    /// Expected input:
     #[test]
     fn test_parse_dns() {
         let got = EndpointHostname::try_from("us1.datadoqhq.com".to_string()).unwrap();
         assert_eq!(got.to_string(), "us1.datadoqhq.com");
     }
 
+    /// This test fails because it is passing a URI, not a DNS hostname. The
+    /// valid input for this domain would be `us1.datadoqhq.com`.
     #[test]
     fn test_reject_http() {
         let _err = EndpointHostname::try_from("https://us1.datadoqhq.com".to_string())
             .expect_err("protocol in URI");
     }
 
+    /// IP addresses are accepted as an endpoint.
     #[test]
     fn test_parse_ip() {
         let got = EndpointHostname::try_from("192.168.42.42".to_string()).unwrap();
