@@ -294,3 +294,42 @@ func TestWithDCHostname(t *testing.T) {
 		})
 	}
 }
+
+func noopHandler(context.Context, uint64, []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// TestUnregisterHandlerAllowsReregistering confirms UnregisterHandler removes
+// a registered handler, so the same uri can be registered again.
+func TestUnregisterHandlerAllowsReregistering(t *testing.T) {
+	const uri = "rcx509.test.v1.Service/UnregisterReregister"
+	client := &Client{ffiCtx: &fakeFFIContext{}}
+
+	if err := client.RegisterHandler(uri, noopHandler); err != nil {
+		t.Fatalf("RegisterHandler() returned unexpected error: %v", err)
+	}
+	if err := client.RegisterHandler(uri, noopHandler); !errors.Is(err, ErrHandlerExists) {
+		t.Fatalf("second RegisterHandler() = %v, want ErrHandlerExists", err)
+	}
+
+	if err := client.UnregisterHandler(uri); err != nil {
+		t.Fatalf("UnregisterHandler() returned unexpected error: %v", err)
+	}
+
+	if err := client.RegisterHandler(uri, noopHandler); err != nil {
+		t.Fatalf("RegisterHandler() after UnregisterHandler() returned unexpected error: %v", err)
+	}
+	if err := client.UnregisterHandler(uri); err != nil {
+		t.Fatalf("UnregisterHandler() cleanup returned unexpected error: %v", err)
+	}
+}
+
+// TestUnregisterHandlerWithoutHandler confirms unregistering a uri with no
+// handler returns ErrHandlerNotFound.
+func TestUnregisterHandlerWithoutHandler(t *testing.T) {
+	client := &Client{ffiCtx: &fakeFFIContext{}}
+
+	if err := client.UnregisterHandler("rcx509.test.v1.Service/NeverRegistered"); !errors.Is(err, ErrHandlerNotFound) {
+		t.Fatalf("UnregisterHandler() = %v, want ErrHandlerNotFound", err)
+	}
+}
