@@ -21,7 +21,7 @@ use rc_x509_trust::{
     trust_store::{TrustStore, VerificationError},
 };
 
-use crate::Payload;
+use crate::{Payload, ProdSealed};
 
 /// An abstract verifier of payload signatures.
 ///
@@ -29,7 +29,7 @@ use crate::Payload;
 /// proof attesting the integrity and provenance of `payload`, and can be proven
 /// to have been signed by `signing_cert_id`, which MUST chain to a explicitly
 /// trusted root.
-pub trait AttestationVerifier: std::fmt::Debug + Send + Sync {
+pub trait AttestationVerifier: std::fmt::Debug + Send + Sync + ProdSealed {
     /// Returns [`Ok`] iff this `payload` can be cryptographically proven to
     /// have been signed by `signing_cert_id`, and which chains to an explicitly
     /// trusted root.
@@ -73,6 +73,8 @@ where
     }
 }
 
+impl<T> ProdSealed for Arc<T> where T: ProdSealed {}
+
 /// Allow using a [`TrustStore`] to verify signatures.
 impl<const N: usize, T> AttestationVerifier for TrustStore<N, T>
 where
@@ -102,3 +104,5 @@ where
         TrustStore::add(self, certs);
     }
 }
+
+impl<const N: usize, T> ProdSealed for TrustStore<N, T> {}

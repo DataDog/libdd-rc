@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Payload, connection::AttestationVerifier};
+use crate::{Payload, ProdSealed, connection::AttestationVerifier};
 
 #[derive(Debug, Default)]
 pub(crate) struct MockVerifier {}
@@ -35,3 +35,5 @@ impl AttestationVerifier for MockVerifier {
         // It does nothing!
     }
 }
+
+impl ProdSealed for MockVerifier {}

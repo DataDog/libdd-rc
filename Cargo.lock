@@ -1568,7 +1568,9 @@ version = "0.0.0"
 dependencies = [
  "futures",
  "libfuzzer-sys",
+ "rc-crypto",
  "rc-x509-client",
+ "rc-x509-trust",
  "tokio",
  "tokio-stream",
 ]

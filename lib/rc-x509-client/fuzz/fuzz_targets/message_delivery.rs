@@ -40,6 +40,12 @@
 //!   connection ID handshake response, so this is required for effective
 //!   fuzzing.
 //!
+//! * Payload signature verification is disabled by swapping in the
+//!   [`AlwaysYesVerifier`]. The fuzzer will ~never generate a valid signature,
+//!   so this is required to explore the message handling logic beyond the
+//!   verification step. Note this means the verification step itself is not
+//!   explored within this harness.
+//!
 
 use std::{
     pin::Pin,
@@ -50,6 +56,7 @@ use std::{
 
 use futures::Stream;
 use libfuzzer_sys::fuzz_target;
+use rc_crypto::{Signature, certificate::id::CertId};
 use rc_x509_client::{
     AppInfo, EndpointHostname, ShutdownSignal,
     codec::{ClientToServer, DecodingError, ServerToClient},
@@ -58,6 +65,8 @@ use rc_x509_client::{
     entrypoint::{LibraryEntrypoint, Main},
     host_runtime::{Connection, ConnectionErr},
 };
+use rc_x509_client::{Payload, ProdSealed, connection::AttestationVerifier};
+use rc_x509_trust::{cert::UntrustedCert, trust_store::VerificationError};
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -96,9 +105,15 @@ async fn run(msgs: Vec<ServerToClient>) {
     let (shutdown, shutdown_ctl) = ShutdownSignal::new();
     let (events_tx, events_rx) = mpsc::channel(1);
 
-    // Initialise the library entrypoint.
-    let entrypoint = Main::new(AppInfo::new("rc-x509-client-fuzz", "0.0.0"));
-    let driver = tokio::spawn(entrypoint.entrypoint(shutdown, ReceiverStream::new(events_rx)));
+    let client = cfg_select! {
+        debug_assertions => {
+            Main::new(AppInfo::new("rc-x509-client-fuzz", "0.0.0"))
+                .with_testing_verifier(AlwaysYesVerifier) // Skip signature checks.
+        }
+        _ => compile_error!("this fuzz harness requires debug_assertions to be enabled (dev build)"),
+    };
+
+    let driver = tokio::spawn(client.entrypoint(shutdown, ReceiverStream::new(events_rx)));
 
     // Init a dispatch interconnect, and keep it alive by holding onto all
     // handles.
@@ -163,5 +178,31 @@ impl Stream for MessageStream {
             let _ = done.send(());
         }
         Poll::Ready(None)
+    }
+}
+
+/// An [`AttestationVerifier`] that accepts all payloads without validating
+/// their signatures.
+#[derive(Debug)]
+struct AlwaysYesVerifier;
+
+impl ProdSealed for AlwaysYesVerifier {}
+
+impl AttestationVerifier for AlwaysYesVerifier {
+    fn verify(
+        &self,
+        _signing_cert_id: CertId,
+        _signature: Signature,
+        payload: Payload,
+        _endpoint: &EndpointHostname,
+    ) -> Result<Payload, VerificationError> {
+        Ok(payload)
+    }
+
+    fn add<U>(&self, _certs: U)
+    where
+        U: Iterator<Item = UntrustedCert>,
+    {
+        // It does nothing!
     }
 }
