@@ -1,0 +1,117 @@
+// Copyright 2026-Present Datadog, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use std::sync::Arc;
+
+use proptest::prelude::*;
+use rc_x509_roots::RootCertificate;
+
+use crate::test_issuer::{
+    CertBuilder, Identity, TestCA,
+    template::{intermediate::IntermediateTemplate, leaf::LeafTemplate},
+};
+
+/// Hooks in [`arbitrary_chain()`] to enable implementations to modify the CSRs
+/// of each certificate during chain issuance.
+pub trait ChainMutator: std::fmt::Debug {
+    /// Modify the [`ChainBuilder`] for an intermediate.
+    ///
+    /// `index` is the 0-based position of this intermediate (ordered root to
+    /// leaf) and `total` is the 1-indexed total number of intermediates in the
+    /// chain.
+    fn intermediate<'a>(
+        &self,
+        builder: &mut CertBuilder<IntermediateTemplate<'a>>,
+        index: u8,
+        total: u8,
+    );
+
+    /// Called once to allow modification of the chain leaf [`CertBuilder`].
+    fn leaf<'a>(&self, builder: &mut CertBuilder<LeafTemplate<'a>>);
+
+    /// Called once to allow modification of the final chain.
+    fn complete(&self, chain: TestChain) -> TestChain;
+}
+
+/// Generate a valid chain from the `CA` root, with `n_intermediates` between
+/// the root and leaf.
+///
+/// Optionally allow `mutator` to modify the CSRs prior to certificate issuance.
+pub fn arbitrary_chain<'a>(
+    ca: &'a TestCA,
+    n_intermediates: impl Strategy<Value = u8> + 'a,
+    mutator: impl ChainMutator + 'a,
+) -> impl Strategy<Value = TestChain> + 'a {
+    n_intermediates.prop_map(move |n| TestChain::build(ca, n, &mutator))
+}
+
+/// A generated chain for testing.
+#[derive(Debug)]
+pub struct TestChain {
+    /// The trust anchor for this chain.
+    pub root: Arc<Identity>,
+
+    /// 0 or more intermediate certificates, ordered from root to leaf.
+    pub intermediates: Vec<Identity>,
+
+    /// The leaf certificate, signed by the last `intermediates` entry, or the
+    /// root if empty.
+    pub leaf: Identity,
+}
+
+impl TestChain {
+    pub fn build<'a>(ca: &'a TestCA, n_intermediates: u8, mutator: &'a impl ChainMutator) -> Self {
+        let mut intermediates = Vec::with_capacity(n_intermediates as _);
+
+        // Generate a chain of N-1 intermediates.
+        for i in 1..(n_intermediates + 1) {
+            let mut builder = CertBuilder::new_intermediate(
+                format!("Intermediate {}", i),
+                intermediates.last().unwrap_or(ca.root()),
+            )
+            .allowed_domain("itsallbroken.com");
+
+            mutator.intermediate(&mut builder, i - 1, n_intermediates);
+            intermediates.push(builder.build());
+        }
+
+        // And append the leaf.
+        let mut builder = CertBuilder::new_leaf(
+            "A Leaf Certificate",
+            intermediates.last().unwrap_or(ca.root()),
+        )
+        .san("leaf.itsallbroken.com");
+
+        mutator.leaf(&mut builder);
+
+        let leaf = builder.build();
+
+        mutator.complete(TestChain {
+            root: Arc::clone(ca.root()),
+            intermediates,
+            leaf,
+        })
+    }
+
+    pub fn root(&self) -> RootCertificate {
+        RootCertificate::from_trusted_cert(self.root.cert().clone())
+    }
+
+    /// Return the length of the chain, including roots.
+    // A chain always contains at least a root and a leaf, so it is never empty.
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.intermediates.len() + 2
+    }
+}

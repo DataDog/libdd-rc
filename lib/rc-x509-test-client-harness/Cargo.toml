@@ -36,6 +36,8 @@ rc-x509-client = { version = "=0.3.0", path = "../rc-x509-client", default-featu
 assert_matches = "1.5.0"
 rc-crypto.workspace = true
 rc-x509-proto.workspace = true
+rc-x509-test-helpers = { workspace = true, features = ["test-issuer"] }
+rc-x509-trust.workspace = true
 tokio = { version = "1.52.3", features = ["rt", "sync", "time", "test-util"] }
 tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
@@ -43,5 +45,15 @@ tracing-subscriber = { version = "0.3.23", features = ["fmt", "env-filter"] }
 
 [features]
 default = ["fips"]
-fips = ["rc-x509-client/fips", "rc-crypto/fips"]
-non-fips = ["rc-x509-client/non-fips", "rc-crypto/non-fips"]
+fips = [
+	"rc-x509-client/fips",
+	"rc-crypto/fips",
+	"rc-x509-test-helpers/fips",
+	"rc-x509-trust/fips",
+]
+non-fips = [
+	"rc-x509-client/non-fips",
+	"rc-crypto/non-fips",
+	"rc-x509-test-helpers/non-fips",
+	"rc-x509-trust/non-fips",
+]

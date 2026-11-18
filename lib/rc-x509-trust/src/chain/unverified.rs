@@ -84,7 +84,7 @@ mod tests {
 
     use rc_x509_test_helpers::assert_valuable_repr;
 
-    use crate::test_issuer::{CertBuilder, TestCA};
+    use rc_x509_test_helpers::test_issuer::{CertBuilder, TestCA};
 
     use super::*;
 

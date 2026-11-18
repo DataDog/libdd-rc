@@ -35,9 +35,8 @@ valuable = "0.1.1"
 [dev-dependencies]
 assert_matches = "1.5.0"
 proptest = "1.11.0"
-rc-x509-test-helpers.workspace = true
+rc-x509-test-helpers = { workspace = true, features = ["test-issuer"] }
 rcgen = { version = "0.14", default-features = false }
-time = "0.3"
 
 [lints]
 workspace = true
@@ -45,5 +44,15 @@ workspace = true
 [features]
 fuzzing = ["dep:arbitrary"]
 default = ["fips"]
-fips = ["rustls-webpki/aws-lc-rs-fips", "rc-crypto/fips", "rc-x509-roots/fips"]
-non-fips = ["rustls-webpki/aws-lc-rs", "rc-crypto/non-fips", "rc-x509-roots/non-fips"]
+fips = [
+	"rustls-webpki/aws-lc-rs-fips",
+	"rc-crypto/fips",
+	"rc-x509-roots/fips",
+	"rc-x509-test-helpers/fips",
+]
+non-fips = [
+	"rustls-webpki/aws-lc-rs",
+	"rc-crypto/non-fips",
+	"rc-x509-roots/non-fips",
+	"rc-x509-test-helpers/non-fips",
+]

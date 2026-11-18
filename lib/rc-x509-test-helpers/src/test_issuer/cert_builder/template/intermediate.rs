@@ -1,0 +1,101 @@
+// Copyright 2026-Present Datadog, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use rc_crypto::certificate::{Certificate, csr::CertificateSigningRequest};
+use rcgen::{BasicConstraints, GeneralSubtree, IsCa, NameConstraints};
+
+use crate::test_issuer::{
+    CertBuilder, Identity,
+    cert_builder::{Params, TestCertTemplate},
+};
+
+/// An initialisation template for an intermediate CA certificate.
+#[derive(Debug)]
+pub struct IntermediateTemplate<'a> {
+    parent: &'a Identity,
+    allowed_domains: Vec<String>, // Empty == unconstrained
+    path_len: Option<u8>,
+}
+
+impl<'a> TestCertTemplate for IntermediateTemplate<'a> {
+    fn build(self, params: Params) -> Identity {
+        let csr = CertificateSigningRequest::new_intermediate(&params.key, &params.cn)
+            .expect("invalid CSR");
+
+        let mut tbs = rcgen::CertificateSigningRequestParams::from_pem(&csr.as_pem_string())
+            .expect("invalid TBS");
+
+        tbs.params.is_ca = match self.path_len {
+            Some(v) => IsCa::Ca(BasicConstraints::Constrained(v)),
+            None => IsCa::Ca(BasicConstraints::Unconstrained),
+        };
+
+        if !self.allowed_domains.is_empty() {
+            tbs.params.name_constraints = Some(NameConstraints {
+                permitted_subtrees: self
+                    .allowed_domains
+                    .into_iter()
+                    .map(GeneralSubtree::DnsName)
+                    .collect(),
+                excluded_subtrees: vec![],
+            });
+        }
+
+        params.sign(tbs.params, self.parent)
+    }
+}
+
+impl<'a> CertBuilder<IntermediateTemplate<'a>> {
+    /// Initialise a new intermediate CA template.
+    pub fn new_intermediate(cn: impl Into<String>, parent: &'a Identity) -> Self {
+        CertBuilder::new(
+            cn,
+            IntermediateTemplate {
+                parent,
+                allowed_domains: vec![],
+                path_len: None,
+            },
+        )
+    }
+
+    /// Set the permitted NameConstraint domain.
+    pub fn allowed_domain(mut self, domain: impl Into<String>) -> Self {
+        self.template.allowed_domains = vec![domain.into()];
+        self
+    }
+
+    /// Override the permitted NameConstraint domains via mutable reference,
+    /// for use in [`ChainMutator`] implementations.
+    pub fn set_allowed_domains(&mut self, domains: Vec<String>) {
+        self.template.allowed_domains = domains;
+    }
+
+    /// Set the pathLen constraint for the basic constraint CA field (default:
+    /// 0).
+    pub fn path_len(mut self, n: u8) -> Self {
+        self.template.path_len = Some(n);
+        self
+    }
+
+    /// Set the pathLen constraint via mutable reference, for use in
+    /// [`ChainMutator`] implementations.
+    pub fn set_path_len(&mut self, n: u8) {
+        self.template.path_len = Some(n);
+    }
+
+    /// Return the parent (issuer) certificate.
+    pub fn parent_cert(&self) -> &Certificate {
+        self.template.parent.cert()
+    }
+}

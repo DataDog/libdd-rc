@@ -387,16 +387,17 @@ mod tests {
     use proptest::prelude::*;
     use rcgen::ExtendedKeyUsagePurpose;
 
+    use rc_x509_test_helpers::test_issuer::{
+        CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
+        NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
+        arbitrary_chain, arbitrary_eku_apply_to, arbitrary_leaf_san_scenario,
+        arbitrary_name_constraint_scenario,
+    };
+
     use crate::{
         chain::{
             ChainBuildError, MAX_INTERMEDIATES, build_unverified_chain_for,
             tests::{ChainError, InvalidChain, arbitrary_invalid_chain},
-        },
-        test_issuer::{
-            CertBuilder, ChainEKUConfig, LEAF_ENDPOINT_HOSTNAME, LeafSanScenario,
-            NameConstraintScenario, SetEKUs, SetNameConstraints, TestCA, TestChain, ValidChain,
-            arbitrary_chain, arbitrary_eku_apply_to, arbitrary_leaf_san_scenario,
-            arbitrary_name_constraint_scenario,
         },
         trust_store::{CertCache, MemoryCertCache, RootSet, tests::arbitrary_ordered_root_set},
     };

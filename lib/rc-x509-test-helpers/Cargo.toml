@@ -14,7 +14,7 @@
 
 [package]
 name = "rc-x509-test-helpers"
-version = "0.1.1"
+version = "0.1.2"
 edition.workspace = true
 license.workspace = true
 description = "Test helpers for the RC X509 platform"
@@ -22,6 +22,30 @@ repository = "https://github.com/DataDog/libdd-rc"
 
 [dependencies]
 valuable = { version = "0.1", features = ["derive"] }
+
+# Dependencies of the optional "test-issuer" feature.
+proptest = { version = "1.11.0", optional = true }
+rc-crypto = { workspace = true, optional = true }
+rc-x509-roots = { workspace = true, optional = true }
+rcgen = { version = "0.14", default-features = false, optional = true }
+time = { version = "0.3", optional = true }
+
+[features]
+# NOTE: deliberately no `default` feature selecting a crypto backend - rc-crypto
+# dev-depends on this crate, so a default here would be unified into rc-crypto's
+# own test build and collide with an explicitly requested backend.
+test-issuer = [
+	"dep:proptest",
+	"dep:rc-crypto",
+	"dep:rc-x509-roots",
+	"dep:rcgen",
+	"dep:time",
+]
+
+# Backend selection, forwarded only when "test-issuer" pulled the deps in - the
+# weak "dep?/feature" syntax avoids implicitly enabling the optional deps.
+fips = ["rc-crypto?/fips", "rc-x509-roots?/fips", "rcgen?/aws_lc_rs", "rcgen?/fips"]
+non-fips = ["rc-crypto?/non-fips", "rc-x509-roots?/non-fips", "rcgen?/aws_lc_rs"]
 
 [lints]
 workspace = true
