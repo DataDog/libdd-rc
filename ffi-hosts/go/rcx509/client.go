@@ -24,6 +24,14 @@ var ErrAlreadyStarted = errors.New("rcx509: client already started")
 // already been closed.
 var ErrClientClosed = errors.New("rcx509: client is closed")
 
+// ErrHandlerExists is returned by RegisterHandler when a handler is already
+// registered for the uri.
+var ErrHandlerExists = libddrcffi.ErrHandlerExists
+
+// ErrHandlerNotFound is returned by UnregisterHandler when no handler is
+// registered for the uri.
+var ErrHandlerNotFound = libddrcffi.ErrHandlerNotFound
+
 // HandlerFunc handles a request for one service URI (a fully-qualified gRPC
 // method name) and returns the response payload. Handlers run on an
 // rcx509-owned goroutine, and MUST NOT take more than 30s to execute (else ctx
@@ -219,6 +227,12 @@ func (c *Client) Close() error {
 // processed by the backend.
 func (c *Client) RegisterHandler(uri string, fn HandlerFunc) error {
 	return libddrcffi.RegisterHandler(uri, fn)
+}
+
+// UnregisterHandler removes the handler registered for uri, returning
+// ErrHandlerNotFound if there is none.
+func (c *Client) UnregisterHandler(uri string) error {
+	return libddrcffi.UnregisterHandler(uri)
 }
 
 // run is the Client's background connection loop, started by Start.

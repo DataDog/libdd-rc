@@ -202,7 +202,11 @@ func (c *Client) runSession(ctx context.Context, conn FFIConnection, ws Websocke
 		// There is a messages from the RC backend we need to push to the rc-x509-client layer
 		case msg, ok := <-incoming:
 			if !ok {
-				return nil
+				// readCtx derives from ctx, so canceling ctx also stops the
+				// readWorker and closes incoming. Both select cases may then be
+				// ready at once; report the cancellation rather than a clean
+				// close regardless of which one the select picked.
+				return ctx.Err()
 			}
 			if err := conn.Recv(msg); err != nil {
 				if errors.Is(err, libddrcffi.ErrConnectionClosed) ||
