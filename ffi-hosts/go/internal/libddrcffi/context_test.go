@@ -222,3 +222,23 @@ func TestConnectionInvalidEndpointHostnameThenCloseOrRetry(t *testing.T) {
 		}
 	})
 }
+
+// TestContextSetHostTags verifies SetHostTags succeeds on an open context, and
+// returns ErrContextClosed once the context is closed.
+func TestContextSetHostTags(t *testing.T) {
+	ctx, err := Init("test", "0.0.0")
+	if err != nil {
+		t.Fatalf("Init() returned error: %v", err)
+	}
+
+	if err := ctx.SetHostTags([]string{"env:prod"}); err != nil {
+		t.Fatalf("SetHostTags() returned unexpected error: %v", err)
+	}
+
+	if err := ctx.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	if err := ctx.SetHostTags([]string{"env:prod"}); !errors.Is(err, ErrContextClosed) {
+		t.Fatalf("SetHostTags() after Close() = %v, want ErrContextClosed", err)
+	}
+}

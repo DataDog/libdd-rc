@@ -112,6 +112,13 @@ type fakeFFIContext struct {
 	closeErr     error
 	newConnCalls int
 	closeCalls   int
+
+	hostTagsCalls [][]string
+}
+
+func (fc *fakeFFIContext) SetHostTags(tags []string) error {
+	fc.hostTagsCalls = append(fc.hostTagsCalls, tags)
+	return nil
 }
 
 func (fc *fakeFFIContext) NewConnection() (FFIConnection, error) {

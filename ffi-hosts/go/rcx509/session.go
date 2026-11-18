@@ -49,6 +49,7 @@ type WebsocketConnection interface {
 // session lifecycle depends on.
 type FFIContext interface {
 	NewConnection() (FFIConnection, error)
+	SetHostTags(tags []string) error
 	Close() error
 }
 
