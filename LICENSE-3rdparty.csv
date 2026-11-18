@@ -120,6 +120,7 @@ portable-atomic,https://github.com/taiki-e/portable-atomic,Apache-2.0 OR MIT,N/A
 portable-atomic-util,https://github.com/taiki-e/portable-atomic-util,Apache-2.0 OR MIT,N/A
 powerfmt,https://github.com/jhpratt/powerfmt,MIT OR Apache-2.0,Jacob Pratt <jacob@jhpratt.dev>
 prettyplease,https://github.com/dtolnay/prettyplease,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
+prettyplease,https://github.com/dtolnay/prettyplease,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>
 proc-macro2,https://github.com/dtolnay/proc-macro2,MIT OR Apache-2.0,David Tolnay <dtolnay@gmail.com>, Alex Crichton <alex@alexcrichton.com>
 proptest,https://github.com/proptest-rs/proptest,MIT OR Apache-2.0,Jason Lingle
 proptest-derive,https://github.com/proptest-rs/proptest,MIT OR Apache-2.0,Mazdak Farrokhzad <twingoow@gmail.com>
