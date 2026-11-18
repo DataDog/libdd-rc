@@ -18,7 +18,7 @@ use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
 use rc_x509_roots::{R1, R2};
-use rc_x509_trust::trust_store::{CertCache, MemoryCertCache, TrustStore};
+use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -27,7 +27,9 @@ use tokio::pin;
 use crate::{
     AbortOnDrop, ShutdownSignal,
     app_info::AppInfo,
-    connection::{ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate},
+    connection::{
+        AttestationVerifier, ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate,
+    },
     host_runtime::Connection,
     metrics::InstanceMetrics,
 };
@@ -69,26 +71,53 @@ pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {
 /// This struct exists to provide an indirection point / impl of
 /// [`LibraryEntrypoint`] callable from the FFI layer.
 #[derive(Debug)]
-pub struct Main {
+pub struct Main<V> {
     /// Reference counted metadata describing the host application, reported to
     /// the backend in the [`ClientToServer::ClientHello`].
     ///
     /// [`ClientToServer::ClientHello`]:
     ///     crate::codec::ClientToServer::ClientHello
     app_info: AppInfo,
+
+    /// The verifier of payload signatures used by all connections driven by
+    /// this entrypoint.
+    verifier: V,
 }
 
-impl Main {
+impl Main<TrustStore<2, MemoryCertCache>> {
     /// Construct a new [`Main`] entrypoint, reporting `app_info` to the backend
     /// as part of the connection handshake.
     pub fn new(app_info: AppInfo) -> Self {
-        Self { app_info }
+        // Build the trust store with the specified roots.
+        let verifier = TrustStore::new(
+            [R1.clone(), R2.clone()],
+            MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
+        );
+
+        Self { app_info, verifier }
     }
 }
 
-impl<IO> LibraryEntrypoint<IO> for Main
+impl<V> Main<V> {
+    /// Replace the signature verifier with `v`, reducing the security of this
+    /// client to whatever `v` enforces.
+    ///
+    /// This is available in debug builds only, for use by test harnesses.
+    #[cfg(debug_assertions)]
+    pub fn with_testing_verifier<U>(self, v: U) -> Main<U> {
+        error!("TESTING MODE: overriding signature verifier - security is reduced");
+
+        Main {
+            app_info: self.app_info,
+            verifier: v,
+        }
+    }
+}
+
+impl<IO, V> LibraryEntrypoint<IO> for Main<V>
 where
     IO: Connection,
+    V: AttestationVerifier + 'static,
 {
     async fn entrypoint(
         self,
@@ -105,18 +134,13 @@ where
             "starting rc-x509-client instance"
         );
 
-        let trust_store = Arc::new(TrustStore::new(
-            [R1.clone(), R2.clone()],
-            MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
-        ));
-
         // Begin processing the connection events.
         let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
             shutdown.clone(),
             conn_events,
             metrics,
             self.app_info,
-            trust_store,
+            Arc::new(self.verifier),
         )));
 
         // Wait forever for the shutdown signal.
@@ -144,15 +168,15 @@ where
 ///
 /// `incoming` is closed to signal this function should close any existing
 /// connections and exit.
-async fn handle_connection_events<const N: usize, IO, T>(
+async fn handle_connection_events<IO, V>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     metrics: Arc<InstanceMetrics>,
     app_info: AppInfo,
-    trust_store: Arc<TrustStore<N, T>>,
+    verifier: Arc<V>,
 ) where
     IO: Connection,
-    T: CertCache,
+    V: AttestationVerifier + 'static,
 {
     debug!("starting connection event handler");
 
@@ -204,7 +228,7 @@ async fn handle_connection_events<const N: usize, IO, T>(
                     dispatch,
                     app_info.clone(), // Refclone
                     endpoint_hostname,
-                    Arc::clone(&trust_store),
+                    Arc::clone(&verifier),
                 );
                 let conn = ConnectionActor::new(
                     io,

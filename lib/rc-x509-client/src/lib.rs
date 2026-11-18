@@ -24,11 +24,13 @@ pub mod entrypoint;
 pub mod host_runtime;
 mod metrics;
 mod payload;
+mod prod_sealed;
 mod shutdown_signal;
 
 pub use abort_on_drop::*;
 pub use app_info::*;
 pub use payload::*;
+pub use prod_sealed::*;
 pub use shutdown_signal::*;
 
 /// Re-export the `EndpointHostname` for use by crates that depend on this
