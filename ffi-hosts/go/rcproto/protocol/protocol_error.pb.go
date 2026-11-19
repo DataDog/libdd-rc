@@ -38,16 +38,9 @@ type ClientProtocolError struct {
 	//
 	// Types that are valid to be assigned to Error:
 	//
-	//	*ClientProtocolError_HandshakeAckBeforeHello_
-	//	*ClientProtocolError_HandshakeDuplicateAck_
-	//	*ClientProtocolError_HandshakeConnectionIdRejected_
 	//	*ClientProtocolError_DeserialisationFailed_
-	//	*ClientProtocolError_CertIdInvalidLength_
-	//	*ClientProtocolError_DispatchBeforeHandshake_
-	//	*ClientProtocolError_DispatchMissingSignature_
-	//	*ClientProtocolError_ExcessivelyLongChain_
-	//	*ClientProtocolError_VerifyChainFailed_
-	//	*ClientProtocolError_VerifySignatureFailed_
+	//	*ClientProtocolError_Handshake_
+	//	*ClientProtocolError_Dispatch_
 	//	*ClientProtocolError_CertPush_
 	Error isClientProtocolError_Error `protobuf_oneof:"error"`
 	// True if the client believes the handshake has completed successfully
@@ -94,33 +87,6 @@ func (x *ClientProtocolError) GetError() isClientProtocolError_Error {
 	return nil
 }
 
-func (x *ClientProtocolError) GetHandshakeAckBeforeHello() *ClientProtocolError_HandshakeAckBeforeHello {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_HandshakeAckBeforeHello_); ok {
-			return x.HandshakeAckBeforeHello
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetHandshakeDuplicateAck() *ClientProtocolError_HandshakeDuplicateAck {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_HandshakeDuplicateAck_); ok {
-			return x.HandshakeDuplicateAck
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetHandshakeConnectionIdRejected() *ClientProtocolError_HandshakeConnectionIdRejected {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_HandshakeConnectionIdRejected_); ok {
-			return x.HandshakeConnectionIdRejected
-		}
-	}
-	return nil
-}
-
 func (x *ClientProtocolError) GetDeserialisationFailed() *ClientProtocolError_DeserialisationFailed {
 	if x != nil {
 		if x, ok := x.Error.(*ClientProtocolError_DeserialisationFailed_); ok {
@@ -130,55 +96,19 @@ func (x *ClientProtocolError) GetDeserialisationFailed() *ClientProtocolError_De
 	return nil
 }
 
-func (x *ClientProtocolError) GetCertIdInvalidLength() *ClientProtocolError_CertIdInvalidLength {
+func (x *ClientProtocolError) GetHandshake() *ClientProtocolError_Handshake {
 	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_CertIdInvalidLength_); ok {
-			return x.CertIdInvalidLength
+		if x, ok := x.Error.(*ClientProtocolError_Handshake_); ok {
+			return x.Handshake
 		}
 	}
 	return nil
 }
 
-func (x *ClientProtocolError) GetDispatchBeforeHandshake() *ClientProtocolError_DispatchBeforeHandshake {
+func (x *ClientProtocolError) GetDispatch() *ClientProtocolError_Dispatch {
 	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_DispatchBeforeHandshake_); ok {
-			return x.DispatchBeforeHandshake
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetDispatchMissingSignature() *ClientProtocolError_DispatchMissingSignature {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_DispatchMissingSignature_); ok {
-			return x.DispatchMissingSignature
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetExcessivelyLongChain() *ClientProtocolError_ExcessivelyLongChain {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_ExcessivelyLongChain_); ok {
-			return x.ExcessivelyLongChain
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetVerifyChainFailed() *ClientProtocolError_VerifyChainFailed {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_); ok {
-			return x.VerifyChainFailed
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError) GetVerifySignatureFailed() *ClientProtocolError_VerifySignatureFailed {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifySignatureFailed_); ok {
-			return x.VerifySignatureFailed
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_); ok {
+			return x.Dispatch
 		}
 	}
 	return nil
@@ -204,188 +134,29 @@ type isClientProtocolError_Error interface {
 	isClientProtocolError_Error()
 }
 
-type ClientProtocolError_HandshakeAckBeforeHello_ struct {
-	HandshakeAckBeforeHello *ClientProtocolError_HandshakeAckBeforeHello `protobuf:"bytes,1,opt,name=handshake_ack_before_hello,json=handshakeAckBeforeHello,proto3,oneof"`
-}
-
-type ClientProtocolError_HandshakeDuplicateAck_ struct {
-	HandshakeDuplicateAck *ClientProtocolError_HandshakeDuplicateAck `protobuf:"bytes,2,opt,name=handshake_duplicate_ack,json=handshakeDuplicateAck,proto3,oneof"`
-}
-
-type ClientProtocolError_HandshakeConnectionIdRejected_ struct {
-	HandshakeConnectionIdRejected *ClientProtocolError_HandshakeConnectionIdRejected `protobuf:"bytes,3,opt,name=handshake_connection_id_rejected,json=handshakeConnectionIdRejected,proto3,oneof"`
-}
-
 type ClientProtocolError_DeserialisationFailed_ struct {
-	DeserialisationFailed *ClientProtocolError_DeserialisationFailed `protobuf:"bytes,4,opt,name=deserialisation_failed,json=deserialisationFailed,proto3,oneof"`
+	DeserialisationFailed *ClientProtocolError_DeserialisationFailed `protobuf:"bytes,1,opt,name=deserialisation_failed,json=deserialisationFailed,proto3,oneof"`
 }
 
-type ClientProtocolError_CertIdInvalidLength_ struct {
-	CertIdInvalidLength *ClientProtocolError_CertIdInvalidLength `protobuf:"bytes,6,opt,name=cert_id_invalid_length,json=certIdInvalidLength,proto3,oneof"`
+type ClientProtocolError_Handshake_ struct {
+	Handshake *ClientProtocolError_Handshake `protobuf:"bytes,2,opt,name=handshake,proto3,oneof"`
 }
 
-type ClientProtocolError_DispatchBeforeHandshake_ struct {
-	DispatchBeforeHandshake *ClientProtocolError_DispatchBeforeHandshake `protobuf:"bytes,7,opt,name=dispatch_before_handshake,json=dispatchBeforeHandshake,proto3,oneof"`
-}
-
-type ClientProtocolError_DispatchMissingSignature_ struct {
-	DispatchMissingSignature *ClientProtocolError_DispatchMissingSignature `protobuf:"bytes,8,opt,name=dispatch_missing_signature,json=dispatchMissingSignature,proto3,oneof"`
-}
-
-type ClientProtocolError_ExcessivelyLongChain_ struct {
-	ExcessivelyLongChain *ClientProtocolError_ExcessivelyLongChain `protobuf:"bytes,9,opt,name=excessively_long_chain,json=excessivelyLongChain,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_ struct {
-	VerifyChainFailed *ClientProtocolError_VerifyChainFailed `protobuf:"bytes,10,opt,name=verify_chain_failed,json=verifyChainFailed,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifySignatureFailed_ struct {
-	VerifySignatureFailed *ClientProtocolError_VerifySignatureFailed `protobuf:"bytes,11,opt,name=verify_signature_failed,json=verifySignatureFailed,proto3,oneof"`
+type ClientProtocolError_Dispatch_ struct {
+	Dispatch *ClientProtocolError_Dispatch `protobuf:"bytes,3,opt,name=dispatch,proto3,oneof"`
 }
 
 type ClientProtocolError_CertPush_ struct {
-	CertPush *ClientProtocolError_CertPush `protobuf:"bytes,12,opt,name=cert_push,json=certPush,proto3,oneof"`
+	CertPush *ClientProtocolError_CertPush `protobuf:"bytes,4,opt,name=cert_push,json=certPush,proto3,oneof"`
 }
-
-func (*ClientProtocolError_HandshakeAckBeforeHello_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_HandshakeDuplicateAck_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_HandshakeConnectionIdRejected_) isClientProtocolError_Error() {}
 
 func (*ClientProtocolError_DeserialisationFailed_) isClientProtocolError_Error() {}
 
-func (*ClientProtocolError_CertIdInvalidLength_) isClientProtocolError_Error() {}
+func (*ClientProtocolError_Handshake_) isClientProtocolError_Error() {}
 
-func (*ClientProtocolError_DispatchBeforeHandshake_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_DispatchMissingSignature_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_ExcessivelyLongChain_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_VerifyChainFailed_) isClientProtocolError_Error() {}
-
-func (*ClientProtocolError_VerifySignatureFailed_) isClientProtocolError_Error() {}
+func (*ClientProtocolError_Dispatch_) isClientProtocolError_Error() {}
 
 func (*ClientProtocolError_CertPush_) isClientProtocolError_Error() {}
-
-// The server has sent a ClientHelloAck before the client has sent the
-// ClientHello handshake message.
-type ClientProtocolError_HandshakeAckBeforeHello struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_HandshakeAckBeforeHello) Reset() {
-	*x = ClientProtocolError_HandshakeAckBeforeHello{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_HandshakeAckBeforeHello) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_HandshakeAckBeforeHello) ProtoMessage() {}
-
-func (x *ClientProtocolError_HandshakeAckBeforeHello) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_HandshakeAckBeforeHello.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_HandshakeAckBeforeHello) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 0}
-}
-
-// The server has sent a ClientHelloAck after the client had previously
-// marked the handshake as complete.
-type ClientProtocolError_HandshakeDuplicateAck struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_HandshakeDuplicateAck) Reset() {
-	*x = ClientProtocolError_HandshakeDuplicateAck{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_HandshakeDuplicateAck) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_HandshakeDuplicateAck) ProtoMessage() {}
-
-func (x *ClientProtocolError_HandshakeDuplicateAck) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_HandshakeDuplicateAck.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_HandshakeDuplicateAck) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 1}
-}
-
-// The connection ID proposed by the server cannot be verified to have been
-// derived from the client nonce, and therefore cannot be trusted as unique
-// for this client.
-//
-// See the ConnectionId proto type docs for more info.
-type ClientProtocolError_HandshakeConnectionIdRejected struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_HandshakeConnectionIdRejected) Reset() {
-	*x = ClientProtocolError_HandshakeConnectionIdRejected{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_HandshakeConnectionIdRejected) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_HandshakeConnectionIdRejected) ProtoMessage() {}
-
-func (x *ClientProtocolError_HandshakeConnectionIdRejected) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_HandshakeConnectionIdRejected.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_HandshakeConnectionIdRejected) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 2}
-}
 
 // The protobuf wire representation could not be deserialised.
 //
@@ -403,7 +174,7 @@ type ClientProtocolError_DeserialisationFailed struct {
 
 func (x *ClientProtocolError_DeserialisationFailed) Reset() {
 	*x = ClientProtocolError_DeserialisationFailed{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[4]
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -415,7 +186,7 @@ func (x *ClientProtocolError_DeserialisationFailed) String() string {
 func (*ClientProtocolError_DeserialisationFailed) ProtoMessage() {}
 
 func (x *ClientProtocolError_DeserialisationFailed) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[4]
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +199,7 @@ func (x *ClientProtocolError_DeserialisationFailed) ProtoReflect() protoreflect.
 
 // Deprecated: Use ClientProtocolError_DeserialisationFailed.ProtoReflect.Descriptor instead.
 func (*ClientProtocolError_DeserialisationFailed) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3}
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *ClientProtocolError_DeserialisationFailed) GetErrorMsg() string {
@@ -438,251 +209,33 @@ func (x *ClientProtocolError_DeserialisationFailed) GetErrorMsg() string {
 	return ""
 }
 
-// A certificate ID was refused by the client as being too long / short.
-type ClientProtocolError_CertIdInvalidLength struct {
+type ClientProtocolError_Handshake struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The certificate ID length that was refused by the client.
-	GotLen        uint64 `protobuf:"varint,1,opt,name=got_len,json=gotLen,proto3" json:"got_len,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_CertIdInvalidLength) Reset() {
-	*x = ClientProtocolError_CertIdInvalidLength{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_CertIdInvalidLength) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_CertIdInvalidLength) ProtoMessage() {}
-
-func (x *ClientProtocolError_CertIdInvalidLength) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_CertIdInvalidLength.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_CertIdInvalidLength) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 4}
-}
-
-func (x *ClientProtocolError_CertIdInvalidLength) GetGotLen() uint64 {
-	if x != nil {
-		return x.GotLen
-	}
-	return 0
-}
-
-// A dispatch request arrived to the client before the handshake completed.
-//
-// This is suspicious, because the dispatch request requires the connection ID
-// that is agreed as part of the handshake.
-type ClientProtocolError_DispatchBeforeHandshake struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The requesting correlation ID that raised the error.
-	CorrelationId uint64 `protobuf:"varint,1,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_DispatchBeforeHandshake) Reset() {
-	*x = ClientProtocolError_DispatchBeforeHandshake{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_DispatchBeforeHandshake) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_DispatchBeforeHandshake) ProtoMessage() {}
-
-func (x *ClientProtocolError_DispatchBeforeHandshake) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_DispatchBeforeHandshake.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_DispatchBeforeHandshake) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 5}
-}
-
-func (x *ClientProtocolError_DispatchBeforeHandshake) GetCorrelationId() uint64 {
-	if x != nil {
-		return x.CorrelationId
-	}
-	return 0
-}
-
-// A dispatch request arrived with no signature attached.
-type ClientProtocolError_DispatchMissingSignature struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The requesting correlation ID that raised the error.
-	CorrelationId uint64 `protobuf:"varint,1,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_DispatchMissingSignature) Reset() {
-	*x = ClientProtocolError_DispatchMissingSignature{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_DispatchMissingSignature) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_DispatchMissingSignature) ProtoMessage() {}
-
-func (x *ClientProtocolError_DispatchMissingSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_DispatchMissingSignature.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_DispatchMissingSignature) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 6}
-}
-
-func (x *ClientProtocolError_DispatchMissingSignature) GetCorrelationId() uint64 {
-	if x != nil {
-		return x.CorrelationId
-	}
-	return 0
-}
-
-// Building a chain failed due to it exceeding the maximum length limit.
-type ClientProtocolError_ExcessivelyLongChain struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The `CertId` of the leaf signer certificate used as the starting point of
-	// chain building.
-	LeafCertId    []byte `protobuf:"bytes,3,opt,name=leaf_cert_id,json=leafCertId,proto3" json:"leaf_cert_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_ExcessivelyLongChain) Reset() {
-	*x = ClientProtocolError_ExcessivelyLongChain{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_ExcessivelyLongChain) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_ExcessivelyLongChain) ProtoMessage() {}
-
-func (x *ClientProtocolError_ExcessivelyLongChain) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_ExcessivelyLongChain.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_ExcessivelyLongChain) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 7}
-}
-
-func (x *ClientProtocolError_ExcessivelyLongChain) GetLeafCertId() []byte {
-	if x != nil {
-		return x.LeafCertId
-	}
-	return nil
-}
-
-// Chain verification failed.
-type ClientProtocolError_VerifyChainFailed struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The `CertId` of the root selected during chain building.
-	RootCertId []byte `protobuf:"bytes,1,opt,name=root_cert_id,json=rootCertId,proto3" json:"root_cert_id,omitempty"`
-	// The `CertId` of each intermediate selected during chain building, in order
-	// from root to leaf.
-	IntermediateCertId [][]byte `protobuf:"bytes,2,rep,name=intermediate_cert_id,json=intermediateCertId,proto3" json:"intermediate_cert_id,omitempty"`
-	// The `CertId` of the leaf signer certificate used as the starting point of
-	// chain building.
-	LeafCertId []byte `protobuf:"bytes,3,opt,name=leaf_cert_id,json=leafCertId,proto3" json:"leaf_cert_id,omitempty"`
-	// The reported protocol error, including error-specific context if
-	// appropriate.
-	//
-	// This MUST map 1-to-1 with the `ChainVerifyError` variants in the client,
-	// which are the source of truth.
-	//
 	// Types that are valid to be assigned to Error:
 	//
-	//	*ClientProtocolError_VerifyChainFailed_LeafNameMismatch_
-	//	*ClientProtocolError_VerifyChainFailed_CertMalformed_
-	//	*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid_
-	//	*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid_
-	//	*ClientProtocolError_VerifyChainFailed_CrlMalformed_
-	//	*ClientProtocolError_VerifyChainFailed_ChainWalkLimits_
-	//	*ClientProtocolError_VerifyChainFailed_SignerIsCa_
-	//	*ClientProtocolError_VerifyChainFailed_IntermediateNotCa_
-	//	*ClientProtocolError_VerifyChainFailed_CertExpired_
-	//	*ClientProtocolError_VerifyChainFailed_CertFutureValidity_
-	//	*ClientProtocolError_VerifyChainFailed_CertRevoked_
-	//	*ClientProtocolError_VerifyChainFailed_CrlExpired_
-	//	*ClientProtocolError_VerifyChainFailed_ChainNameConstraint_
-	//	*ClientProtocolError_VerifyChainFailed_PathLen_
-	//	*ClientProtocolError_VerifyChainFailed_RequiredEku_
-	//	*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure_
-	//	*ClientProtocolError_VerifyChainFailed_Unsupported_
-	//	*ClientProtocolError_VerifyChainFailed_Unknown_
-	Error         isClientProtocolError_VerifyChainFailed_Error `protobuf_oneof:"error"`
+	//	*ClientProtocolError_Handshake_AckBeforeHello_
+	//	*ClientProtocolError_Handshake_DuplicateAck_
+	//	*ClientProtocolError_Handshake_ConnectionIdRejected_
+	Error         isClientProtocolError_Handshake_Error `protobuf_oneof:"error"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[9]
+func (x *ClientProtocolError_Handshake) Reset() {
+	*x = ClientProtocolError_Handshake{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) String() string {
+func (x *ClientProtocolError_Handshake) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed) ProtoMessage() {}
+func (*ClientProtocolError_Handshake) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[9]
+func (x *ClientProtocolError_Handshake) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -693,366 +246,66 @@ func (x *ClientProtocolError_VerifyChainFailed) ProtoReflect() protoreflect.Mess
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8}
+// Deprecated: Use ClientProtocolError_Handshake.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Handshake) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 1}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetRootCertId() []byte {
-	if x != nil {
-		return x.RootCertId
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetIntermediateCertId() [][]byte {
-	if x != nil {
-		return x.IntermediateCertId
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetLeafCertId() []byte {
-	if x != nil {
-		return x.LeafCertId
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetError() isClientProtocolError_VerifyChainFailed_Error {
+func (x *ClientProtocolError_Handshake) GetError() isClientProtocolError_Handshake_Error {
 	if x != nil {
 		return x.Error
 	}
 	return nil
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetLeafNameMismatch() *ClientProtocolError_VerifyChainFailed_LeafNameMismatch {
+func (x *ClientProtocolError_Handshake) GetAckBeforeHello() *ClientProtocolError_Handshake_AckBeforeHello {
 	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_LeafNameMismatch_); ok {
-			return x.LeafNameMismatch
+		if x, ok := x.Error.(*ClientProtocolError_Handshake_AckBeforeHello_); ok {
+			return x.AckBeforeHello
 		}
 	}
 	return nil
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCertMalformed() *ClientProtocolError_VerifyChainFailed_CertMalformed {
+func (x *ClientProtocolError_Handshake) GetDuplicateAck() *ClientProtocolError_Handshake_DuplicateAck {
 	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CertMalformed_); ok {
-			return x.CertMalformed
+		if x, ok := x.Error.(*ClientProtocolError_Handshake_DuplicateAck_); ok {
+			return x.DuplicateAck
 		}
 	}
 	return nil
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCertSignatureInvalid() *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid {
+func (x *ClientProtocolError_Handshake) GetConnectionIdRejected() *ClientProtocolError_Handshake_ConnectionIdRejected {
 	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid_); ok {
-			return x.CertSignatureInvalid
+		if x, ok := x.Error.(*ClientProtocolError_Handshake_ConnectionIdRejected_); ok {
+			return x.ConnectionIdRejected
 		}
 	}
 	return nil
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCrlSignatureInvalid() *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid_); ok {
-			return x.CrlSignatureInvalid
-		}
-	}
-	return nil
+type isClientProtocolError_Handshake_Error interface {
+	isClientProtocolError_Handshake_Error()
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCrlMalformed() *ClientProtocolError_VerifyChainFailed_CrlMalformed {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CrlMalformed_); ok {
-			return x.CrlMalformed
-		}
-	}
-	return nil
+type ClientProtocolError_Handshake_AckBeforeHello_ struct {
+	AckBeforeHello *ClientProtocolError_Handshake_AckBeforeHello `protobuf:"bytes,1,opt,name=ack_before_hello,json=ackBeforeHello,proto3,oneof"`
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetChainWalkLimits() *ClientProtocolError_VerifyChainFailed_ChainWalkLimits {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_ChainWalkLimits_); ok {
-			return x.ChainWalkLimits
-		}
-	}
-	return nil
+type ClientProtocolError_Handshake_DuplicateAck_ struct {
+	DuplicateAck *ClientProtocolError_Handshake_DuplicateAck `protobuf:"bytes,2,opt,name=duplicate_ack,json=duplicateAck,proto3,oneof"`
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetSignerIsCa() *ClientProtocolError_VerifyChainFailed_SignerIsCa {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_SignerIsCa_); ok {
-			return x.SignerIsCa
-		}
-	}
-	return nil
+type ClientProtocolError_Handshake_ConnectionIdRejected_ struct {
+	ConnectionIdRejected *ClientProtocolError_Handshake_ConnectionIdRejected `protobuf:"bytes,3,opt,name=connection_id_rejected,json=connectionIdRejected,proto3,oneof"`
 }
 
-func (x *ClientProtocolError_VerifyChainFailed) GetIntermediateNotCa() *ClientProtocolError_VerifyChainFailed_IntermediateNotCa {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_IntermediateNotCa_); ok {
-			return x.IntermediateNotCa
-		}
-	}
-	return nil
-}
+func (*ClientProtocolError_Handshake_AckBeforeHello_) isClientProtocolError_Handshake_Error() {}
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCertExpired() *ClientProtocolError_VerifyChainFailed_CertExpired {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CertExpired_); ok {
-			return x.CertExpired
-		}
-	}
-	return nil
-}
+func (*ClientProtocolError_Handshake_DuplicateAck_) isClientProtocolError_Handshake_Error() {}
 
-func (x *ClientProtocolError_VerifyChainFailed) GetCertFutureValidity() *ClientProtocolError_VerifyChainFailed_CertFutureValidity {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CertFutureValidity_); ok {
-			return x.CertFutureValidity
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetCertRevoked() *ClientProtocolError_VerifyChainFailed_CertRevoked {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CertRevoked_); ok {
-			return x.CertRevoked
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetCrlExpired() *ClientProtocolError_VerifyChainFailed_CrlExpired {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_CrlExpired_); ok {
-			return x.CrlExpired
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetChainNameConstraint() *ClientProtocolError_VerifyChainFailed_ChainNameConstraint {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_ChainNameConstraint_); ok {
-			return x.ChainNameConstraint
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetPathLen() *ClientProtocolError_VerifyChainFailed_PathLen {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_PathLen_); ok {
-			return x.PathLen
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetRequiredEku() *ClientProtocolError_VerifyChainFailed_RequiredEku {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_RequiredEku_); ok {
-			return x.RequiredEku
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetChainBuildingFailure() *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure_); ok {
-			return x.ChainBuildingFailure
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetUnsupported() *ClientProtocolError_VerifyChainFailed_Unsupported {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_Unsupported_); ok {
-			return x.Unsupported
-		}
-	}
-	return nil
-}
-
-func (x *ClientProtocolError_VerifyChainFailed) GetUnknown() *ClientProtocolError_VerifyChainFailed_Unknown {
-	if x != nil {
-		if x, ok := x.Error.(*ClientProtocolError_VerifyChainFailed_Unknown_); ok {
-			return x.Unknown
-		}
-	}
-	return nil
-}
-
-type isClientProtocolError_VerifyChainFailed_Error interface {
-	isClientProtocolError_VerifyChainFailed_Error()
-}
-
-type ClientProtocolError_VerifyChainFailed_LeafNameMismatch_ struct {
-	LeafNameMismatch *ClientProtocolError_VerifyChainFailed_LeafNameMismatch `protobuf:"bytes,4,opt,name=leaf_name_mismatch,json=leafNameMismatch,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CertMalformed_ struct {
-	CertMalformed *ClientProtocolError_VerifyChainFailed_CertMalformed `protobuf:"bytes,5,opt,name=cert_malformed,json=certMalformed,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CertSignatureInvalid_ struct {
-	CertSignatureInvalid *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid `protobuf:"bytes,6,opt,name=cert_signature_invalid,json=certSignatureInvalid,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid_ struct {
-	CrlSignatureInvalid *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid `protobuf:"bytes,7,opt,name=crl_signature_invalid,json=crlSignatureInvalid,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CrlMalformed_ struct {
-	CrlMalformed *ClientProtocolError_VerifyChainFailed_CrlMalformed `protobuf:"bytes,8,opt,name=crl_malformed,json=crlMalformed,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_ChainWalkLimits_ struct {
-	ChainWalkLimits *ClientProtocolError_VerifyChainFailed_ChainWalkLimits `protobuf:"bytes,9,opt,name=chain_walk_limits,json=chainWalkLimits,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_SignerIsCa_ struct {
-	SignerIsCa *ClientProtocolError_VerifyChainFailed_SignerIsCa `protobuf:"bytes,10,opt,name=signer_is_ca,json=signerIsCa,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_IntermediateNotCa_ struct {
-	IntermediateNotCa *ClientProtocolError_VerifyChainFailed_IntermediateNotCa `protobuf:"bytes,11,opt,name=intermediate_not_ca,json=intermediateNotCa,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CertExpired_ struct {
-	CertExpired *ClientProtocolError_VerifyChainFailed_CertExpired `protobuf:"bytes,12,opt,name=cert_expired,json=certExpired,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CertFutureValidity_ struct {
-	CertFutureValidity *ClientProtocolError_VerifyChainFailed_CertFutureValidity `protobuf:"bytes,13,opt,name=cert_future_validity,json=certFutureValidity,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CertRevoked_ struct {
-	CertRevoked *ClientProtocolError_VerifyChainFailed_CertRevoked `protobuf:"bytes,14,opt,name=cert_revoked,json=certRevoked,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_CrlExpired_ struct {
-	CrlExpired *ClientProtocolError_VerifyChainFailed_CrlExpired `protobuf:"bytes,15,opt,name=crl_expired,json=crlExpired,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_ChainNameConstraint_ struct {
-	ChainNameConstraint *ClientProtocolError_VerifyChainFailed_ChainNameConstraint `protobuf:"bytes,16,opt,name=chain_name_constraint,json=chainNameConstraint,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_PathLen_ struct {
-	PathLen *ClientProtocolError_VerifyChainFailed_PathLen `protobuf:"bytes,17,opt,name=path_len,json=pathLen,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_RequiredEku_ struct {
-	RequiredEku *ClientProtocolError_VerifyChainFailed_RequiredEku `protobuf:"bytes,18,opt,name=required_eku,json=requiredEku,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_ChainBuildingFailure_ struct {
-	ChainBuildingFailure *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure `protobuf:"bytes,19,opt,name=chain_building_failure,json=chainBuildingFailure,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_Unsupported_ struct {
-	Unsupported *ClientProtocolError_VerifyChainFailed_Unsupported `protobuf:"bytes,20,opt,name=unsupported,proto3,oneof"`
-}
-
-type ClientProtocolError_VerifyChainFailed_Unknown_ struct {
-	Unknown *ClientProtocolError_VerifyChainFailed_Unknown `protobuf:"bytes,21,opt,name=unknown,proto3,oneof"`
-}
-
-func (*ClientProtocolError_VerifyChainFailed_LeafNameMismatch_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CertMalformed_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CrlMalformed_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_ChainWalkLimits_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_SignerIsCa_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_IntermediateNotCa_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CertExpired_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CertFutureValidity_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CertRevoked_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_CrlExpired_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_ChainNameConstraint_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_PathLen_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_RequiredEku_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_Unsupported_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-func (*ClientProtocolError_VerifyChainFailed_Unknown_) isClientProtocolError_VerifyChainFailed_Error() {
-}
-
-type ClientProtocolError_VerifySignatureFailed struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_VerifySignatureFailed) Reset() {
-	*x = ClientProtocolError_VerifySignatureFailed{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_VerifySignatureFailed) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_VerifySignatureFailed) ProtoMessage() {}
-
-func (x *ClientProtocolError_VerifySignatureFailed) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_VerifySignatureFailed.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifySignatureFailed) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 9}
-}
+func (*ClientProtocolError_Handshake_ConnectionIdRejected_) isClientProtocolError_Handshake_Error() {}
 
 // A certificate push produced a fatal error.
 type ClientProtocolError_CertPush struct {
@@ -1067,7 +320,7 @@ type ClientProtocolError_CertPush struct {
 
 func (x *ClientProtocolError_CertPush) Reset() {
 	*x = ClientProtocolError_CertPush{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[11]
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1079,7 +332,7 @@ func (x *ClientProtocolError_CertPush) String() string {
 func (*ClientProtocolError_CertPush) ProtoMessage() {}
 
 func (x *ClientProtocolError_CertPush) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[11]
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1092,7 +345,7 @@ func (x *ClientProtocolError_CertPush) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientProtocolError_CertPush.ProtoReflect.Descriptor instead.
 func (*ClientProtocolError_CertPush) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 10}
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 2}
 }
 
 func (x *ClientProtocolError_CertPush) GetError() isClientProtocolError_CertPush_Error {
@@ -1121,30 +374,833 @@ type ClientProtocolError_CertPush_InvalidDer_ struct {
 
 func (*ClientProtocolError_CertPush_InvalidDer_) isClientProtocolError_CertPush_Error() {}
 
-// A certificate is malformed in some way.
-type ClientProtocolError_VerifyChainFailed_CertMalformed struct {
+type ClientProtocolError_Dispatch struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The error string generated by the client X509 parser, describing
-	// precisely the cause.
-	ErrorMsg      string `protobuf:"bytes,1,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	// The requesting correlation ID that raised the error.
+	CorrelationId uint64 `protobuf:"varint,1,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
+	// Types that are valid to be assigned to Error:
+	//
+	//	*ClientProtocolError_Dispatch_BeforeHandshake_
+	//	*ClientProtocolError_Dispatch_MissingSignature_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_
+	//	*ClientProtocolError_Dispatch_ExcessivelyLongChain_
+	//	*ClientProtocolError_Dispatch_CertIdInvalidLength_
+	//	*ClientProtocolError_Dispatch_MalformedSignature_
+	//	*ClientProtocolError_Dispatch_SignatureMismatch_
+	Error         isClientProtocolError_Dispatch_Error `protobuf_oneof:"error"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CertMalformed{}
+func (x *ClientProtocolError_Dispatch) Reset() {
+	*x = ClientProtocolError_Dispatch{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3}
+}
+
+func (x *ClientProtocolError_Dispatch) GetCorrelationId() uint64 {
+	if x != nil {
+		return x.CorrelationId
+	}
+	return 0
+}
+
+func (x *ClientProtocolError_Dispatch) GetError() isClientProtocolError_Dispatch_Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetBeforeHandshake() *ClientProtocolError_Dispatch_BeforeHandshake {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_BeforeHandshake_); ok {
+			return x.BeforeHandshake
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetMissingSignature() *ClientProtocolError_Dispatch_MissingSignature {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_MissingSignature_); ok {
+			return x.MissingSignature
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetVerifyChainFailed() *ClientProtocolError_Dispatch_VerifyChainFailed {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_); ok {
+			return x.VerifyChainFailed
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetExcessivelyLongChain() *ClientProtocolError_Dispatch_ExcessivelyLongChain {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_ExcessivelyLongChain_); ok {
+			return x.ExcessivelyLongChain
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetCertIdInvalidLength() *ClientProtocolError_Dispatch_CertIdInvalidLength {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_CertIdInvalidLength_); ok {
+			return x.CertIdInvalidLength
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetMalformedSignature() *ClientProtocolError_Dispatch_MalformedSignature {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_MalformedSignature_); ok {
+			return x.MalformedSignature
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch) GetSignatureMismatch() *ClientProtocolError_Dispatch_SignatureMismatch {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_SignatureMismatch_); ok {
+			return x.SignatureMismatch
+		}
+	}
+	return nil
+}
+
+type isClientProtocolError_Dispatch_Error interface {
+	isClientProtocolError_Dispatch_Error()
+}
+
+type ClientProtocolError_Dispatch_BeforeHandshake_ struct {
+	BeforeHandshake *ClientProtocolError_Dispatch_BeforeHandshake `protobuf:"bytes,2,opt,name=before_handshake,json=beforeHandshake,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_MissingSignature_ struct {
+	MissingSignature *ClientProtocolError_Dispatch_MissingSignature `protobuf:"bytes,3,opt,name=missing_signature,json=missingSignature,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_ struct {
+	VerifyChainFailed *ClientProtocolError_Dispatch_VerifyChainFailed `protobuf:"bytes,4,opt,name=verify_chain_failed,json=verifyChainFailed,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_ExcessivelyLongChain_ struct {
+	ExcessivelyLongChain *ClientProtocolError_Dispatch_ExcessivelyLongChain `protobuf:"bytes,5,opt,name=excessively_long_chain,json=excessivelyLongChain,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_CertIdInvalidLength_ struct {
+	CertIdInvalidLength *ClientProtocolError_Dispatch_CertIdInvalidLength `protobuf:"bytes,6,opt,name=cert_id_invalid_length,json=certIdInvalidLength,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_MalformedSignature_ struct {
+	MalformedSignature *ClientProtocolError_Dispatch_MalformedSignature `protobuf:"bytes,7,opt,name=malformed_signature,json=malformedSignature,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_SignatureMismatch_ struct {
+	SignatureMismatch *ClientProtocolError_Dispatch_SignatureMismatch `protobuf:"bytes,8,opt,name=signature_mismatch,json=signatureMismatch,proto3,oneof"`
+}
+
+func (*ClientProtocolError_Dispatch_BeforeHandshake_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_MissingSignature_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_ExcessivelyLongChain_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_CertIdInvalidLength_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_MalformedSignature_) isClientProtocolError_Dispatch_Error() {}
+
+func (*ClientProtocolError_Dispatch_SignatureMismatch_) isClientProtocolError_Dispatch_Error() {}
+
+// The server has sent a ClientHelloAck before the client has sent the
+// ClientHello handshake message.
+type ClientProtocolError_Handshake_AckBeforeHello struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Handshake_AckBeforeHello) Reset() {
+	*x = ClientProtocolError_Handshake_AckBeforeHello{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Handshake_AckBeforeHello) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Handshake_AckBeforeHello) ProtoMessage() {}
+
+func (x *ClientProtocolError_Handshake_AckBeforeHello) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Handshake_AckBeforeHello.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Handshake_AckBeforeHello) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 1, 0}
+}
+
+// The server has sent a ClientHelloAck after the client had previously
+// marked the handshake as complete.
+type ClientProtocolError_Handshake_DuplicateAck struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Handshake_DuplicateAck) Reset() {
+	*x = ClientProtocolError_Handshake_DuplicateAck{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Handshake_DuplicateAck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Handshake_DuplicateAck) ProtoMessage() {}
+
+func (x *ClientProtocolError_Handshake_DuplicateAck) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Handshake_DuplicateAck.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Handshake_DuplicateAck) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 1, 1}
+}
+
+// The connection ID proposed by the server cannot be verified to have been
+// derived from the client nonce, and therefore cannot be trusted as unique
+// for this client.
+//
+// See the ConnectionId proto type docs for more info.
+type ClientProtocolError_Handshake_ConnectionIdRejected struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Handshake_ConnectionIdRejected) Reset() {
+	*x = ClientProtocolError_Handshake_ConnectionIdRejected{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Handshake_ConnectionIdRejected) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Handshake_ConnectionIdRejected) ProtoMessage() {}
+
+func (x *ClientProtocolError_Handshake_ConnectionIdRejected) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Handshake_ConnectionIdRejected.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Handshake_ConnectionIdRejected) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 1, 2}
+}
+
+// The certificate could not be parsed from the DER bytes sent to the
+// client.
+type ClientProtocolError_CertPush_InvalidDer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ErrorMsg      string                 `protobuf:"bytes,1,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_CertPush_InvalidDer) Reset() {
+	*x = ClientProtocolError_CertPush_InvalidDer{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_CertPush_InvalidDer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_CertPush_InvalidDer) ProtoMessage() {}
+
+func (x *ClientProtocolError_CertPush_InvalidDer) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_CertPush_InvalidDer.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_CertPush_InvalidDer) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 2, 0}
+}
+
+func (x *ClientProtocolError_CertPush_InvalidDer) GetErrorMsg() string {
+	if x != nil {
+		return x.ErrorMsg
+	}
+	return ""
+}
+
+// A dispatch request arrived to the client before the handshake completed.
+//
+// This is suspicious, because the dispatch request requires the connection ID
+// that is agreed as part of the handshake.
+type ClientProtocolError_Dispatch_BeforeHandshake struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_BeforeHandshake) Reset() {
+	*x = ClientProtocolError_Dispatch_BeforeHandshake{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_BeforeHandshake) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_BeforeHandshake) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_BeforeHandshake) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_BeforeHandshake.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_BeforeHandshake) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 0}
+}
+
+// A dispatch request arrived with no signature attached.
+type ClientProtocolError_Dispatch_MissingSignature struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_MissingSignature) Reset() {
+	*x = ClientProtocolError_Dispatch_MissingSignature{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_MissingSignature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_MissingSignature) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_MissingSignature) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_MissingSignature.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_MissingSignature) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 1}
+}
+
+// Chain verification failed.
+type ClientProtocolError_Dispatch_VerifyChainFailed struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The `CertId` of the root selected during chain building.
+	RootCertId []byte `protobuf:"bytes,1,opt,name=root_cert_id,json=rootCertId,proto3" json:"root_cert_id,omitempty"`
+	// The `CertId` of each intermediate selected during chain building, in order
+	// from root to leaf.
+	IntermediateCertId [][]byte `protobuf:"bytes,2,rep,name=intermediate_cert_id,json=intermediateCertId,proto3" json:"intermediate_cert_id,omitempty"`
+	// The `CertId` of the leaf signer certificate used as the starting point of
+	// chain building.
+	LeafCertId []byte `protobuf:"bytes,3,opt,name=leaf_cert_id,json=leafCertId,proto3" json:"leaf_cert_id,omitempty"`
+	// The reported protocol error, including error-specific context if
+	// appropriate.
+	//
+	// This MUST map 1-to-1 with the `ChainVerifyError` variants in the client,
+	// which are the source of truth.
+	//
+	// Types that are valid to be assigned to Error:
+	//
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported_
+	//	*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown_
+	Error         isClientProtocolError_Dispatch_VerifyChainFailed_Error `protobuf_oneof:"error"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2}
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetRootCertId() []byte {
+	if x != nil {
+		return x.RootCertId
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetIntermediateCertId() [][]byte {
+	if x != nil {
+		return x.IntermediateCertId
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetLeafCertId() []byte {
+	if x != nil {
+		return x.LeafCertId
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetError() isClientProtocolError_Dispatch_VerifyChainFailed_Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetLeafNameMismatch() *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch_); ok {
+			return x.LeafNameMismatch
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCertMalformed() *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed_); ok {
+			return x.CertMalformed
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCertSignatureInvalid() *ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid_); ok {
+			return x.CertSignatureInvalid
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCrlSignatureInvalid() *ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid_); ok {
+			return x.CrlSignatureInvalid
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCrlMalformed() *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed_); ok {
+			return x.CrlMalformed
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetChainWalkLimits() *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits_); ok {
+			return x.ChainWalkLimits
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetSignerIsCa() *ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa_); ok {
+			return x.SignerIsCa
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetIntermediateNotCa() *ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa_); ok {
+			return x.IntermediateNotCa
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCertExpired() *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired_); ok {
+			return x.CertExpired
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCertFutureValidity() *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity_); ok {
+			return x.CertFutureValidity
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCertRevoked() *ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked_); ok {
+			return x.CertRevoked
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetCrlExpired() *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired_); ok {
+			return x.CrlExpired
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetChainNameConstraint() *ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint_); ok {
+			return x.ChainNameConstraint
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetPathLen() *ClientProtocolError_Dispatch_VerifyChainFailed_PathLen {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen_); ok {
+			return x.PathLen
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetRequiredEku() *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku_); ok {
+			return x.RequiredEku
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetChainBuildingFailure() *ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure_); ok {
+			return x.ChainBuildingFailure
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetUnsupported() *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported_); ok {
+			return x.Unsupported
+		}
+	}
+	return nil
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed) GetUnknown() *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown {
+	if x != nil {
+		if x, ok := x.Error.(*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown_); ok {
+			return x.Unknown
+		}
+	}
+	return nil
+}
+
+type isClientProtocolError_Dispatch_VerifyChainFailed_Error interface {
+	isClientProtocolError_Dispatch_VerifyChainFailed_Error()
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch_ struct {
+	LeafNameMismatch *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch `protobuf:"bytes,4,opt,name=leaf_name_mismatch,json=leafNameMismatch,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed_ struct {
+	CertMalformed *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed `protobuf:"bytes,5,opt,name=cert_malformed,json=certMalformed,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid_ struct {
+	CertSignatureInvalid *ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid `protobuf:"bytes,6,opt,name=cert_signature_invalid,json=certSignatureInvalid,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid_ struct {
+	CrlSignatureInvalid *ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid `protobuf:"bytes,7,opt,name=crl_signature_invalid,json=crlSignatureInvalid,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed_ struct {
+	CrlMalformed *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed `protobuf:"bytes,8,opt,name=crl_malformed,json=crlMalformed,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits_ struct {
+	ChainWalkLimits *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits `protobuf:"bytes,9,opt,name=chain_walk_limits,json=chainWalkLimits,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa_ struct {
+	SignerIsCa *ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa `protobuf:"bytes,10,opt,name=signer_is_ca,json=signerIsCa,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa_ struct {
+	IntermediateNotCa *ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa `protobuf:"bytes,11,opt,name=intermediate_not_ca,json=intermediateNotCa,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired_ struct {
+	CertExpired *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired `protobuf:"bytes,12,opt,name=cert_expired,json=certExpired,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity_ struct {
+	CertFutureValidity *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity `protobuf:"bytes,13,opt,name=cert_future_validity,json=certFutureValidity,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked_ struct {
+	CertRevoked *ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked `protobuf:"bytes,14,opt,name=cert_revoked,json=certRevoked,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired_ struct {
+	CrlExpired *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired `protobuf:"bytes,15,opt,name=crl_expired,json=crlExpired,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint_ struct {
+	ChainNameConstraint *ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint `protobuf:"bytes,16,opt,name=chain_name_constraint,json=chainNameConstraint,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_PathLen_ struct {
+	PathLen *ClientProtocolError_Dispatch_VerifyChainFailed_PathLen `protobuf:"bytes,17,opt,name=path_len,json=pathLen,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku_ struct {
+	RequiredEku *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku `protobuf:"bytes,18,opt,name=required_eku,json=requiredEku,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure_ struct {
+	ChainBuildingFailure *ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure `protobuf:"bytes,19,opt,name=chain_building_failure,json=chainBuildingFailure,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported_ struct {
+	Unsupported *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported `protobuf:"bytes,20,opt,name=unsupported,proto3,oneof"`
+}
+
+type ClientProtocolError_Dispatch_VerifyChainFailed_Unknown_ struct {
+	Unknown *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown `protobuf:"bytes,21,opt,name=unknown,proto3,oneof"`
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown_) isClientProtocolError_Dispatch_VerifyChainFailed_Error() {
+}
+
+// Building a chain failed due to it exceeding the maximum length limit.
+type ClientProtocolError_Dispatch_ExcessivelyLongChain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The `CertId` of the leaf signer certificate used as the starting point of
+	// chain building.
+	LeafCertId    []byte `protobuf:"bytes,1,opt,name=leaf_cert_id,json=leafCertId,proto3" json:"leaf_cert_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_ExcessivelyLongChain) Reset() {
+	*x = ClientProtocolError_Dispatch_ExcessivelyLongChain{}
 	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) String() string {
+func (x *ClientProtocolError_Dispatch_ExcessivelyLongChain) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CertMalformed) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_ExcessivelyLongChain) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) ProtoReflect() protoreflect.Message {
+func (x *ClientProtocolError_Dispatch_ExcessivelyLongChain) ProtoReflect() protoreflect.Message {
 	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1156,12 +1212,194 @@ func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) ProtoReflect() pro
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CertMalformed.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CertMalformed) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 0}
+// Deprecated: Use ClientProtocolError_Dispatch_ExcessivelyLongChain.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_ExcessivelyLongChain) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 3}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) GetErrorMsg() string {
+func (x *ClientProtocolError_Dispatch_ExcessivelyLongChain) GetLeafCertId() []byte {
+	if x != nil {
+		return x.LeafCertId
+	}
+	return nil
+}
+
+// A certificate ID was refused by the client as being too long / short.
+type ClientProtocolError_Dispatch_CertIdInvalidLength struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The certificate ID length that was refused by the client.
+	GotLen        uint64 `protobuf:"varint,1,opt,name=got_len,json=gotLen,proto3" json:"got_len,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_CertIdInvalidLength) Reset() {
+	*x = ClientProtocolError_Dispatch_CertIdInvalidLength{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_CertIdInvalidLength) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_CertIdInvalidLength) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_CertIdInvalidLength) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_CertIdInvalidLength.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_CertIdInvalidLength) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 4}
+}
+
+func (x *ClientProtocolError_Dispatch_CertIdInvalidLength) GetGotLen() uint64 {
+	if x != nil {
+		return x.GotLen
+	}
+	return 0
+}
+
+// The signature could not be parsed for verification.
+type ClientProtocolError_Dispatch_MalformedSignature struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_MalformedSignature) Reset() {
+	*x = ClientProtocolError_Dispatch_MalformedSignature{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_MalformedSignature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_MalformedSignature) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_MalformedSignature) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_MalformedSignature.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_MalformedSignature) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 5}
+}
+
+func (x *ClientProtocolError_Dispatch_MalformedSignature) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+// A valid chain was constructed and valid, but the signature did not match.
+//
+// This could be because:
+//
+//   - The signature was not produced by the signing cert indicated in the
+//     dispatch request.
+//
+//   - The payload was modified after signing.
+type ClientProtocolError_Dispatch_SignatureMismatch struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_SignatureMismatch) Reset() {
+	*x = ClientProtocolError_Dispatch_SignatureMismatch{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_SignatureMismatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_SignatureMismatch) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_SignatureMismatch) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_SignatureMismatch.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_SignatureMismatch) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 6}
+}
+
+// A certificate is malformed in some way.
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The error string generated by the client X509 parser, describing
+	// precisely the cause.
+	ErrorMsg      string `protobuf:"bytes,1,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) ProtoMessage() {}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 0}
+}
+
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -1177,27 +1415,27 @@ func (x *ClientProtocolError_VerifyChainFailed_CertMalformed) GetErrorMsg() stri
 //
 // No context is available; the client verifier does not report which
 // certificate in the chain failed.
-type ClientProtocolError_VerifyChainFailed_CertSignatureInvalid struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CertSignatureInvalid{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[13]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[13]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1208,34 +1446,34 @@ func (x *ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) ProtoReflec
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CertSignatureInvalid.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 1}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 1}
 }
 
 // As CertSignatureInvalid, but for the signature over the CRL instead of a
 // certificate.
-type ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[14]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[14]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,13 +1484,13 @@ func (x *ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) ProtoReflect
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 2}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 2}
 }
 
 // The CRL is malformed in some way.
-type ClientProtocolError_VerifyChainFailed_CrlMalformed struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The error string generated by the client CRL parser, describing precisely
 	// the cause.
@@ -1261,21 +1499,21 @@ type ClientProtocolError_VerifyChainFailed_CrlMalformed struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CrlMalformed{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[15]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CrlMalformed) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[15]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1286,12 +1524,12 @@ func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) ProtoReflect() prot
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CrlMalformed.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CrlMalformed) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 3}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 3}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) GetErrorMsg() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -1300,7 +1538,7 @@ func (x *ClientProtocolError_VerifyChainFailed_CrlMalformed) GetErrorMsg() strin
 
 // Verifying the chain hit an internal client limit designed to mitigate
 // malicious chains; this chain may or may not be valid.
-type ClientProtocolError_VerifyChainFailed_ChainWalkLimits struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The error string generated by the client verifier, identifying the limit
 	// that was hit.
@@ -1309,21 +1547,21 @@ type ClientProtocolError_VerifyChainFailed_ChainWalkLimits struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_ChainWalkLimits{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[16]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_ChainWalkLimits) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[16]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1334,12 +1572,12 @@ func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) ProtoReflect() p
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_ChainWalkLimits.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_ChainWalkLimits) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 4}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 4}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) GetErrorMsg() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -1348,27 +1586,27 @@ func (x *ClientProtocolError_VerifyChainFailed_ChainWalkLimits) GetErrorMsg() st
 
 // The signer certificate is also a CA, which is not an allowed chain
 // configuration - only leaf certificates may sign payloads.
-type ClientProtocolError_VerifyChainFailed_SignerIsCa struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_SignerIsCa) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_SignerIsCa{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[17]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_SignerIsCa) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_SignerIsCa) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_SignerIsCa) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[17]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1379,34 +1617,34 @@ func (x *ClientProtocolError_VerifyChainFailed_SignerIsCa) ProtoReflect() protor
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_SignerIsCa.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_SignerIsCa) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 5}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 5}
 }
 
 // The chain contains a non-leaf certificate that does not have CA:TRUE in the
 // certificate profile, meaning it is not allowed to issue certificates.
-type ClientProtocolError_VerifyChainFailed_IntermediateNotCa struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_IntermediateNotCa) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_IntermediateNotCa{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[18]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_IntermediateNotCa) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_IntermediateNotCa) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_IntermediateNotCa) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[18]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1417,14 +1655,14 @@ func (x *ClientProtocolError_VerifyChainFailed_IntermediateNotCa) ProtoReflect()
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_IntermediateNotCa.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_IntermediateNotCa) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 6}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 6}
 }
 
 // A certificate that forms part of the chain being verified is expired,
 // relative to the local client clock.
-type ClientProtocolError_VerifyChainFailed_CertExpired struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The current client clock, as seconds since the unix epoch.
 	Current uint64 `protobuf:"varint,1,opt,name=current,proto3" json:"current,omitempty"`
@@ -1434,21 +1672,21 @@ type ClientProtocolError_VerifyChainFailed_CertExpired struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertExpired) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CertExpired{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[19]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertExpired) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CertExpired) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CertExpired) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[19]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1459,19 +1697,19 @@ func (x *ClientProtocolError_VerifyChainFailed_CertExpired) ProtoReflect() proto
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CertExpired.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CertExpired) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 7}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 7}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertExpired) GetCurrent() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) GetCurrent() uint64 {
 	if x != nil {
 		return x.Current
 	}
 	return 0
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertExpired) GetNotAfter() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired) GetNotAfter() uint64 {
 	if x != nil {
 		return x.NotAfter
 	}
@@ -1480,7 +1718,7 @@ func (x *ClientProtocolError_VerifyChainFailed_CertExpired) GetNotAfter() uint64
 
 // A certificate that forms part of the chain being verified is not yet valid,
 // relative to the local client clock.
-type ClientProtocolError_VerifyChainFailed_CertFutureValidity struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The current client clock, as seconds since the unix epoch.
 	Current uint64 `protobuf:"varint,1,opt,name=current,proto3" json:"current,omitempty"`
@@ -1490,21 +1728,21 @@ type ClientProtocolError_VerifyChainFailed_CertFutureValidity struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CertFutureValidity{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[20]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CertFutureValidity) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[20]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1515,19 +1753,19 @@ func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) ProtoReflect(
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CertFutureValidity.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CertFutureValidity) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 8}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 8}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) GetCurrent() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) GetCurrent() uint64 {
 	if x != nil {
 		return x.Current
 	}
 	return 0
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) GetNotBefore() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity) GetNotBefore() uint64 {
 	if x != nil {
 		return x.NotBefore
 	}
@@ -1536,27 +1774,27 @@ func (x *ClientProtocolError_VerifyChainFailed_CertFutureValidity) GetNotBefore(
 
 // A certificate that forms part of the chain being verified has been
 // explicitly revoked / untrusted, and cannot be used for verification.
-type ClientProtocolError_VerifyChainFailed_CertRevoked struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertRevoked) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CertRevoked{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[21]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CertRevoked) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CertRevoked) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CertRevoked) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[21]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1567,15 +1805,15 @@ func (x *ClientProtocolError_VerifyChainFailed_CertRevoked) ProtoReflect() proto
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CertRevoked.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CertRevoked) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 9}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 9}
 }
 
 // The CRL the client used to check revocations has expired (relative to the
 // local client clock), and verifications cannot succeed until a new, valid
 // CRL is obtained by the client.
-type ClientProtocolError_VerifyChainFailed_CrlExpired struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The current client clock, as seconds since the unix epoch.
 	Current uint64 `protobuf:"varint,1,opt,name=current,proto3" json:"current,omitempty"`
@@ -1585,21 +1823,21 @@ type ClientProtocolError_VerifyChainFailed_CrlExpired struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_CrlExpired{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[22]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_CrlExpired) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[22]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1610,19 +1848,19 @@ func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) ProtoReflect() protor
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_CrlExpired.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_CrlExpired) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 10}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 10}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) GetCurrent() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) GetCurrent() uint64 {
 	if x != nil {
 		return x.Current
 	}
 	return 0
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) GetNextUpdate() uint64 {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired) GetNextUpdate() uint64 {
 	if x != nil {
 		return x.NextUpdate
 	}
@@ -1634,7 +1872,7 @@ func (x *ClientProtocolError_VerifyChainFailed_CrlExpired) GetNextUpdate() uint6
 // payloads for the provided `EndpointHostname`.
 //
 // This is a chain configuration, or `EndpointHostname` issue.
-type ClientProtocolError_VerifyChainFailed_LeafNameMismatch struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Expected      string                 `protobuf:"bytes,1,opt,name=expected,proto3" json:"expected,omitempty"`
 	Cert          []string               `protobuf:"bytes,2,rep,name=cert,proto3" json:"cert,omitempty"`
@@ -1642,21 +1880,21 @@ type ClientProtocolError_VerifyChainFailed_LeafNameMismatch struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_LeafNameMismatch{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[23]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_LeafNameMismatch) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[23]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1667,19 +1905,19 @@ func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) ProtoReflect() 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_LeafNameMismatch.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_LeafNameMismatch) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 11}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 11}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) GetExpected() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) GetExpected() string {
 	if x != nil {
 		return x.Expected
 	}
 	return ""
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) GetCert() []string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch) GetCert() []string {
 	if x != nil {
 		return x.Cert
 	}
@@ -1690,27 +1928,27 @@ func (x *ClientProtocolError_VerifyChainFailed_LeafNameMismatch) GetCert() []str
 // violated by a certificate that appears after it in the chain.
 //
 // This is a chain configuration issue.
-type ClientProtocolError_VerifyChainFailed_ChainNameConstraint struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainNameConstraint) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_ChainNameConstraint{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[24]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainNameConstraint) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_ChainNameConstraint) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainNameConstraint) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[24]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1721,35 +1959,35 @@ func (x *ClientProtocolError_VerifyChainFailed_ChainNameConstraint) ProtoReflect
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_ChainNameConstraint.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_ChainNameConstraint) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 12}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 12}
 }
 
 // The chain has violated an issuer's pathlen constraint.
 //
 // This is a chain configuration issue.
-type ClientProtocolError_VerifyChainFailed_PathLen struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_PathLen struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_PathLen) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_PathLen{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[25]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_PathLen) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_PathLen{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_PathLen) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_PathLen) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_PathLen) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_PathLen) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[25]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_PathLen) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1760,16 +1998,16 @@ func (x *ClientProtocolError_VerifyChainFailed_PathLen) ProtoReflect() protorefl
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_PathLen.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_PathLen) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 13}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_PathLen.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 13}
 }
 
 // The chain contains EKU constraints which do not include the EKU the client
 // requires (codeSigning).
 //
 // This is a chain configuration issue.
-type ClientProtocolError_VerifyChainFailed_RequiredEku struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A description of the EKU the client requires.
 	Required string `protobuf:"bytes,1,opt,name=required,proto3" json:"required,omitempty"`
@@ -1779,21 +2017,21 @@ type ClientProtocolError_VerifyChainFailed_RequiredEku struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_RequiredEku{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[26]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_RequiredEku) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[26]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1804,19 +2042,19 @@ func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) ProtoReflect() proto
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_RequiredEku.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_RequiredEku) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 14}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 14}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) GetRequired() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) GetRequired() string {
 	if x != nil {
 		return x.Required
 	}
 	return ""
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) GetFound() []string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku) GetFound() []string {
 	if x != nil {
 		return x.Found
 	}
@@ -1824,27 +2062,27 @@ func (x *ClientProtocolError_VerifyChainFailed_RequiredEku) GetFound() []string 
 }
 
 // Chain building produced a chain that could not be verified as trusted.
-type ClientProtocolError_VerifyChainFailed_ChainBuildingFailure struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_ChainBuildingFailure{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[27]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[27]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1855,13 +2093,13 @@ func (x *ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) ProtoReflec
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_ChainBuildingFailure.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 15}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 15}
 }
 
 // An input is unsupported by the client.
-type ClientProtocolError_VerifyChainFailed_Unsupported struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The error string generated by the client verifier, describing the
 	// unsupported input.
@@ -1870,21 +2108,21 @@ type ClientProtocolError_VerifyChainFailed_Unsupported struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unsupported) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_Unsupported{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[28]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unsupported) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_Unsupported) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_Unsupported) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[28]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1895,12 +2133,12 @@ func (x *ClientProtocolError_VerifyChainFailed_Unsupported) ProtoReflect() proto
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_Unsupported.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_Unsupported) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 16}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 16}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unsupported) GetErrorMsg() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -1908,7 +2146,7 @@ func (x *ClientProtocolError_VerifyChainFailed_Unsupported) GetErrorMsg() string
 }
 
 // A catch-all for errors the client verifier does not recognise.
-type ClientProtocolError_VerifyChainFailed_Unknown struct {
+type ClientProtocolError_Dispatch_VerifyChainFailed_Unknown struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The error string generated by the client verifier.
 	ErrorMsg      string `protobuf:"bytes,1,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
@@ -1916,21 +2154,21 @@ type ClientProtocolError_VerifyChainFailed_Unknown struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unknown) Reset() {
-	*x = ClientProtocolError_VerifyChainFailed_Unknown{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[29]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) Reset() {
+	*x = ClientProtocolError_Dispatch_VerifyChainFailed_Unknown{}
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unknown) String() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientProtocolError_VerifyChainFailed_Unknown) ProtoMessage() {}
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) ProtoMessage() {}
 
-func (x *ClientProtocolError_VerifyChainFailed_Unknown) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[29]
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) ProtoReflect() protoreflect.Message {
+	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1941,58 +2179,12 @@ func (x *ClientProtocolError_VerifyChainFailed_Unknown) ProtoReflect() protorefl
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientProtocolError_VerifyChainFailed_Unknown.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_VerifyChainFailed_Unknown) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 8, 17}
+// Deprecated: Use ClientProtocolError_Dispatch_VerifyChainFailed_Unknown.ProtoReflect.Descriptor instead.
+func (*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) Descriptor() ([]byte, []int) {
+	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 3, 2, 17}
 }
 
-func (x *ClientProtocolError_VerifyChainFailed_Unknown) GetErrorMsg() string {
-	if x != nil {
-		return x.ErrorMsg
-	}
-	return ""
-}
-
-// The certificate could not be parsed from the DER bytes sent to the
-// client.
-type ClientProtocolError_CertPush_InvalidDer struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ErrorMsg      string                 `protobuf:"bytes,1,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClientProtocolError_CertPush_InvalidDer) Reset() {
-	*x = ClientProtocolError_CertPush_InvalidDer{}
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClientProtocolError_CertPush_InvalidDer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClientProtocolError_CertPush_InvalidDer) ProtoMessage() {}
-
-func (x *ClientProtocolError_CertPush_InvalidDer) ProtoReflect() protoreflect.Message {
-	mi := &file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClientProtocolError_CertPush_InvalidDer.ProtoReflect.Descriptor instead.
-func (*ClientProtocolError_CertPush_InvalidDer) Descriptor() ([]byte, []int) {
-	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP(), []int{0, 10, 0}
-}
-
-func (x *ClientProtocolError_CertPush_InvalidDer) GetErrorMsg() string {
+func (x *ClientProtocolError_Dispatch_VerifyChainFailed_Unknown) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -2003,62 +2195,68 @@ var File_rc_x509_protocol_v1_protocol_error_proto protoreflect.FileDescriptor
 
 const file_rc_x509_protocol_v1_protocol_error_proto_rawDesc = "" +
 	"\n" +
-	"(rc/x509/protocol/v1/protocol_error.proto\x12\x13rc.x509.protocol.v1\"\xf4&\n" +
-	"\x13ClientProtocolError\x12\x7f\n" +
-	"\x1ahandshake_ack_before_hello\x18\x01 \x01(\v2@.rc.x509.protocol.v1.ClientProtocolError.HandshakeAckBeforeHelloH\x00R\x17handshakeAckBeforeHello\x12x\n" +
-	"\x17handshake_duplicate_ack\x18\x02 \x01(\v2>.rc.x509.protocol.v1.ClientProtocolError.HandshakeDuplicateAckH\x00R\x15handshakeDuplicateAck\x12\x91\x01\n" +
-	" handshake_connection_id_rejected\x18\x03 \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.HandshakeConnectionIdRejectedH\x00R\x1dhandshakeConnectionIdRejected\x12w\n" +
-	"\x16deserialisation_failed\x18\x04 \x01(\v2>.rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailedH\x00R\x15deserialisationFailed\x12s\n" +
-	"\x16cert_id_invalid_length\x18\x06 \x01(\v2<.rc.x509.protocol.v1.ClientProtocolError.CertIdInvalidLengthH\x00R\x13certIdInvalidLength\x12~\n" +
-	"\x19dispatch_before_handshake\x18\a \x01(\v2@.rc.x509.protocol.v1.ClientProtocolError.DispatchBeforeHandshakeH\x00R\x17dispatchBeforeHandshake\x12\x81\x01\n" +
-	"\x1adispatch_missing_signature\x18\b \x01(\v2A.rc.x509.protocol.v1.ClientProtocolError.DispatchMissingSignatureH\x00R\x18dispatchMissingSignature\x12u\n" +
-	"\x16excessively_long_chain\x18\t \x01(\v2=.rc.x509.protocol.v1.ClientProtocolError.ExcessivelyLongChainH\x00R\x14excessivelyLongChain\x12l\n" +
-	"\x13verify_chain_failed\x18\n" +
-	" \x01(\v2:.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailedH\x00R\x11verifyChainFailed\x12x\n" +
-	"\x17verify_signature_failed\x18\v \x01(\v2>.rc.x509.protocol.v1.ClientProtocolError.VerifySignatureFailedH\x00R\x15verifySignatureFailed\x12P\n" +
-	"\tcert_push\x18\f \x01(\v21.rc.x509.protocol.v1.ClientProtocolError.CertPushH\x00R\bcertPush\x122\n" +
-	"\x15is_handshake_complete\x18\x05 \x01(\bR\x13isHandshakeComplete\x1a\x19\n" +
-	"\x17HandshakeAckBeforeHello\x1a\x17\n" +
-	"\x15HandshakeDuplicateAck\x1a\x1f\n" +
-	"\x1dHandshakeConnectionIdRejected\x1a4\n" +
+	"(rc/x509/protocol/v1/protocol_error.proto\x12\x13rc.x509.protocol.v1\"\xf9)\n" +
+	"\x13ClientProtocolError\x12w\n" +
+	"\x16deserialisation_failed\x18\x01 \x01(\v2>.rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailedH\x00R\x15deserialisationFailed\x12R\n" +
+	"\thandshake\x18\x02 \x01(\v22.rc.x509.protocol.v1.ClientProtocolError.HandshakeH\x00R\thandshake\x12O\n" +
+	"\bdispatch\x18\x03 \x01(\v21.rc.x509.protocol.v1.ClientProtocolError.DispatchH\x00R\bdispatch\x12P\n" +
+	"\tcert_push\x18\x04 \x01(\v21.rc.x509.protocol.v1.ClientProtocolError.CertPushH\x00R\bcertPush\x122\n" +
+	"\x15is_handshake_complete\x18\x05 \x01(\bR\x13isHandshakeComplete\x1a4\n" +
 	"\x15DeserialisationFailed\x12\x1b\n" +
-	"\terror_msg\x18\x01 \x01(\tR\berrorMsg\x1a.\n" +
-	"\x13CertIdInvalidLength\x12\x17\n" +
-	"\agot_len\x18\x01 \x01(\x04R\x06gotLen\x1a@\n" +
-	"\x17DispatchBeforeHandshake\x12%\n" +
-	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x1aA\n" +
-	"\x18DispatchMissingSignature\x12%\n" +
-	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x1a8\n" +
-	"\x14ExcessivelyLongChain\x12 \n" +
-	"\fleaf_cert_id\x18\x03 \x01(\fR\n" +
-	"leafCertId\x1a\xb8\x17\n" +
+	"\terror_msg\x18\x01 \x01(\tR\berrorMsg\x1a\xa6\x03\n" +
+	"\tHandshake\x12m\n" +
+	"\x10ack_before_hello\x18\x01 \x01(\v2A.rc.x509.protocol.v1.ClientProtocolError.Handshake.AckBeforeHelloH\x00R\x0eackBeforeHello\x12f\n" +
+	"\rduplicate_ack\x18\x02 \x01(\v2?.rc.x509.protocol.v1.ClientProtocolError.Handshake.DuplicateAckH\x00R\fduplicateAck\x12\x7f\n" +
+	"\x16connection_id_rejected\x18\x03 \x01(\v2G.rc.x509.protocol.v1.ClientProtocolError.Handshake.ConnectionIdRejectedH\x00R\x14connectionIdRejected\x1a\x10\n" +
+	"\x0eAckBeforeHello\x1a\x0e\n" +
+	"\fDuplicateAck\x1a\x16\n" +
+	"\x14ConnectionIdRejectedB\a\n" +
+	"\x05error\x1a\x9f\x01\n" +
+	"\bCertPush\x12_\n" +
+	"\vinvalid_der\x18\x01 \x01(\v2<.rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDerH\x00R\n" +
+	"invalidDer\x1a)\n" +
+	"\n" +
+	"InvalidDer\x12\x1b\n" +
+	"\terror_msg\x18\x01 \x01(\tR\berrorMsgB\a\n" +
+	"\x05error\x1a\xb3!\n" +
+	"\bDispatch\x12%\n" +
+	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x12n\n" +
+	"\x10before_handshake\x18\x02 \x01(\v2A.rc.x509.protocol.v1.ClientProtocolError.Dispatch.BeforeHandshakeH\x00R\x0fbeforeHandshake\x12q\n" +
+	"\x11missing_signature\x18\x03 \x01(\v2B.rc.x509.protocol.v1.ClientProtocolError.Dispatch.MissingSignatureH\x00R\x10missingSignature\x12u\n" +
+	"\x13verify_chain_failed\x18\x04 \x01(\v2C.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailedH\x00R\x11verifyChainFailed\x12~\n" +
+	"\x16excessively_long_chain\x18\x05 \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.Dispatch.ExcessivelyLongChainH\x00R\x14excessivelyLongChain\x12|\n" +
+	"\x16cert_id_invalid_length\x18\x06 \x01(\v2E.rc.x509.protocol.v1.ClientProtocolError.Dispatch.CertIdInvalidLengthH\x00R\x13certIdInvalidLength\x12w\n" +
+	"\x13malformed_signature\x18\a \x01(\v2D.rc.x509.protocol.v1.ClientProtocolError.Dispatch.MalformedSignatureH\x00R\x12malformedSignature\x12t\n" +
+	"\x12signature_mismatch\x18\b \x01(\v2C.rc.x509.protocol.v1.ClientProtocolError.Dispatch.SignatureMismatchH\x00R\x11signatureMismatch\x1a\x11\n" +
+	"\x0fBeforeHandshake\x1a\x12\n" +
+	"\x10MissingSignature\x1a\xdd\x18\n" +
 	"\x11VerifyChainFailed\x12 \n" +
 	"\froot_cert_id\x18\x01 \x01(\fR\n" +
 	"rootCertId\x120\n" +
 	"\x14intermediate_cert_id\x18\x02 \x03(\fR\x12intermediateCertId\x12 \n" +
 	"\fleaf_cert_id\x18\x03 \x01(\fR\n" +
-	"leafCertId\x12{\n" +
-	"\x12leaf_name_mismatch\x18\x04 \x01(\v2K.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.LeafNameMismatchH\x00R\x10leafNameMismatch\x12q\n" +
-	"\x0ecert_malformed\x18\x05 \x01(\v2H.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertMalformedH\x00R\rcertMalformed\x12\x87\x01\n" +
-	"\x16cert_signature_invalid\x18\x06 \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertSignatureInvalidH\x00R\x14certSignatureInvalid\x12\x84\x01\n" +
-	"\x15crl_signature_invalid\x18\a \x01(\v2N.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlSignatureInvalidH\x00R\x13crlSignatureInvalid\x12n\n" +
-	"\rcrl_malformed\x18\b \x01(\v2G.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlMalformedH\x00R\fcrlMalformed\x12x\n" +
-	"\x11chain_walk_limits\x18\t \x01(\v2J.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainWalkLimitsH\x00R\x0fchainWalkLimits\x12i\n" +
+	"leafCertId\x12\x84\x01\n" +
+	"\x12leaf_name_mismatch\x18\x04 \x01(\v2T.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.LeafNameMismatchH\x00R\x10leafNameMismatch\x12z\n" +
+	"\x0ecert_malformed\x18\x05 \x01(\v2Q.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertMalformedH\x00R\rcertMalformed\x12\x90\x01\n" +
+	"\x16cert_signature_invalid\x18\x06 \x01(\v2X.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertSignatureInvalidH\x00R\x14certSignatureInvalid\x12\x8d\x01\n" +
+	"\x15crl_signature_invalid\x18\a \x01(\v2W.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlSignatureInvalidH\x00R\x13crlSignatureInvalid\x12w\n" +
+	"\rcrl_malformed\x18\b \x01(\v2P.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlMalformedH\x00R\fcrlMalformed\x12\x81\x01\n" +
+	"\x11chain_walk_limits\x18\t \x01(\v2S.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainWalkLimitsH\x00R\x0fchainWalkLimits\x12r\n" +
 	"\fsigner_is_ca\x18\n" +
-	" \x01(\v2E.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.SignerIsCaH\x00R\n" +
-	"signerIsCa\x12~\n" +
-	"\x13intermediate_not_ca\x18\v \x01(\v2L.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.IntermediateNotCaH\x00R\x11intermediateNotCa\x12k\n" +
-	"\fcert_expired\x18\f \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertExpiredH\x00R\vcertExpired\x12\x81\x01\n" +
-	"\x14cert_future_validity\x18\r \x01(\v2M.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertFutureValidityH\x00R\x12certFutureValidity\x12k\n" +
-	"\fcert_revoked\x18\x0e \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertRevokedH\x00R\vcertRevoked\x12h\n" +
-	"\vcrl_expired\x18\x0f \x01(\v2E.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlExpiredH\x00R\n" +
-	"crlExpired\x12\x84\x01\n" +
-	"\x15chain_name_constraint\x18\x10 \x01(\v2N.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainNameConstraintH\x00R\x13chainNameConstraint\x12_\n" +
-	"\bpath_len\x18\x11 \x01(\v2B.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.PathLenH\x00R\apathLen\x12k\n" +
-	"\frequired_eku\x18\x12 \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.RequiredEkuH\x00R\vrequiredEku\x12\x87\x01\n" +
-	"\x16chain_building_failure\x18\x13 \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainBuildingFailureH\x00R\x14chainBuildingFailure\x12j\n" +
-	"\vunsupported\x18\x14 \x01(\v2F.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.UnsupportedH\x00R\vunsupported\x12^\n" +
-	"\aunknown\x18\x15 \x01(\v2B.rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.UnknownH\x00R\aunknown\x1a,\n" +
+	" \x01(\v2N.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.SignerIsCaH\x00R\n" +
+	"signerIsCa\x12\x87\x01\n" +
+	"\x13intermediate_not_ca\x18\v \x01(\v2U.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.IntermediateNotCaH\x00R\x11intermediateNotCa\x12t\n" +
+	"\fcert_expired\x18\f \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertExpiredH\x00R\vcertExpired\x12\x8a\x01\n" +
+	"\x14cert_future_validity\x18\r \x01(\v2V.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertFutureValidityH\x00R\x12certFutureValidity\x12t\n" +
+	"\fcert_revoked\x18\x0e \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertRevokedH\x00R\vcertRevoked\x12q\n" +
+	"\vcrl_expired\x18\x0f \x01(\v2N.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlExpiredH\x00R\n" +
+	"crlExpired\x12\x8d\x01\n" +
+	"\x15chain_name_constraint\x18\x10 \x01(\v2W.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainNameConstraintH\x00R\x13chainNameConstraint\x12h\n" +
+	"\bpath_len\x18\x11 \x01(\v2K.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.PathLenH\x00R\apathLen\x12t\n" +
+	"\frequired_eku\x18\x12 \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.RequiredEkuH\x00R\vrequiredEku\x12\x90\x01\n" +
+	"\x16chain_building_failure\x18\x13 \x01(\v2X.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainBuildingFailureH\x00R\x14chainBuildingFailure\x12s\n" +
+	"\vunsupported\x18\x14 \x01(\v2O.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.UnsupportedH\x00R\vunsupported\x12g\n" +
+	"\aunknown\x18\x15 \x01(\v2K.rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.UnknownH\x00R\aunknown\x1a,\n" +
 	"\rCertMalformed\x12\x1b\n" +
 	"\terror_msg\x18\x01 \x01(\tR\berrorMsg\x1a\x16\n" +
 	"\x14CertSignatureInvalid\x1a\x15\n" +
@@ -2096,14 +2294,15 @@ const file_rc_x509_protocol_v1_protocol_error_proto_rawDesc = "" +
 	"\terror_msg\x18\x01 \x01(\tR\berrorMsg\x1a&\n" +
 	"\aUnknown\x12\x1b\n" +
 	"\terror_msg\x18\x01 \x01(\tR\berrorMsgB\a\n" +
-	"\x05error\x1a\x17\n" +
-	"\x15VerifySignatureFailed\x1a\x9f\x01\n" +
-	"\bCertPush\x12_\n" +
-	"\vinvalid_der\x18\x01 \x01(\v2<.rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDerH\x00R\n" +
-	"invalidDer\x1a)\n" +
-	"\n" +
-	"InvalidDer\x12\x1b\n" +
-	"\terror_msg\x18\x01 \x01(\tR\berrorMsgB\a\n" +
+	"\x05error\x1a8\n" +
+	"\x14ExcessivelyLongChain\x12 \n" +
+	"\fleaf_cert_id\x18\x01 \x01(\fR\n" +
+	"leafCertId\x1a.\n" +
+	"\x13CertIdInvalidLength\x12\x17\n" +
+	"\agot_len\x18\x01 \x01(\x04R\x06gotLen\x1a*\n" +
+	"\x12MalformedSignature\x12\x14\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\x1a\x13\n" +
+	"\x11SignatureMismatchB\a\n" +
 	"\x05errorB\a\n" +
 	"\x05errorBFZDgithub.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1b\x06proto3"
 
@@ -2119,76 +2318,82 @@ func file_rc_x509_protocol_v1_protocol_error_proto_rawDescGZIP() []byte {
 	return file_rc_x509_protocol_v1_protocol_error_proto_rawDescData
 }
 
-var file_rc_x509_protocol_v1_protocol_error_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_rc_x509_protocol_v1_protocol_error_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_rc_x509_protocol_v1_protocol_error_proto_goTypes = []any{
-	(*ClientProtocolError)(nil),                                        // 0: rc.x509.protocol.v1.ClientProtocolError
-	(*ClientProtocolError_HandshakeAckBeforeHello)(nil),                // 1: rc.x509.protocol.v1.ClientProtocolError.HandshakeAckBeforeHello
-	(*ClientProtocolError_HandshakeDuplicateAck)(nil),                  // 2: rc.x509.protocol.v1.ClientProtocolError.HandshakeDuplicateAck
-	(*ClientProtocolError_HandshakeConnectionIdRejected)(nil),          // 3: rc.x509.protocol.v1.ClientProtocolError.HandshakeConnectionIdRejected
-	(*ClientProtocolError_DeserialisationFailed)(nil),                  // 4: rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailed
-	(*ClientProtocolError_CertIdInvalidLength)(nil),                    // 5: rc.x509.protocol.v1.ClientProtocolError.CertIdInvalidLength
-	(*ClientProtocolError_DispatchBeforeHandshake)(nil),                // 6: rc.x509.protocol.v1.ClientProtocolError.DispatchBeforeHandshake
-	(*ClientProtocolError_DispatchMissingSignature)(nil),               // 7: rc.x509.protocol.v1.ClientProtocolError.DispatchMissingSignature
-	(*ClientProtocolError_ExcessivelyLongChain)(nil),                   // 8: rc.x509.protocol.v1.ClientProtocolError.ExcessivelyLongChain
-	(*ClientProtocolError_VerifyChainFailed)(nil),                      // 9: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed
-	(*ClientProtocolError_VerifySignatureFailed)(nil),                  // 10: rc.x509.protocol.v1.ClientProtocolError.VerifySignatureFailed
-	(*ClientProtocolError_CertPush)(nil),                               // 11: rc.x509.protocol.v1.ClientProtocolError.CertPush
-	(*ClientProtocolError_VerifyChainFailed_CertMalformed)(nil),        // 12: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertMalformed
-	(*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid)(nil), // 13: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertSignatureInvalid
-	(*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid)(nil),  // 14: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlSignatureInvalid
-	(*ClientProtocolError_VerifyChainFailed_CrlMalformed)(nil),         // 15: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlMalformed
-	(*ClientProtocolError_VerifyChainFailed_ChainWalkLimits)(nil),      // 16: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainWalkLimits
-	(*ClientProtocolError_VerifyChainFailed_SignerIsCa)(nil),           // 17: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.SignerIsCa
-	(*ClientProtocolError_VerifyChainFailed_IntermediateNotCa)(nil),    // 18: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.IntermediateNotCa
-	(*ClientProtocolError_VerifyChainFailed_CertExpired)(nil),          // 19: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertExpired
-	(*ClientProtocolError_VerifyChainFailed_CertFutureValidity)(nil),   // 20: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertFutureValidity
-	(*ClientProtocolError_VerifyChainFailed_CertRevoked)(nil),          // 21: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertRevoked
-	(*ClientProtocolError_VerifyChainFailed_CrlExpired)(nil),           // 22: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlExpired
-	(*ClientProtocolError_VerifyChainFailed_LeafNameMismatch)(nil),     // 23: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.LeafNameMismatch
-	(*ClientProtocolError_VerifyChainFailed_ChainNameConstraint)(nil),  // 24: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainNameConstraint
-	(*ClientProtocolError_VerifyChainFailed_PathLen)(nil),              // 25: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.PathLen
-	(*ClientProtocolError_VerifyChainFailed_RequiredEku)(nil),          // 26: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.RequiredEku
-	(*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure)(nil), // 27: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainBuildingFailure
-	(*ClientProtocolError_VerifyChainFailed_Unsupported)(nil),          // 28: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.Unsupported
-	(*ClientProtocolError_VerifyChainFailed_Unknown)(nil),              // 29: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.Unknown
-	(*ClientProtocolError_CertPush_InvalidDer)(nil),                    // 30: rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDer
+	(*ClientProtocolError)(nil),                                                 // 0: rc.x509.protocol.v1.ClientProtocolError
+	(*ClientProtocolError_DeserialisationFailed)(nil),                           // 1: rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailed
+	(*ClientProtocolError_Handshake)(nil),                                       // 2: rc.x509.protocol.v1.ClientProtocolError.Handshake
+	(*ClientProtocolError_CertPush)(nil),                                        // 3: rc.x509.protocol.v1.ClientProtocolError.CertPush
+	(*ClientProtocolError_Dispatch)(nil),                                        // 4: rc.x509.protocol.v1.ClientProtocolError.Dispatch
+	(*ClientProtocolError_Handshake_AckBeforeHello)(nil),                        // 5: rc.x509.protocol.v1.ClientProtocolError.Handshake.AckBeforeHello
+	(*ClientProtocolError_Handshake_DuplicateAck)(nil),                          // 6: rc.x509.protocol.v1.ClientProtocolError.Handshake.DuplicateAck
+	(*ClientProtocolError_Handshake_ConnectionIdRejected)(nil),                  // 7: rc.x509.protocol.v1.ClientProtocolError.Handshake.ConnectionIdRejected
+	(*ClientProtocolError_CertPush_InvalidDer)(nil),                             // 8: rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDer
+	(*ClientProtocolError_Dispatch_BeforeHandshake)(nil),                        // 9: rc.x509.protocol.v1.ClientProtocolError.Dispatch.BeforeHandshake
+	(*ClientProtocolError_Dispatch_MissingSignature)(nil),                       // 10: rc.x509.protocol.v1.ClientProtocolError.Dispatch.MissingSignature
+	(*ClientProtocolError_Dispatch_VerifyChainFailed)(nil),                      // 11: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed
+	(*ClientProtocolError_Dispatch_ExcessivelyLongChain)(nil),                   // 12: rc.x509.protocol.v1.ClientProtocolError.Dispatch.ExcessivelyLongChain
+	(*ClientProtocolError_Dispatch_CertIdInvalidLength)(nil),                    // 13: rc.x509.protocol.v1.ClientProtocolError.Dispatch.CertIdInvalidLength
+	(*ClientProtocolError_Dispatch_MalformedSignature)(nil),                     // 14: rc.x509.protocol.v1.ClientProtocolError.Dispatch.MalformedSignature
+	(*ClientProtocolError_Dispatch_SignatureMismatch)(nil),                      // 15: rc.x509.protocol.v1.ClientProtocolError.Dispatch.SignatureMismatch
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed)(nil),        // 16: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertMalformed
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid)(nil), // 17: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertSignatureInvalid
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid)(nil),  // 18: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlSignatureInvalid
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed)(nil),         // 19: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlMalformed
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits)(nil),      // 20: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainWalkLimits
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa)(nil),           // 21: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.SignerIsCa
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa)(nil),    // 22: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.IntermediateNotCa
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired)(nil),          // 23: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertExpired
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity)(nil),   // 24: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertFutureValidity
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked)(nil),          // 25: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertRevoked
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired)(nil),           // 26: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlExpired
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch)(nil),     // 27: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.LeafNameMismatch
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint)(nil),  // 28: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainNameConstraint
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen)(nil),              // 29: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.PathLen
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku)(nil),          // 30: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.RequiredEku
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure)(nil), // 31: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainBuildingFailure
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported)(nil),          // 32: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.Unsupported
+	(*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown)(nil),              // 33: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.Unknown
 }
 var file_rc_x509_protocol_v1_protocol_error_proto_depIdxs = []int32{
-	1,  // 0: rc.x509.protocol.v1.ClientProtocolError.handshake_ack_before_hello:type_name -> rc.x509.protocol.v1.ClientProtocolError.HandshakeAckBeforeHello
-	2,  // 1: rc.x509.protocol.v1.ClientProtocolError.handshake_duplicate_ack:type_name -> rc.x509.protocol.v1.ClientProtocolError.HandshakeDuplicateAck
-	3,  // 2: rc.x509.protocol.v1.ClientProtocolError.handshake_connection_id_rejected:type_name -> rc.x509.protocol.v1.ClientProtocolError.HandshakeConnectionIdRejected
-	4,  // 3: rc.x509.protocol.v1.ClientProtocolError.deserialisation_failed:type_name -> rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailed
-	5,  // 4: rc.x509.protocol.v1.ClientProtocolError.cert_id_invalid_length:type_name -> rc.x509.protocol.v1.ClientProtocolError.CertIdInvalidLength
-	6,  // 5: rc.x509.protocol.v1.ClientProtocolError.dispatch_before_handshake:type_name -> rc.x509.protocol.v1.ClientProtocolError.DispatchBeforeHandshake
-	7,  // 6: rc.x509.protocol.v1.ClientProtocolError.dispatch_missing_signature:type_name -> rc.x509.protocol.v1.ClientProtocolError.DispatchMissingSignature
-	8,  // 7: rc.x509.protocol.v1.ClientProtocolError.excessively_long_chain:type_name -> rc.x509.protocol.v1.ClientProtocolError.ExcessivelyLongChain
-	9,  // 8: rc.x509.protocol.v1.ClientProtocolError.verify_chain_failed:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed
-	10, // 9: rc.x509.protocol.v1.ClientProtocolError.verify_signature_failed:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifySignatureFailed
-	11, // 10: rc.x509.protocol.v1.ClientProtocolError.cert_push:type_name -> rc.x509.protocol.v1.ClientProtocolError.CertPush
-	23, // 11: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.leaf_name_mismatch:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.LeafNameMismatch
-	12, // 12: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.cert_malformed:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertMalformed
-	13, // 13: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.cert_signature_invalid:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertSignatureInvalid
-	14, // 14: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.crl_signature_invalid:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlSignatureInvalid
-	15, // 15: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.crl_malformed:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlMalformed
-	16, // 16: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.chain_walk_limits:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainWalkLimits
-	17, // 17: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.signer_is_ca:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.SignerIsCa
-	18, // 18: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.intermediate_not_ca:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.IntermediateNotCa
-	19, // 19: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.cert_expired:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertExpired
-	20, // 20: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.cert_future_validity:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertFutureValidity
-	21, // 21: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.cert_revoked:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CertRevoked
-	22, // 22: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.crl_expired:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.CrlExpired
-	24, // 23: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.chain_name_constraint:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainNameConstraint
-	25, // 24: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.path_len:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.PathLen
-	26, // 25: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.required_eku:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.RequiredEku
-	27, // 26: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.chain_building_failure:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.ChainBuildingFailure
-	28, // 27: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.unsupported:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.Unsupported
-	29, // 28: rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.unknown:type_name -> rc.x509.protocol.v1.ClientProtocolError.VerifyChainFailed.Unknown
-	30, // 29: rc.x509.protocol.v1.ClientProtocolError.CertPush.invalid_der:type_name -> rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDer
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	1,  // 0: rc.x509.protocol.v1.ClientProtocolError.deserialisation_failed:type_name -> rc.x509.protocol.v1.ClientProtocolError.DeserialisationFailed
+	2,  // 1: rc.x509.protocol.v1.ClientProtocolError.handshake:type_name -> rc.x509.protocol.v1.ClientProtocolError.Handshake
+	4,  // 2: rc.x509.protocol.v1.ClientProtocolError.dispatch:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch
+	3,  // 3: rc.x509.protocol.v1.ClientProtocolError.cert_push:type_name -> rc.x509.protocol.v1.ClientProtocolError.CertPush
+	5,  // 4: rc.x509.protocol.v1.ClientProtocolError.Handshake.ack_before_hello:type_name -> rc.x509.protocol.v1.ClientProtocolError.Handshake.AckBeforeHello
+	6,  // 5: rc.x509.protocol.v1.ClientProtocolError.Handshake.duplicate_ack:type_name -> rc.x509.protocol.v1.ClientProtocolError.Handshake.DuplicateAck
+	7,  // 6: rc.x509.protocol.v1.ClientProtocolError.Handshake.connection_id_rejected:type_name -> rc.x509.protocol.v1.ClientProtocolError.Handshake.ConnectionIdRejected
+	8,  // 7: rc.x509.protocol.v1.ClientProtocolError.CertPush.invalid_der:type_name -> rc.x509.protocol.v1.ClientProtocolError.CertPush.InvalidDer
+	9,  // 8: rc.x509.protocol.v1.ClientProtocolError.Dispatch.before_handshake:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.BeforeHandshake
+	10, // 9: rc.x509.protocol.v1.ClientProtocolError.Dispatch.missing_signature:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.MissingSignature
+	11, // 10: rc.x509.protocol.v1.ClientProtocolError.Dispatch.verify_chain_failed:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed
+	12, // 11: rc.x509.protocol.v1.ClientProtocolError.Dispatch.excessively_long_chain:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.ExcessivelyLongChain
+	13, // 12: rc.x509.protocol.v1.ClientProtocolError.Dispatch.cert_id_invalid_length:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.CertIdInvalidLength
+	14, // 13: rc.x509.protocol.v1.ClientProtocolError.Dispatch.malformed_signature:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.MalformedSignature
+	15, // 14: rc.x509.protocol.v1.ClientProtocolError.Dispatch.signature_mismatch:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.SignatureMismatch
+	27, // 15: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.leaf_name_mismatch:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.LeafNameMismatch
+	16, // 16: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.cert_malformed:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertMalformed
+	17, // 17: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.cert_signature_invalid:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertSignatureInvalid
+	18, // 18: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.crl_signature_invalid:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlSignatureInvalid
+	19, // 19: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.crl_malformed:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlMalformed
+	20, // 20: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.chain_walk_limits:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainWalkLimits
+	21, // 21: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.signer_is_ca:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.SignerIsCa
+	22, // 22: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.intermediate_not_ca:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.IntermediateNotCa
+	23, // 23: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.cert_expired:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertExpired
+	24, // 24: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.cert_future_validity:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertFutureValidity
+	25, // 25: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.cert_revoked:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CertRevoked
+	26, // 26: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.crl_expired:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.CrlExpired
+	28, // 27: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.chain_name_constraint:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainNameConstraint
+	29, // 28: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.path_len:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.PathLen
+	30, // 29: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.required_eku:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.RequiredEku
+	31, // 30: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.chain_building_failure:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.ChainBuildingFailure
+	32, // 31: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.unsupported:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.Unsupported
+	33, // 32: rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.unknown:type_name -> rc.x509.protocol.v1.ClientProtocolError.Dispatch.VerifyChainFailed.Unknown
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_rc_x509_protocol_v1_protocol_error_proto_init() }
@@ -2197,40 +2402,47 @@ func file_rc_x509_protocol_v1_protocol_error_proto_init() {
 		return
 	}
 	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[0].OneofWrappers = []any{
-		(*ClientProtocolError_HandshakeAckBeforeHello_)(nil),
-		(*ClientProtocolError_HandshakeDuplicateAck_)(nil),
-		(*ClientProtocolError_HandshakeConnectionIdRejected_)(nil),
 		(*ClientProtocolError_DeserialisationFailed_)(nil),
-		(*ClientProtocolError_CertIdInvalidLength_)(nil),
-		(*ClientProtocolError_DispatchBeforeHandshake_)(nil),
-		(*ClientProtocolError_DispatchMissingSignature_)(nil),
-		(*ClientProtocolError_ExcessivelyLongChain_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_)(nil),
-		(*ClientProtocolError_VerifySignatureFailed_)(nil),
+		(*ClientProtocolError_Handshake_)(nil),
+		(*ClientProtocolError_Dispatch_)(nil),
 		(*ClientProtocolError_CertPush_)(nil),
 	}
-	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[9].OneofWrappers = []any{
-		(*ClientProtocolError_VerifyChainFailed_LeafNameMismatch_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CertMalformed_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CertSignatureInvalid_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CrlSignatureInvalid_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CrlMalformed_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_ChainWalkLimits_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_SignerIsCa_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_IntermediateNotCa_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CertExpired_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CertFutureValidity_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CertRevoked_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_CrlExpired_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_ChainNameConstraint_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_PathLen_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_RequiredEku_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_ChainBuildingFailure_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_Unsupported_)(nil),
-		(*ClientProtocolError_VerifyChainFailed_Unknown_)(nil),
+	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[2].OneofWrappers = []any{
+		(*ClientProtocolError_Handshake_AckBeforeHello_)(nil),
+		(*ClientProtocolError_Handshake_DuplicateAck_)(nil),
+		(*ClientProtocolError_Handshake_ConnectionIdRejected_)(nil),
+	}
+	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[3].OneofWrappers = []any{
+		(*ClientProtocolError_CertPush_InvalidDer_)(nil),
+	}
+	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[4].OneofWrappers = []any{
+		(*ClientProtocolError_Dispatch_BeforeHandshake_)(nil),
+		(*ClientProtocolError_Dispatch_MissingSignature_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_)(nil),
+		(*ClientProtocolError_Dispatch_ExcessivelyLongChain_)(nil),
+		(*ClientProtocolError_Dispatch_CertIdInvalidLength_)(nil),
+		(*ClientProtocolError_Dispatch_MalformedSignature_)(nil),
+		(*ClientProtocolError_Dispatch_SignatureMismatch_)(nil),
 	}
 	file_rc_x509_protocol_v1_protocol_error_proto_msgTypes[11].OneofWrappers = []any{
-		(*ClientProtocolError_CertPush_InvalidDer_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_LeafNameMismatch_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CertMalformed_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CertSignatureInvalid_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlSignatureInvalid_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlMalformed_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainWalkLimits_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_SignerIsCa_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_IntermediateNotCa_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CertExpired_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CertFutureValidity_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CertRevoked_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_CrlExpired_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainNameConstraint_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_PathLen_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_RequiredEku_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_ChainBuildingFailure_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_Unsupported_)(nil),
+		(*ClientProtocolError_Dispatch_VerifyChainFailed_Unknown_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2238,7 +2450,7 @@ func file_rc_x509_protocol_v1_protocol_error_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rc_x509_protocol_v1_protocol_error_proto_rawDesc), len(file_rc_x509_protocol_v1_protocol_error_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
