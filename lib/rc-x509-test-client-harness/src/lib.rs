@@ -17,9 +17,12 @@
 use rc_x509_test_helpers as _;
 use rc_x509_trust as _;
 
+mod builder;
 /// A mock client driving the [`rc_x509_client`] entrypoint end-to-end.
 pub mod client;
 /// A mocked [`rc_x509_client::host_runtime::Connection`] transport.
 pub mod io;
 /// Test process logging setup.
 pub mod logging;
+
+pub use builder::*;

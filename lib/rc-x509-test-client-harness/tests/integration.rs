@@ -23,9 +23,13 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
 use rc_x509_client::codec::{ClientToServer, ProtocolError, ServerToClient};
-use rc_x509_test_client_harness::client::TestClient;
 use rc_x509_test_client_harness::logging;
+use rc_x509_test_client_harness::{TestClientBuilder, client::TestClient};
+use rc_x509_test_helpers::test_issuer::TestChain;
 use tokio_util::bytes::Bytes;
+
+// TODO(dom:test): multiple connections, different endpoints serving different
+// SANs to pin DCs.
 
 /// A simple test of the client lifecycle:
 ///
@@ -244,5 +248,37 @@ async fn test_connection_metrics() {
     client.shutdown().await;
 }
 
-// TODO(dom:test): multiple connections, different endpoints serving different
-// SANs to pin DCs.
+/// Push a certificate chain issued by the client's own test CA, and ensure the
+/// client accepts it.
+#[tokio::test]
+async fn test_push_certs() {
+    logging::init();
+
+    let chain = TestChain::default();
+
+    let mut client = TestClientBuilder::default()
+        .with_testing_roots(chain.root())
+        .build();
+
+    let mut conn = client.new_connection().await;
+
+    conn.perform_handshake().await;
+
+    // Issue a chain rooted at the CA this client was configured to trust, and
+    // push it as the server would.
+    conn.push_certs(
+        chain
+            .intermediates
+            .iter()
+            .chain(std::iter::once(&chain.leaf))
+            .map(|v| v.cert()),
+    )
+    .await;
+
+    // The client must not complain about the pushed certificates, and must
+    // remain responsive.
+    conn.send(Ok(ServerToClient::Ping)).await;
+    assert_matches!(conn.recv().await.into_inner(), ClientToServer::Pong);
+
+    client.shutdown().await;
+}

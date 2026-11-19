@@ -38,6 +38,7 @@ rc-crypto.workspace = true
 rc-x509-proto.workspace = true
 rc-x509-test-helpers = { workspace = true, features = ["test-issuer"] }
 rc-x509-trust.workspace = true
+rc-x509-roots.workspace = true
 tokio = { version = "1.52.3", features = ["rt", "sync", "time", "test-util"] }
 tokio-stream = "0.1.18"
 tokio-util = "0.7.18"
