@@ -15,7 +15,7 @@
 use rc_x509_client::{
     AbortOnDrop, AppInfo, ShutdownSignal,
     connection::AttestationVerifier,
-    entrypoint::{LibraryEntrypoint, Main},
+    entrypoint::{APPROX_MAX_CACHE_BYTES, LibraryEntrypoint, Main},
 };
 use rc_x509_roots::RootCertificate;
 use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
@@ -23,8 +23,6 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::client::TestClient;
-
-const CERT_CACHE_SIZE: u64 = 100;
 
 /// Configure a [`TestClient`] and initialise it for testing.
 #[derive(Debug, Default)]
@@ -42,7 +40,7 @@ impl TestClientBuilder {
                 debug_assertions => client = client.with_testing_verifier(
                     TrustStore::new(
                         [ca.clone(), ca.clone()],
-                        MemoryCertCache::new(CERT_CACHE_SIZE),
+                        MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
                     )
                 ),
                 _ => panic!("enabling testing roots is only possible in debug builds"),
