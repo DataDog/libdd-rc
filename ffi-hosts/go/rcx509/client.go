@@ -235,11 +235,11 @@ func (c *Client) UnregisterHandler(uri string) error {
 	return libddrcffi.UnregisterHandler(uri)
 }
 
-// SetHostTags replaces the full set of host tags ("key:value") reported for
-// this client.
+// SetHostTags is reserved for replacing the full set of host tags ("key:value")
+// reported for this client.
 //
-// Call it with the complete current set whenever convenient, e.g. on a timer;
-// This should be called before `Start` to pre-stage tags for first connection.
+// This method is currently a stub: it checks that the underlying context is
+// open, but does not store or report tags, including tags supplied before Start.
 func (c *Client) SetHostTags(tags []string) error {
 	return c.ffiCtx.SetHostTags(tags)
 }
