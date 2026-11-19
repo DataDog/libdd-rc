@@ -114,7 +114,7 @@ func (c *X509Context) Close() error {
 	return nil
 }
 
-// SetHostTags repots the full set of host tags to rc-x509-client for
+// SetHostTags reports the full set of host tags to rc-x509-client for
 // this context.
 //
 // The FFI call is stubbed until rc-x509-client exposes the function it will
