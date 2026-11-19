@@ -22,6 +22,7 @@ pub mod connection;
 pub mod dispatch;
 pub mod entrypoint;
 pub mod host_runtime;
+mod host_tags;
 mod metrics;
 mod payload;
 mod prod_sealed;
@@ -29,6 +30,7 @@ mod shutdown_signal;
 
 pub use abort_on_drop::*;
 pub use app_info::*;
+pub use host_tags::*;
 pub use payload::*;
 pub use prod_sealed::*;
 pub use shutdown_signal::*;
