@@ -45,7 +45,7 @@ impl TestClientBuilder {
                         MemoryCertCache::new(CERT_CACHE_SIZE),
                     )
                 ),
-                _ => compile_error!("enabling testing roots is only possible in debug builds"),
+                _ => panic!("enabling testing roots is only possible in debug builds"),
             };
         }
 
