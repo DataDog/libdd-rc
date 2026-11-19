@@ -1648,6 +1648,8 @@ dependencies = [
  "rc-crypto",
  "rc-x509-client",
  "rc-x509-proto",
+ "rc-x509-test-helpers",
+ "rc-x509-trust",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -1656,8 +1658,13 @@ dependencies = [
 
 [[package]]
 name = "rc-x509-test-helpers"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
+ "proptest",
+ "rc-crypto",
+ "rc-x509-roots",
+ "rcgen",
+ "time",
  "valuable",
 ]
 
@@ -1677,7 +1684,6 @@ dependencies = [
  "rustls-pki-types",
  "rustls-webpki",
  "thiserror",
- "time",
  "tracing",
  "valuable",
 ]

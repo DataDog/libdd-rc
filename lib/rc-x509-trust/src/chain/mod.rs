@@ -39,16 +39,15 @@ pub(crate) mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
 
-    use crate::{
-        chain::{ChainBuildError, ChainVerifyError},
-        test_issuer::{
-            CaSignerLeaf, CriticalExtensionIntermediate, CriticalExtensionLeaf,
-            ExpiredIntermediate, ExpiredLeaf, ForgedIntermediate, ForgedLeaf,
-            FutureValidIntermediate, FutureValidLeaf, MismatchedLeafSan, MissingIntermediate,
-            NonCaIntermediate, OrphanLeaf, PathLenViolation, PreEpochIntermediate, PreEpochLeaf,
-            SelfReferentialCertIds, TestCA, TestChain, arbitrary_chain,
-        },
+    use rc_x509_test_helpers::test_issuer::{
+        CaSignerLeaf, CriticalExtensionIntermediate, CriticalExtensionLeaf, ExpiredIntermediate,
+        ExpiredLeaf, ForgedIntermediate, ForgedLeaf, FutureValidIntermediate, FutureValidLeaf,
+        MismatchedLeafSan, MissingIntermediate, NonCaIntermediate, OrphanLeaf, PathLenViolation,
+        PreEpochIntermediate, PreEpochLeaf, SelfReferentialCertIds, TestCA, TestChain,
+        arbitrary_chain,
     };
+
+    use crate::chain::{ChainBuildError, ChainVerifyError};
 
     /// The error observed when processing an [`InvalidChain`], identifying
     /// which of the two chain processing stages rejected it.

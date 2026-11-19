@@ -17,3 +17,13 @@
 mod valuable_assert;
 
 pub use valuable_assert::*;
+
+#[cfg(feature = "test-issuer")]
+pub mod test_issuer;
+
+/// Re-exported for callers of [`test_issuer`], whose API surface exposes
+/// `rcgen` types directly (such as the [`CertBuilder`] setters).
+///
+/// [`CertBuilder`]: test_issuer::CertBuilder
+#[cfg(feature = "test-issuer")]
+pub use rcgen;

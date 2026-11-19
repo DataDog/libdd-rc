@@ -23,9 +23,6 @@ pub mod trust_store;
 pub use endpoint_hostname::*;
 
 #[cfg(test)]
-pub(crate) mod test_issuer;
-
-#[cfg(test)]
 mod tests {
     use bytes::Bytes;
     use proptest::prelude::*;

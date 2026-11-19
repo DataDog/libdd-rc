@@ -49,7 +49,7 @@ impl<const N: usize> RootSet<N> {
 pub(crate) mod tests {
     use proptest::prelude::*;
 
-    use crate::test_issuer::TestCA;
+    use rc_x509_test_helpers::test_issuer::TestCA;
 
     use super::*;
 

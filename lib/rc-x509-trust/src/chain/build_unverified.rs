@@ -153,11 +153,12 @@ mod tests {
     use proptest::prelude::*;
     use rc_x509_roots::RootCertificate;
 
+    use rc_x509_test_helpers::test_issuer::{
+        CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
+    };
+
     use crate::{
         chain::tests::arbitrary_invalid_chain_spuriously_built,
-        test_issuer::{
-            CertBuilder, MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
-        },
         trust_store::{MemoryCertCache, tests::arbitrary_ordered_root_set},
     };
 

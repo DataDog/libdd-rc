@@ -120,7 +120,7 @@ mod tests {
     use mini_moka::sync::ConcurrentCacheExt;
     use proptest::prelude::*;
 
-    use crate::test_issuer::{CertBuilder, Identity, TestCA};
+    use rc_x509_test_helpers::test_issuer::{CertBuilder, Identity, TestCA};
 
     use super::*;
 

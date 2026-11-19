@@ -206,9 +206,12 @@ mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
 
+    use rc_x509_test_helpers::test_issuer::{
+        MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain,
+    };
+
     use crate::{
         chain::tests::{ChainError, InvalidChain, arbitrary_invalid_chain},
-        test_issuer::{MissingIntermediate, TestCA, TestChain, ValidChain, arbitrary_chain},
         trust_store::{cache::MemoryCertCache, tests::arbitrary_ordered_root_set},
     };
 
