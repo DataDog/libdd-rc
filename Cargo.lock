@@ -1678,6 +1678,7 @@ dependencies = [
  "bytes",
  "mini-moka",
  "proptest",
+ "proptest-derive",
  "rc-crypto",
  "rc-x509-roots",
  "rc-x509-test-helpers",

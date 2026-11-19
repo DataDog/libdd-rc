@@ -76,13 +76,40 @@ impl ExtendedKeyUsageValidator for EKUPolicy {
     }
 }
 
+/// A single, fixed [`webpki::Error`] value used for every generated
+/// [`ChainVerifyError`] variant that carries one.
+///
+/// [`webpki::Error`] does not implement `Arbitrary`, and the specific error is
+/// unimportant for generated values - it is nonsensical for most of the
+/// variants it is attached to, and only ever rendered as a string.
+#[cfg(feature = "arbitrary")]
+pub(crate) const ARBITRARY_WEBPKI_ERROR: webpki::Error = webpki::Error::BadDer;
+
+/// As [`ARBITRARY_WEBPKI_ERROR`], but for the [`KeyUsage`] carried by
+/// [`ChainVerifyError::RequiredEKU`].
+#[cfg(feature = "arbitrary")]
+pub(crate) const ARBITRARY_KEY_USAGE: KeyUsage = KeyUsage::required(EKU_CODE_SIGNING_BYTES);
+
+/// A value generator for the [`UnixTime`] fields of [`ChainVerifyError`], which
+/// does not itself implement `Arbitrary`.
+#[cfg(feature = "arbitrary")]
+pub(crate) fn arbitrary_unix_time() -> impl proptest::strategy::Strategy<Value = UnixTime> {
+    use proptest::prelude::*;
+
+    any::<u64>().prop_map(|v| UnixTime::since_unix_epoch(std::time::Duration::from_secs(v)))
+}
+
 /// Failures to verify a certificate chain.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[cfg_attr(feature = "arbitrary", derive(proptest_derive::Arbitrary))]
 pub enum ChainVerifyError {
     /// The certificate is malformed in some way; the error within describes
     /// precisely the cause.
     #[error("a certificate is malformed: {0}")]
-    CertMalformed(webpki::Error),
+    CertMalformed(
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_WEBPKI_ERROR"))]
+        webpki::Error,
+    ),
 
     /// A certificate in the chain carries a signature that does not verify
     /// under the public key of the certificate that claims to have issued it.
@@ -101,12 +128,18 @@ pub enum ChainVerifyError {
     /// The CRL is malformed in some way; the error within describes precisely
     /// the cause.
     #[error("the CRL is malformed: {0}")]
-    CrlMalformed(webpki::Error),
+    CrlMalformed(
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_WEBPKI_ERROR"))]
+        webpki::Error,
+    ),
 
     /// Verifying the chain hit an internal limit designed to mitigate malicious
     /// chains; this chain may or may not be valid.
     #[error("verifying the chain hit an internal limit: {0}")]
-    ChainWalkLimits(webpki::Error),
+    ChainWalkLimits(
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_WEBPKI_ERROR"))]
+        webpki::Error,
+    ),
 
     /// The signer certificate is also a CA, which is not an allowed chain
     /// configuration - only leaf certificates may sign payloads.
@@ -127,7 +160,11 @@ pub enum ChainVerifyError {
         .not_after.as_secs(),
     )]
     CertExpired {
+        /// The current local clock.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         current: UnixTime,
+        /// The certificate notAfter.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         not_after: UnixTime,
     },
 
@@ -139,7 +176,11 @@ pub enum ChainVerifyError {
         .not_before.as_secs(),
     )]
     CertFutureValidity {
+        /// The current local clock.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         current: UnixTime,
+        /// The certificate notBefore.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         not_before: UnixTime,
     },
 
@@ -157,7 +198,11 @@ pub enum ChainVerifyError {
         .next_update.as_secs(),
     )]
     CrlExpired {
+        /// The current local clock.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         current: UnixTime,
+        /// The CRL nextUpdate.
+        #[cfg_attr(feature = "arbitrary", proptest(strategy = "arbitrary_unix_time()"))]
         next_update: UnixTime,
     },
 
@@ -167,7 +212,12 @@ pub enum ChainVerifyError {
     ///
     /// This is a chain configuration, or [`EndpointHostname`] issue.
     #[error("DNS entry for '{expected}' not found in signer certificate SANs ({cert:?})")]
-    LeafNameMismatch { expected: String, cert: Vec<String> },
+    LeafNameMismatch {
+        /// The hostname the signer certificate was required to carry.
+        expected: String,
+        /// The names presented by the signer certificate.
+        cert: Vec<String>,
+    },
 
     /// The chain contains an issuer certificate with a `nameConstraint` that is
     /// violated by a certificate that appears after it in the chain.
@@ -188,7 +238,10 @@ pub enum ChainVerifyError {
     /// This is a chain configuration issue.
     #[error("required cert EKU was not found (want oids={:?}, got oids={:?}))", .required, .found)]
     RequiredEKU {
+        /// The EKU the client requires.
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_KEY_USAGE"))]
         required: KeyUsage,
+        /// The EKUs found on the certificate, as OID arcs.
         found: Vec<Vec<usize>>,
     },
 
@@ -214,12 +267,18 @@ pub enum ChainVerifyError {
 
     /// An input is unsupported - the captured error contains more details.
     #[error("unsupported: {0}")]
-    Unsupported(webpki::Error),
+    Unsupported(
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_WEBPKI_ERROR"))]
+        webpki::Error,
+    ),
 
     /// A catch-all for unknown errors that may be returned by the webpki crate
     /// in the future.
     #[error("unknown error: {0}")]
-    Unknown(webpki::Error),
+    Unknown(
+        #[cfg_attr(feature = "arbitrary", proptest(value = "ARBITRARY_WEBPKI_ERROR"))]
+        webpki::Error,
+    ),
 }
 
 impl From<webpki::Error> for ChainVerifyError {

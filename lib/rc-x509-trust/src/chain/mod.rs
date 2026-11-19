@@ -19,10 +19,10 @@ mod build_unverified;
 mod unverified;
 mod verify_chain;
 
+pub use verify_chain::ChainVerifyError;
+
 pub use build_unverified::*;
 pub(crate) use unverified::*;
-
-#[allow(dead_code, unused_imports)]
 pub(crate) use verify_chain::*;
 
 /// These property test input generator functions are used to classify attacks

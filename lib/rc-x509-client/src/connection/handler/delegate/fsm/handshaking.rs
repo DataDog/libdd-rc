@@ -18,7 +18,7 @@ use rc_crypto::connection_id::{ConnectionId, ConnectionIdInvalid, IdNonce, Untru
 use tracing::{debug, error};
 
 use crate::{
-    codec::{ClientToServer, ProtocolError, ServerToClient},
+    codec::{ClientToServer, DispatchViolation, HandshakeViolation, ProtocolError, ServerToClient},
     connection::{
         AttestationVerifier,
         handler::{
@@ -88,7 +88,7 @@ where
                             .protocol_error(
                                 Handshaking::IS_HANDSHAKE_COMPLETE,
                                 reply,
-                                ProtocolError::HandshakeConnectionIdRejected,
+                                ProtocolError::Handshake(HandshakeViolation::ConnectionIdRejected),
                             )
                             .await;
                     }
@@ -105,7 +105,7 @@ where
                 self.protocol_error(
                     Handshaking::IS_HANDSHAKE_COMPLETE,
                     reply,
-                    ProtocolError::DispatchBeforeHandshake(correlation_id),
+                    ProtocolError::Dispatch(correlation_id, DispatchViolation::BeforeHandshake),
                 )
                 .await
             }
