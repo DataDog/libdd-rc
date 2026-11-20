@@ -333,3 +333,36 @@ func TestUnregisterHandlerWithoutHandler(t *testing.T) {
 		t.Fatalf("UnregisterHandler() = %v, want ErrHandlerNotFound", err)
 	}
 }
+
+// TestSetHostTagsPassesTagsThrough confirms SetHostTags can be called before
+// Start, and hands every call's tags to the FFI layer unchanged: normalization
+// and change detection belong to rc-x509-client.
+func TestSetHostTagsPassesTagsThrough(t *testing.T) {
+	ffi := &fakeFFIContext{}
+	client := &Client{ffiCtx: ffi}
+
+	calls := [][]string{
+		{"env:prod", "host:a", "env:prod"},
+		{"env:prod", "host:a", "env:prod"},
+	}
+	for _, tags := range calls {
+		if err := client.SetHostTags(tags); err != nil {
+			t.Fatalf("SetHostTags(%q) returned unexpected error: %v", tags, err)
+		}
+	}
+
+	if len(ffi.hostTagsCalls) != len(calls) {
+		t.Fatalf("FFI SetHostTags called %d times, want %d", len(ffi.hostTagsCalls), len(calls))
+	}
+	for i, want := range calls {
+		got := ffi.hostTagsCalls[i]
+		if len(got) != len(want) {
+			t.Fatalf("call %d: FFI got %q, want %q", i, got, want)
+		}
+		for j := range want {
+			if got[j] != want[j] {
+				t.Fatalf("call %d: FFI got %q, want %q", i, got, want)
+			}
+		}
+	}
+}

@@ -114,6 +114,22 @@ func (c *X509Context) Close() error {
 	return nil
 }
 
+// SetHostTags reports the full set of host tags to rc-x509-client for
+// this context.
+//
+// The FFI call is stubbed until rc-x509-client exposes the function it will
+// call; until then SetHostTags only checks the context is still open.
+func (c *X509Context) SetHostTags(_ []string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.closed {
+		return ErrContextClosed
+	}
+	// TODO: pass the tags to rc-x509-client over the FFI
+	return nil
+}
+
 // forget drops the context's record of a connection that has been released.
 func (c *X509Context) forget(conn *Connection) {
 	c.mu.Lock()
