@@ -22,7 +22,7 @@ use std::time::Duration;
 
 use assert_matches::assert_matches;
 use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
-use rc_x509_client::codec::{ClientToServer, ProtocolError, ServerToClient};
+use rc_x509_client::codec::{ClientToServer, HandshakeViolation, ProtocolError, ServerToClient};
 use rc_x509_test_client_harness::logging;
 use rc_x509_test_client_harness::{TestClientBuilder, client::TestClient};
 use rc_x509_test_helpers::test_issuer::TestChain;
@@ -183,7 +183,7 @@ async fn test_handshake_invalid_connection_id() {
     assert_matches!(
         conn.recv().await.into_inner(),
         ClientToServer::ProtocolError {
-            reason: ProtocolError::HandshakeConnectionIdRejected,
+            reason: ProtocolError::Handshake(HandshakeViolation::ConnectionIdRejected),
             is_handshake_complete: false
         }
     );

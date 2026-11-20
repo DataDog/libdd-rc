@@ -135,7 +135,9 @@ where
                 self.protocol_error(
                     <Self as ServerMessageDelegate<IO, V>>::IS_HANDSHAKE_COMPLETE,
                     reply,
-                    ProtocolError::CertPush(crate::codec::CertPush::InvalidDer(e.to_string())),
+                    ProtocolError::CertPush(crate::codec::CertPushViolation::InvalidDer(
+                        e.to_string(),
+                    )),
                 )
                 .await
             }

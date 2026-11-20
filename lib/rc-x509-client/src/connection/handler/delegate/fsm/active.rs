@@ -20,7 +20,10 @@ use tracing::{debug, error};
 
 use crate::{
     Payload,
-    codec::{ClientToServer, DetachedSignature, ProtocolError, ServerToClient},
+    codec::{
+        ClientToServer, DetachedSignature, DispatchViolation, HandshakeViolation, ProtocolError,
+        ServerToClient,
+    },
     connection::handler::{
         AttestationVerifier, SendToServer,
         delegate::{retry_send, state::State},
@@ -81,7 +84,7 @@ where
                 self.protocol_error(
                     Active::IS_HANDSHAKE_COMPLETE,
                     reply,
-                    ProtocolError::HandshakeDuplicateAck,
+                    ProtocolError::Handshake(HandshakeViolation::DuplicateAck),
                 )
                 .await
             }
@@ -120,7 +123,10 @@ where
                     .protocol_error(
                         Active::IS_HANDSHAKE_COMPLETE,
                         reply,
-                        ProtocolError::DispatchMissingSignature(correlation_id),
+                        ProtocolError::Dispatch(
+                            correlation_id,
+                            DispatchViolation::MissingSignature,
+                        ),
                     )
                     .await;
             }
@@ -137,7 +143,10 @@ where
                     .protocol_error(
                         Active::IS_HANDSHAKE_COMPLETE,
                         reply,
-                        ProtocolError::CertIdInvalidLength(got_len),
+                        ProtocolError::Dispatch(
+                            correlation_id,
+                            DispatchViolation::CertIdInvalidLength(got_len),
+                        ),
                     )
                     .await;
             }

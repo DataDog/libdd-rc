@@ -126,7 +126,10 @@ mod tests {
 
     use crate::{
         build_version::BuildVersion,
-        codec::{CertPush, ClientToServer, tests::SAMPLE_CERT_DER},
+        codec::{
+            CertPushViolation, ClientToServer, DispatchViolation, HandshakeViolation,
+            tests::SAMPLE_CERT_DER,
+        },
         connection::{
             handler::delegate::fsm::test_helpers::{
                 any_server_to_client, arbitrary_invalid_dispatch_request, do_handshake,
@@ -305,7 +308,7 @@ mod tests {
                 is_handshake_complete
             }) => {
                 assert!(!is_handshake_complete);
-                assert_matches!(reason, ProtocolError::CertPush(CertPush::InvalidDer(e)) => {
+                assert_matches!(reason, ProtocolError::CertPush(CertPushViolation::InvalidDer(e)) => {
                     // Error message is reported to the server:
                     assert_eq!(e, "invalid der when parsing x509 cert: Parsing requires 1 bytes/chars");
                 });
@@ -509,7 +512,7 @@ mod tests {
         let err = server.recv().await.expect("protocol violation notify");
         assert_matches!(err, ClientToServer::ProtocolError { reason, is_handshake_complete } => {
             assert!(!is_handshake_complete);
-            assert_eq!(reason, ProtocolError::HandshakeAckBeforeHello);
+            assert_eq!(reason, ProtocolError::Handshake(HandshakeViolation::AckBeforeHello));
         });
 
         // It transitions to the error state to uphold the subsequent checks:
@@ -573,7 +576,7 @@ mod tests {
                 is_handshake_complete
             }) => {
                 assert!(is_handshake_complete); // Completed!
-                assert_eq!(reason, ProtocolError::HandshakeDuplicateAck);
+                assert_eq!(reason, ProtocolError::Handshake(HandshakeViolation::DuplicateAck));
             }
         );
 
@@ -658,9 +661,13 @@ mod tests {
         // The violation can only be one of these variants:
         assert_matches!(
             err,
-            ProtocolError::DispatchBeforeHandshake(..)
-                | ProtocolError::DispatchMissingSignature(..)
-                | ProtocolError::CertIdInvalidLength(..)
+            ProtocolError::Dispatch(
+                _,
+                DispatchViolation::BeforeHandshake
+                    | DispatchViolation::MissingSignature
+                    | DispatchViolation::MalformedSignature(..)
+                    | DispatchViolation::CertIdInvalidLength(..)
+            )
         );
 
         // The client MUST now be in the error state:
@@ -729,7 +736,7 @@ mod tests {
                 is_handshake_complete
             }) => {
                 assert!(!is_handshake_complete); // Incomplete
-                assert_eq!(reason, ProtocolError::HandshakeConnectionIdRejected);
+                assert_eq!(reason, ProtocolError::Handshake(HandshakeViolation::ConnectionIdRejected));
             }
         );
 
