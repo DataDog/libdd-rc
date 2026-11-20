@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::sync::Arc;
+
 use rc_crypto::{Signature, certificate::id::CertId, keys::SignatureVerifyErr};
 use rc_x509_roots::RootCertificate;
 use thiserror::Error;
@@ -42,8 +44,21 @@ pub enum VerificationError {
 
     /// The candidate chain cannot be trusted and the payload should be
     /// discarded.
-    #[error("chain verify error: {0}")]
-    ChainVerify(#[from] ChainVerifyError),
+    #[error("chain verify error for cert ID {}: {error}", leaf_cert.cert_id())]
+    ChainVerify {
+        /// The root used for verification.
+        root_cert: Box<RootCertificate>, // Boxed due to size.
+
+        /// The intermediates used for verification (ordered from leaf to root).
+        intermediates: Vec<Arc<UntrustedCert>>,
+
+        /// The claimed signer certificate.
+        leaf_cert: Arc<UntrustedCert>,
+
+        /// The underlying verification error.
+        #[source]
+        error: ChainVerifyError,
+    },
 
     /// The chain was valid and trusted, but the signature did not originate
     /// from the indicated leaf / signer certificate.
@@ -134,7 +149,7 @@ where
         // Verify the chain is valid - see `verify_chain()` for the specifics.
         let cert = match verify_chain(
             &leaf,
-            candidate_chain,
+            &candidate_chain,
             EKUPolicy::RequireCodeSigning,
             endpoint,
         ) {
@@ -163,7 +178,12 @@ where
                     "chain verification failed"
                 );
 
-                return Err(VerificationError::ChainVerify(e));
+                return Err(VerificationError::ChainVerify {
+                    root_cert: Box::new(candidate_chain.root().to_owned()),
+                    intermediates: candidate_chain.as_slice().to_vec(),
+                    leaf_cert: leaf,
+                    error: e,
+                });
             }
         };
 
@@ -357,7 +377,27 @@ mod tests {
         chain.assert_err(match err {
             VerificationError::MissingLeafCert(_) => unreachable!(),
             VerificationError::ChainBuild(e) => ChainError::Build(e),
-            VerificationError::ChainVerify(e) => ChainError::Verify(e),
+            VerificationError::ChainVerify {
+                root_cert,
+                intermediates,
+                leaf_cert,
+                error,
+            } => {
+                // The indicated failed chain must match the bad input chain.
+                assert_eq!(root_cert.fingerprint(), chain.root().fingerprint());
+                assert_eq!(leaf_cert.fingerprint(), chain.leaf.cert().fingerprint());
+                // The returned intermediates are ordered from leaf -> root,
+                // whereas chain.intermediates is ordered from root -> leaf.
+                assert!(
+                    intermediates.iter().map(|v| v.fingerprint()).eq(chain
+                        .intermediates
+                        .iter()
+                        .rev()
+                        .map(|v| v.cert().fingerprint()))
+                );
+
+                ChainError::Verify(error)
+            }
             VerificationError::Signature(_) => unreachable!(), // Fails before this
         });
     }
