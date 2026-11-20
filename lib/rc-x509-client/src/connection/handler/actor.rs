@@ -26,6 +26,7 @@ use crate::{
     connection::handler::ServerMessageDelegate,
     dispatch::DispatchResult,
     host_runtime::Connection,
+    host_tags::{HostTags, HostTagsWatch},
     metrics::InstanceMetrics,
 };
 
@@ -52,6 +53,9 @@ pub(crate) struct ConnectionActor<IO, T, D> {
     /// A [`ServerToClient`] message processing delegate.
     delegate: T,
 
+    /// The latest host tags set by the host application.
+    host_tags_watch: HostTagsWatch,
+
     /// Client metrics shared across connections.
     metrics: Arc<InstanceMetrics>,
 }
@@ -70,6 +74,7 @@ where
         stop: CancellationToken,
         delegate: T,
         dispatch_stream: D,
+        host_tags_watch: HostTagsWatch,
         metrics: Arc<InstanceMetrics>,
     ) -> Self {
         Self {
@@ -77,6 +82,7 @@ where
             stop: stop.clone(),
             dispatch_stream: Some(dispatch_stream),
             delegate,
+            host_tags_watch,
             metrics,
         }
     }
@@ -113,6 +119,12 @@ where
         // handled via the delegate path below.
         self.delegate = self.delegate.send_hello(&mut self.io).await;
 
+        // Every connection reports the latest host tags, then reports them
+        // again whenever they change.
+        let tags = self.host_tags_watch.latest();
+        self.report_host_tags(&tags);
+        let mut host_tags_open = true;
+
         pin_mut!(dispatch_ack);
         pin_mut!(server_messages);
 
@@ -143,8 +155,28 @@ where
                         None => { debug!("io broker stopped"); return }
                     }
                 }
+
+                tags = self.host_tags_watch.next_change(), if host_tags_open => {
+                    match tags {
+                        Some(tags) => self.report_host_tags(&tags),
+                        // The setter is gone, so the tags can no longer change.
+                        None => host_tags_open = false,
+                    }
+                }
             };
         }
+    }
+
+    /// Report `tags` to the backend.
+    ///
+    /// TODO: the protocol message that carries host tags doesn't exist yet,
+    /// so this only logs.
+    fn report_host_tags(&mut self, tags: &HostTags) {
+        debug!(
+            count = tags.tags().len(),
+            fingerprint = tags.fingerprint(),
+            "reporting host tags (not yet sent to the backend)"
+        );
     }
 
     async fn server_message(mut self, msg: Result<ServerToClient, DecodingError>) -> Self {
@@ -205,6 +237,7 @@ mod tests {
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let (host_tags_watch, _host_tags_setter) = HostTagsWatch::new();
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
@@ -217,6 +250,7 @@ mod tests {
                 MockVerifier::default(),
             ),
             dispatch_stream,
+            host_tags_watch,
             metrics,
         );
 
@@ -243,6 +277,7 @@ mod tests {
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let (host_tags_watch, _host_tags_setter) = HostTagsWatch::new();
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
@@ -255,6 +290,7 @@ mod tests {
                 MockVerifier::default(),
             ),
             dispatch_stream,
+            host_tags_watch,
             metrics,
         );
 
@@ -281,6 +317,7 @@ mod tests {
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let (host_tags_watch, _host_tags_setter) = HostTagsWatch::new();
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
@@ -293,6 +330,7 @@ mod tests {
                 MockVerifier::default(),
             ),
             dispatch_stream,
+            host_tags_watch,
             metrics,
         );
 
@@ -319,6 +357,7 @@ mod tests {
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let (host_tags_watch, _host_tags_setter) = HostTagsWatch::new();
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
@@ -331,6 +370,7 @@ mod tests {
                 MockVerifier::default(),
             ),
             dispatch_stream,
+            host_tags_watch,
             metrics,
         );
 
@@ -384,6 +424,7 @@ mod tests {
         let stop = CancellationToken::default();
         let metrics = Arc::new(InstanceMetrics::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
+        let (host_tags_watch, _host_tags_setter) = HostTagsWatch::new();
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
@@ -396,6 +437,7 @@ mod tests {
                 MockVerifier::default(),
             ),
             dispatch_stream,
+            host_tags_watch,
             metrics,
         );
 
