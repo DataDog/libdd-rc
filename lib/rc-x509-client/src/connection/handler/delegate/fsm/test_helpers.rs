@@ -17,6 +17,7 @@
 use assert_matches::assert_matches;
 use proptest::{prelude::*, strategy::LazyJust};
 use rc_crypto::{
+    Signature,
     certificate::id::CertId,
     connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
 };
@@ -94,7 +95,7 @@ pub(crate) fn arbitrary_valid_dispatch_request() -> impl Strategy<Value = Server
         any::<u64>(),                                             // ID
         arbitrary_bytes(0..1028),                                 // payload
         arbitrary_bytes(CertId::MIN_LENGTH..=CertId::MAX_LENGTH), // cert ID
-        arbitrary_bytes(1..1028),                                 // signature (non-empty)
+        arbitrary_bytes(1..=Signature::MAX_LENGTH),               // signature (non-empty)
     )
         .prop_map(
             |(id, payload, cert_id, signature)| ServerToClient::Dispatch {
@@ -165,6 +166,22 @@ pub(crate) fn arbitrary_invalid_dispatch_request() -> impl Strategy<Value = Serv
 
             v
         }),
+        // Signature too long
+        (
+            arbitrary_valid_dispatch_request(),
+            arbitrary_bytes(120..1028)
+        )
+            .prop_map(|(mut v, sig)| {
+                match &mut v {
+                    ServerToClient::Dispatch {
+                        detached_signature: Some(DetachedSignature { signature, .. }),
+                        ..
+                    } => *signature = sig,
+                    _ => unreachable!(),
+                };
+
+                v
+            }),
     ]
 }
 

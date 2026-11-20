@@ -14,8 +14,8 @@
 
 use std::fmt::Debug;
 
-use rc_crypto::certificate::id::CertId;
 use rc_crypto::connection_id::ConnectionId;
+use rc_crypto::{Signature, certificate::id::CertId};
 use tracing::{debug, error};
 
 use crate::{
@@ -126,6 +126,23 @@ where
                         ProtocolError::Dispatch(
                             correlation_id,
                             DispatchViolation::MissingSignature,
+                        ),
+                    )
+                    .await;
+            }
+        };
+
+        let signature = match Signature::try_from(signature.as_ref()) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(error=%e, "invalid signature in dispatch request");
+                return self
+                    .protocol_error(
+                        Active::IS_HANDSHAKE_COMPLETE,
+                        reply,
+                        ProtocolError::Dispatch(
+                            correlation_id,
+                            DispatchViolation::MalformedSignature(e.to_string()),
                         ),
                     )
                     .await;

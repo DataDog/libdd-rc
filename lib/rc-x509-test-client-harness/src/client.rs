@@ -16,7 +16,8 @@ use std::{ops::Deref, time::Duration};
 
 use assert_matches::assert_matches;
 use rc_crypto::{
-    certificate::Certificate,
+    Signature,
+    certificate::{Certificate, id::CertId},
     connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
 };
 use rc_x509_client::{
@@ -192,6 +193,8 @@ impl TestConn {
     pub async fn dispatch_magic_tunnel(
         &mut self,
         correlation_id: CorrelationId,
+        signer_cert_id: &CertId,
+        signature: Signature,
         uri: &str,
         request: Bytes,
     ) {
@@ -214,8 +217,10 @@ impl TestConn {
             correlation_id,
             payload,
             detached_signature: Some(DetachedSignature {
-                cert_id: Bytes::from_static(&[42_u8; 16]),
-                signature: vec![0, 0, 0, 0].into(),
+                cert_id: Bytes::copy_from_slice(
+                    signer_cert_id.as_dangerous_comparable().as_bytes(),
+                ),
+                signature: Bytes::copy_from_slice(signature.as_ref()),
             }),
         }))
         .await;

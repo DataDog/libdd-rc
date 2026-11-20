@@ -47,6 +47,9 @@ impl std::fmt::Debug for Signature {
 }
 
 impl Signature {
+    /// Maximum allowed signature length in bytes.
+    pub const MAX_LENGTH: usize = MAX_LEN;
+
     /// Write this signature into `buf` formatted as a hex string.
     pub fn as_hex_str<W>(&self, mut buf: W) -> Result<(), std::fmt::Error>
     where
@@ -99,7 +102,7 @@ impl AsRef<[u8]> for Signature {
 
 #[cfg(test)]
 mod tests {
-    use crate::{keys::PrivateKey, signer::Signer};
+    use crate::{Signature, keys::PrivateKey, signer::Signer};
 
     use proptest::prelude::*;
 
@@ -120,6 +123,18 @@ mod tests {
 
             // Display
             assert_eq!(sig.to_string(), hex);
+        }
+
+        #[test]
+        fn prop_parse_len_constraint(
+            bytes in prop::collection::vec(any::<u8>(), 1..(Signature::MAX_LENGTH + 2)),
+        ) {
+            let want_ok = bytes.len() <= Signature::MAX_LENGTH;
+
+            assert_eq!(
+                Signature::try_from(&*bytes).is_ok(),
+                want_ok,
+            );
         }
     }
 }
