@@ -45,7 +45,7 @@ const MIB: usize = 1024 * 1024;
 /// This value should account for the absolute number of live signer certs in
 /// use at any one time, plus any intermediates, else risks unnecessary extra
 /// round trips to obtain evicted, in-use certificates.
-const APPROX_MAX_CACHE_BYTES: usize = 2 * MIB;
+pub const APPROX_MAX_CACHE_BYTES: usize = 2 * MIB;
 
 /// Defines the library entrypoint that is invoked by the FFI host.
 pub trait LibraryEntrypoint<IO>: std::fmt::Debug + Send + Sync + 'static {

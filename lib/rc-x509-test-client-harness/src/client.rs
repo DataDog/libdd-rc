@@ -15,16 +15,18 @@
 use std::{ops::Deref, time::Duration};
 
 use assert_matches::assert_matches;
-use rc_crypto::connection_id::{ConnectionId, IdNonce, UntrustedConnectionId};
+use rc_crypto::{
+    certificate::Certificate,
+    connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
+};
 use rc_x509_client::{
-    AbortOnDrop, AppInfo, EndpointHostname, Payload, ShutdownCtl, ShutdownSignal,
+    AbortOnDrop, EndpointHostname, Payload, ShutdownCtl,
     codec::{ClientToServer, DecodingError, DetachedSignature, ServerToClient},
     connection::{ConnectionEvent, ConnectionUpdate},
     dispatch::{
         Dispatch, DispatchError, DispatchResponder, DispatchResult, DispatchStream,
         new_dispatcher_interconnect,
     },
-    entrypoint::{LibraryEntrypoint, Main},
     host_runtime::CorrelationId,
 };
 use rc_x509_proto::{
@@ -32,11 +34,15 @@ use rc_x509_proto::{
     magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, magic_tunnel_response},
     protocol::v1,
 };
+use rc_x509_trust::cert::UntrustedCertBytes;
 use tokio::{sync::mpsc, time::timeout};
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::StreamExt;
 use tokio_util::bytes::Bytes;
 
-use crate::io::{MockIO, MockIOServer, new_io_pair};
+use crate::{
+    TestClientBuilder,
+    io::{MockIO, MockIOServer, new_io_pair},
+};
 
 /// A running instance of the client library, driven over a mocked transport.
 #[derive(Debug)]
@@ -47,22 +53,22 @@ pub struct TestClient {
     event_tx: mpsc::Sender<ConnectionUpdate<MockIO>>,
 }
 
+impl Default for TestClient {
+    fn default() -> Self {
+        TestClientBuilder::default().build()
+    }
+}
+
 impl TestClient {
-    /// Construct a new test client.
-    pub fn new() -> Self {
-        let (signal, stop) = ShutdownSignal::new();
-
-        let client = Main::new(AppInfo::new("test", "0.0.0"));
-
-        let (event_tx, event_rx) = mpsc::channel(1);
-        let handle = AbortOnDrop::from(tokio::spawn(
-            client.entrypoint(signal, ReceiverStream::from(event_rx)),
-        ));
-
+    /// See the [`TestClientBuilder`].
+    pub(crate) fn new(
+        handle: AbortOnDrop<()>,
+        stop: ShutdownCtl,
+        event_tx: mpsc::Sender<ConnectionUpdate<MockIO>>,
+    ) -> Self {
         Self {
             handle,
             stop,
-
             event_tx,
         }
     }
@@ -110,12 +116,6 @@ impl TestClient {
     }
 }
 
-impl Default for TestClient {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// A connection to the client library.
 #[derive(Debug)]
 pub struct TestConn {
@@ -129,6 +129,20 @@ impl TestConn {
     /// Push `v` to the client over the mocked transport.
     pub async fn send(&mut self, v: Result<ServerToClient, DecodingError>) {
         self.io.send(v).await.expect("failed to send to client")
+    }
+
+    /// Push `certs` to the client's certificate cache, as the server would.
+    ///
+    /// Certificates are pushed as-is; the client is responsible for parsing
+    /// and (eventually) validating them.
+    pub async fn push_certs<'a>(&mut self, certs: impl IntoIterator<Item = &'a Certificate>) {
+        self.send(Ok(ServerToClient::CertificatePush(
+            certs
+                .into_iter()
+                .map(|c| UntrustedCertBytes::new(c.as_der()))
+                .collect(),
+        )))
+        .await
     }
 
     /// Wait for the client to send a [`ClientToServer`].

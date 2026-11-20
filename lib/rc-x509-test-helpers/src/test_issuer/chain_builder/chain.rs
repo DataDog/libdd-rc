@@ -18,7 +18,7 @@ use proptest::prelude::*;
 use rc_x509_roots::RootCertificate;
 
 use crate::test_issuer::{
-    CertBuilder, Identity, TestCA,
+    CertBuilder, Identity, TestCA, ValidChain,
     template::{intermediate::IntermediateTemplate, leaf::LeafTemplate},
 };
 
@@ -68,6 +68,12 @@ pub struct TestChain {
     /// The leaf certificate, signed by the last `intermediates` entry, or the
     /// root if empty.
     pub leaf: Identity,
+}
+
+impl Default for TestChain {
+    fn default() -> Self {
+        TestChain::build(&TestCA::new(), 2, &ValidChain::default())
+    }
 }
 
 impl TestChain {
