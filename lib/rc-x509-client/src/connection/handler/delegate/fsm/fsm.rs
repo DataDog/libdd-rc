@@ -104,8 +104,11 @@ where
         State::Error(self.into_state(Error))
     }
 
-    /// The server is pushing certificates to cache.
-    pub(crate) async fn handle_cert_push<IO>(
+    /// Locally cache raw DER certificates (untrusted!) from the server.
+    ///
+    /// This is called only when the FSM is not in a state where there are
+    /// deferred validations to complete (e.g. in the handshaking state)
+    pub(crate) async fn handle_cert_push_ignore_deferred<IO>(
         self,
         reply: &mut IO,
         certs: Vec<UntrustedCertBytes>,
