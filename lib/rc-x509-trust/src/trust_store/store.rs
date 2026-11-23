@@ -318,6 +318,28 @@ mod tests {
 
             test_prop_bad_signature(roots, chain, &data, sig);
         }
+
+        /// Assert a valid signature over a payload that is modified causes a
+        /// signature verification failure.
+        #[test]
+        fn prop_signature_over_modified_payload(
+            roots in arbitrary_ordered_root_set(&CA, &CA2),
+            chain in arbitrary_chain(&CA, 0..=5_u8, ValidChain::default()),
+            data in crate::tests::arbitrary_bytes(1..1025),
+            modify_idx in any::<proptest::sample::Index>(),
+        ) {
+            // Generate a valid signature over data.
+            let sig = chain.leaf.sign(&data);
+
+            // Modify a byte in the payload.
+            let mut data = data.to_vec();
+            {
+                let value = modify_idx.get_mut(&mut data);
+                *value = value.wrapping_add(1);
+            }
+
+            test_prop_bad_signature(roots, chain, &data, sig);
+        }
     }
 
     fn test_prop_verify(roots: RootSet<2>, chain: TestChain, data: &[u8]) {
