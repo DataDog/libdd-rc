@@ -96,7 +96,7 @@ where
 
                 debug!(%connection_id, "connection handshake complete");
 
-                State::Active(self.into_state(Active(connection_id)))
+                State::Active(self.into_state(Active::new(connection_id)))
             }
 
             // The connection ID must have been established before a dispatch

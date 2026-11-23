@@ -26,21 +26,27 @@ use crate::{
     },
     connection::handler::{
         AttestationVerifier, SendToServer,
-        delegate::{retry_send, state::State},
+        delegate::{
+            fsm::{Fsm, ServerMessageDelegate},
+            retry_send,
+            state::State,
+        },
     },
     dispatch::Dispatch,
     host_runtime::CorrelationId,
 };
 
-use super::{Fsm, ServerMessageDelegate};
-
 /// The handshake completed successfully, and the connection is fully ready to
 /// process requests.
 #[derive(Debug)]
 #[allow(dead_code)]
-pub(crate) struct Active(pub(super) ConnectionId);
+pub(crate) struct Active(ConnectionId);
 
 impl Active {
+    pub(crate) fn new(connection_id: ConnectionId) -> Self {
+        Self(connection_id)
+    }
+
     pub(crate) const IS_HANDSHAKE_COMPLETE: bool = true;
 }
 
