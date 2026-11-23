@@ -791,7 +791,7 @@ type ClientProtocolError_Dispatch_VerifyChainFailed struct {
 	// The `CertId` of the root selected during chain building.
 	RootCertId []byte `protobuf:"bytes,1,opt,name=root_cert_id,json=rootCertId,proto3" json:"root_cert_id,omitempty"`
 	// The `CertId` of each intermediate selected during chain building, in order
-	// from root to leaf.
+	// from leaf to root.
 	IntermediateCertId [][]byte `protobuf:"bytes,2,rep,name=intermediate_cert_id,json=intermediateCertId,proto3" json:"intermediate_cert_id,omitempty"`
 	// The `CertId` of the leaf signer certificate used as the starting point of
 	// chain building.
