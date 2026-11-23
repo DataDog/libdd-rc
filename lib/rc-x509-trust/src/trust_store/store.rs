@@ -120,15 +120,15 @@ where
     /// success / failure.
     pub fn verify(
         &self,
-        signing_cert_id: CertId,
-        signature: Signature,
+        signing_cert_id: &CertId,
+        signature: &Signature,
         payload: &[u8],
         endpoint: &EndpointHostname,
     ) -> Result<(), VerificationError> {
         let leaf = self
             .cache
-            .get(&signing_cert_id)
-            .ok_or_else(|| VerificationError::MissingLeafCert(signing_cert_id))?;
+            .get(signing_cert_id)
+            .ok_or_else(|| VerificationError::MissingLeafCert(signing_cert_id.clone()))?;
 
         // Build a candidate chain, that may be completely untrustworthy.
         //
@@ -189,7 +189,7 @@ where
 
         // Finally, verify the signature against the known-valid chain, which
         // may or may not have produced the signature.
-        match cert.public_key().verify(payload, &signature) {
+        match cert.public_key().verify(payload, signature) {
             Ok(()) => {
                 // Success - this signature is valid.
 
@@ -340,8 +340,8 @@ mod tests {
         // verify!
         store
             .verify(
-                chain.leaf.cert().cert_id().clone(),
-                signature,
+                chain.leaf.cert().cert_id(),
+                &signature,
                 data,
                 &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
             )
@@ -365,8 +365,8 @@ mod tests {
         // verify!
         let err = store
             .verify(
-                chain.leaf.cert().cert_id().clone(),
-                Signature::try_from(&[42_u8][..]).expect("well formed"),
+                chain.leaf.cert().cert_id(),
+                &Signature::try_from(&[42_u8][..]).expect("well formed"),
                 Default::default(),
                 &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
             )
@@ -430,8 +430,8 @@ mod tests {
         // verify!
         let err = store
             .verify(
-                chain.leaf.cert().cert_id().clone(),
-                Signature::try_from(&[42_u8][..]).expect("well formed"),
+                chain.leaf.cert().cert_id(),
+                &Signature::try_from(&[42_u8][..]).expect("well formed"),
                 Default::default(),
                 &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
             )
@@ -485,8 +485,8 @@ mod tests {
         // verify!
         let err = store
             .verify(
-                chain.leaf.cert().cert_id().clone(),
-                sig,
+                chain.leaf.cert().cert_id(),
+                &sig,
                 data,
                 &EndpointHostname::try_from(DEFAULT_LEAF_SAN.to_owned()).unwrap(),
             )

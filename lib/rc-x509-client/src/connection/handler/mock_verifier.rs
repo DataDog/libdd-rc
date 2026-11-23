@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{Payload, ProdSealed, connection::AttestationVerifier};
+use rc_crypto::certificate::id::CertId;
 
 #[derive(Debug, Default)]
 pub(crate) struct MockVerifier {}
@@ -20,11 +21,11 @@ pub(crate) struct MockVerifier {}
 impl AttestationVerifier for MockVerifier {
     fn verify(
         &self,
-        _signing_cert_id: rc_crypto::certificate::id::CertId,
-        _signature: rc_crypto::Signature,
-        _payload: Payload,
+        _signing_cert_id: &CertId,
+        _signature: &rc_crypto::Signature,
+        _payload: &Payload,
         _endpoint: &rc_x509_trust::EndpointHostname,
-    ) -> Result<Payload, rc_x509_trust::trust_store::VerificationError> {
+    ) -> Result<(), rc_x509_trust::trust_store::VerificationError> {
         unimplemented!()
     }
 
