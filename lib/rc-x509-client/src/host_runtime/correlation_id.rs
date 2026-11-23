@@ -25,12 +25,12 @@ pub struct CorrelationId(u64);
 
 impl CorrelationId {
     /// Wrap `v` as a [`CorrelationId`].
-    pub fn new(v: u64) -> Self {
+    pub const fn new(v: u64) -> Self {
         Self(v)
     }
 
     /// Return the raw `u64` value.
-    pub fn get(self) -> u64 {
+    pub const fn get(self) -> u64 {
         self.0
     }
 }

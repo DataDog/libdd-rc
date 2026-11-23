@@ -79,7 +79,7 @@ message ClientProtocolError {
       // The `CertId` of the root selected during chain building.
       bytes root_cert_id = 1;
       // The `CertId` of each intermediate selected during chain building, in order
-      // from root to leaf.
+      // from leaf to root.
       repeated bytes intermediate_cert_id = 2;
       // The `CertId` of the leaf signer certificate used as the starting point of
       // chain building.

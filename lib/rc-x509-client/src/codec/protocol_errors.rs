@@ -156,7 +156,7 @@ pub struct VerifyChainFailed {
     pub root_cert_id: Vec<u8>,
 
     /// The `CertId` of each intermediate selected during chain building, in
-    /// order from root to leaf.
+    /// order from leaf to root.
     pub intermediate_cert_id: Vec<Vec<u8>>,
 
     /// The `CertId` of the leaf signer certificate used as the starting point
