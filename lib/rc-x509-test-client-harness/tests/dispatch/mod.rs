@@ -19,12 +19,11 @@
 //! during test compilation, which speeds up the dev change / test cycle.
 
 use assert_matches::assert_matches;
+use rc_crypto::Signature;
 use rc_x509_client::host_runtime::CorrelationId;
 use rc_x509_proto::magic_tunnel::v1::magic_tunnel_response;
-use rc_x509_test_client_harness::{
-    client::{TestClient, conn_id_to_proto},
-    logging,
-};
+use rc_x509_test_client_harness::{TestClientBuilder, client::conn_id_to_proto, logging};
+use rc_x509_test_helpers::test_issuer::TestChain;
 use tokio_util::bytes::Bytes;
 
 const URI: &str = "rc.x509.magic_tunnel.remote_config.v1.DebugService/Ping";
@@ -37,15 +36,24 @@ async fn test_dispatch_happy_path() {
     const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
     const APPLICATION_RESPONSE_PAYLOAD: Bytes = Bytes::from_static(&[13, 13, 13, 13]);
 
-    let mut client = TestClient::default();
+    let chain = TestChain::default();
+    let mut client = TestClientBuilder::default()
+        .with_testing_roots(chain.root())
+        .build();
     let mut conn = client.new_connection().await;
 
     // Perform the connection handshake to obtain the connection ID.
     let connection_id = conn_id_to_proto(conn.perform_handshake().await);
 
     // 1. The server sends a dispatch request:
-    conn.dispatch_magic_tunnel(CorrelationId::new(42), URI, APPLICATION_REQUEST_PAYLOAD)
-        .await;
+    conn.dispatch_magic_tunnel(
+        CorrelationId::new(42),
+        chain.leaf.cert().cert_id(),
+        Signature::try_from([42_u8; 10].as_slice()).unwrap(),
+        URI,
+        APPLICATION_REQUEST_PAYLOAD,
+    )
+    .await;
 
     // 2. The application receives the application payload, tagged with the
     //    correct uri for routing purposes:
@@ -97,15 +105,24 @@ async fn test_dispatch_handler_error() {
     const APPLICATION_REQUEST_PAYLOAD: Bytes = Bytes::from_static(&[42, 42, 42, 42]);
     const HANDLER_ERROR: &str = "handler exploded";
 
-    let mut client = TestClient::default();
+    let chain = TestChain::default();
+    let mut client = TestClientBuilder::default()
+        .with_testing_roots(chain.root())
+        .build();
     let mut conn = client.new_connection().await;
 
     // Perform the connection handshake to obtain the connection ID.
     let connection_id = conn_id_to_proto(conn.perform_handshake().await);
 
     // 1. The server sends a dispatch request:
-    conn.dispatch_magic_tunnel(CorrelationId::new(42), URI, APPLICATION_REQUEST_PAYLOAD)
-        .await;
+    conn.dispatch_magic_tunnel(
+        CorrelationId::new(42),
+        chain.leaf.cert().cert_id(),
+        Signature::try_from([42_u8; 10].as_slice()).unwrap(),
+        URI,
+        APPLICATION_REQUEST_PAYLOAD,
+    )
+    .await;
 
     // 2. The application receives the application payload, tagged with the
     //    correct URI for routing purposes:
@@ -143,3 +160,5 @@ async fn test_dispatch_handler_error() {
     // Signal the client library shutdown:
     client.shutdown().await;
 }
+
+// TODO(dom:test): verify error
