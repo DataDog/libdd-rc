@@ -169,7 +169,7 @@ pub(crate) fn arbitrary_invalid_dispatch_request() -> impl Strategy<Value = Serv
         // Signature too long
         (
             arbitrary_valid_dispatch_request(),
-            arbitrary_bytes(120..1028)
+            arbitrary_bytes((Signature::MAX_LENGTH + 1)..1028)
         )
             .prop_map(|(mut v, sig)| {
                 match &mut v {
