@@ -139,6 +139,13 @@ pub enum DispatchViolation {
     ///
     #[error("signature does not match the signer certificate")]
     SignatureMismatch,
+
+    /// The connection ID in the dispatch request payload does not match the
+    /// connection ID agreed during the connection handshake.
+    ///
+    /// This may indicate an ongoing MITM.
+    #[error("connection ID does not match the handshake connection ID")]
+    ConnectionIdMismatch,
 }
 
 /// Chain verification failed for the chain described by the certificate IDs
@@ -238,6 +245,9 @@ impl From<DispatchViolation> for proto::dispatch::Error {
             }
             DispatchViolation::SignatureMismatch => {
                 Self::SignatureMismatch(dispatch::SignatureMismatch {})
+            }
+            DispatchViolation::ConnectionIdMismatch => {
+                Self::ConnectionIdMismatch(dispatch::ConnectionIdMismatch {})
             }
         }
     }

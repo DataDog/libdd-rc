@@ -266,6 +266,12 @@ message ClientProtocolError {
     //
     message SignatureMismatch {}
 
+    // The connection ID in the dispatch request payload does not match the
+    // connection ID agreed during the connection handshake.
+    //
+    // This may indicate an ongoing MITM.
+    message ConnectionIdMismatch {}
+
     oneof error {
       BeforeHandshake before_handshake = 2;
       MissingSignature missing_signature = 3;
@@ -274,6 +280,7 @@ message ClientProtocolError {
       CertIdInvalidLength cert_id_invalid_length = 6;
       MalformedSignature malformed_signature = 7;
       SignatureMismatch signature_mismatch = 8;
+      ConnectionIdMismatch connection_id_mismatch = 9;
     }
   }
 

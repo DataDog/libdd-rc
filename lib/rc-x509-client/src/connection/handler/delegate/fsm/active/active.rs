@@ -16,6 +16,7 @@ use std::fmt::Debug;
 
 use rc_crypto::connection_id::ConnectionId;
 use rc_crypto::{Signature, certificate::id::CertId};
+use tokio_util::bytes::Bytes;
 use tracing::{debug, error};
 
 use crate::{
@@ -78,12 +79,19 @@ where
             }
 
             ServerToClient::Dispatch {
+                connection_id,
                 correlation_id,
                 payload,
                 detached_signature,
             } => {
-                self.handle_dispatch(reply, correlation_id, payload, detached_signature)
-                    .await
+                self.handle_dispatch(
+                    reply,
+                    connection_id,
+                    correlation_id,
+                    payload,
+                    detached_signature,
+                )
+                .await
             }
 
             // The client has already completed the handshake, so this ACK is
@@ -110,6 +118,7 @@ where
     async fn handle_dispatch<IO>(
         self,
         reply: &mut IO,
+        request_connection_id: Bytes,
         correlation_id: CorrelationId,
         payload: Payload,
         detached_signature: Option<DetachedSignature>,
@@ -118,6 +127,26 @@ where
         IO: SendToServer,
     {
         let connection_id = &self.state.0;
+
+        // Ensure the payload is targeted at this connection.
+        if request_connection_id.as_ref() != connection_id.as_bytes() {
+            error!(
+                %connection_id,
+                %correlation_id,
+                ?request_connection_id,
+                "dispatch request connection ID mismatch"
+            );
+            return self
+                .protocol_error(
+                    Active::IS_HANDSHAKE_COMPLETE,
+                    reply,
+                    ProtocolError::Dispatch(
+                        correlation_id,
+                        DispatchViolation::ConnectionIdMismatch,
+                    ),
+                )
+                .await;
+        }
 
         // Handle the possibility of no signature being sent on the wire - a
         // protocol violation.
@@ -140,6 +169,7 @@ where
             }
         };
 
+        // Parse the signature from the raw bytes.
         let signature = match Signature::try_from(signature.as_ref()) {
             Ok(v) => v,
             Err(e) => {
@@ -180,8 +210,6 @@ where
         debug!(%connection_id, %correlation_id, %signing_cert_id, ?signature, "received dispatch request");
 
         // TODO(dom): signature verification
-
-        // TODO(dom): connection ID verification
 
         // And finally dispatch the request to the host application (via the
         // FFI layer).

@@ -27,8 +27,32 @@ pub(crate) mod rc {
         pub mod protocol {
             pub mod v1 {
                 include!(concat!(env!("OUT_DIR"), "/rc.x509.protocol.v1.rs"));
+
+                /// Extend the [`DispatchRequest`] with helper methods.
+                impl DispatchRequest {
+                    /// Extract the [`DispatchRequestPayload::connection_id`]
+                    /// from this request, without parsing the rest of the
+                    /// payload.
+                    ///
+                    /// Returns [`None`] if the payload contains no connection
+                    /// ID, or an error if the wire encoding is invalid.
+                    pub fn decode_connection_id(
+                        &self,
+                    ) -> Result<Option<ConnectionId>, ::prost::DecodeError> {
+                        #[derive(::prost::Message)]
+                        struct ConnectionIdTag1 {
+                            /// See [`DispatchRequestPayload::connection_id`].
+                            #[prost(message, optional, tag = "1")]
+                            connection_id: Option<ConnectionId>,
+                        }
+
+                        crate::decode::<ConnectionIdTag1>(self.encoded_dispatch_request.as_ref())
+                            .map(|v| v.connection_id)
+                    }
+                }
             }
         }
+
         pub mod magic_tunnel {
             pub mod v1 {
                 include!(concat!(env!("OUT_DIR"), "/rc.x509.magic_tunnel.v1.rs"));
@@ -170,7 +194,7 @@ pub(crate) fn arbitrary_duration() -> impl Strategy<Value = Option<pbjson_types:
 
 #[cfg(test)]
 mod tests {
-    use crate::protocol::v1::ServerToClient;
+    use crate::protocol::v1::{self, ServerToClient};
 
     use super::*;
 
@@ -276,6 +300,36 @@ mod tests {
         ) {
             let encoded = encode(&value);
             assert_eq!(value, decode(encoded).unwrap())
+        }
+    }
+
+    /// Wrap `encoded_dispatch_request` in a [`v1::DispatchRequest`].
+    fn dispatch_request(encoded_dispatch_request: Bytes) -> v1::DispatchRequest {
+        v1::DispatchRequest {
+            correlation_id: 42,
+            signature: None,
+            encoded_dispatch_request,
+        }
+    }
+
+    proptest! {
+        /// The connection ID decoded from any valid payload matches the
+        /// connection ID in the payload.
+        #[test]
+        fn prop_decode_connection_id(payload in any::<v1::DispatchRequestPayload>()) {
+            let req = dispatch_request(encode(&payload));
+            assert_eq!(req.decode_connection_id().unwrap(), payload.connection_id);
+        }
+
+        /// If a payload can be deserialised, it always contains the same
+        /// connection ID as the connection ID helper method returns.
+        #[test]
+        fn prop_decode_connection_id_arbitrary_bytes(payload in arbitrary_bytes()) {
+            let got = dispatch_request(payload.clone()).decode_connection_id();
+
+            if let Ok(full) = decode::<v1::DispatchRequestPayload>(payload) {
+                assert_eq!(got.unwrap(), full.connection_id);
+            }
         }
     }
 }
