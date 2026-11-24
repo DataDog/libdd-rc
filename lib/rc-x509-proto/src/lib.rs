@@ -192,6 +192,19 @@ pub(crate) fn arbitrary_duration() -> impl Strategy<Value = Option<pbjson_types:
         .prop_map(|(seconds, nanos)| Some(pbjson_types::Duration { seconds, nanos }))
 }
 
+/// A value generator for `map<string, google.protobuf.Any>` fields (to
+/// satisfy the [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf
+/// types).
+pub(crate) fn arbitrary_any_map()
+-> impl Strategy<Value = std::collections::HashMap<String, prost_types::Any>> {
+    proptest::collection::hash_map(
+        proptest::prelude::any::<String>(),
+        proptest::prelude::any::<(String, Vec<u8>)>()
+            .prop_map(|(type_url, value)| prost_types::Any { type_url, value }),
+        0..4,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::protocol::v1::{self, ServerToClient};

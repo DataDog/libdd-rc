@@ -27,6 +27,7 @@ pbjson-types = "0.9"
 proptest = { version = "1.11.0", default-features = false, features = ["std", "bit-set"] }
 proptest-derive = "0.9.0"
 prost = "0.14"
+prost-types = "0.14.6"
 serde = { version = "1", features = ["derive"] }
 
 [lints]

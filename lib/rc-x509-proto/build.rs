@@ -68,6 +68,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         r#"#[proptest(strategy = "crate::arbitrary_duration()")]"#,
     );
 
+    // Likewise `google.protobuf.Any` (here, as map values).
+    for v in [
+        "rc.x509.protocol.v1.MetadataSnapshot.integration_metadata",
+        "rc.x509.protocol.v1.MetadataUpdate.integration_metadata",
+    ] {
+        config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_any_map()")]"#);
+    }
+
     // `token` is a bearer credential, so the derived `Debug` is replaced with a
     // manual impl in `lib.rs` that redacts it.
     config.skip_debug([

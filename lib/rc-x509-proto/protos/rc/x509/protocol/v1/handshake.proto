@@ -4,6 +4,7 @@ syntax = "proto3";
 package rc.x509.protocol.v1;
 
 import "rc/x509/protocol/v1/connection_id.proto";
+import "rc/x509/protocol/v1/metadata.proto";
 
 option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
 
@@ -56,6 +57,9 @@ message ClientHello {
 
   // The duration the most recently closed remained connected, if any.
   uint64 last_closed_connection_duration_seconds = 11;
+
+  // The complete set of client metadata currently known to the client.
+  MetadataSnapshot metadata_snapshot = 13;
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
