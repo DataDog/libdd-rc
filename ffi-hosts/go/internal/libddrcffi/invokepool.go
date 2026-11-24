@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	magictunnelv1 "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/magic_tunnel"
@@ -206,52 +205,46 @@ var errHandlerTimeout = errors.New("ddrc: handler timeout")
 // this payload and every payload queued behind it for this connection without
 // the rc_conn_dispatch_result call the client library is waiting for.
 func (p *invokePool) invokeHandler(job dispatchJob) (response []byte, err error) {
-	var completed atomic.Bool
-
-	defer func() {
-		if r := recover(); r != nil {
-			response = nil
-			// Check to see if this panic beat the timeout. If it did not, we need to
-			// inform there's been a timeout.
-			swapped := completed.CompareAndSwap(false, true)
-			if !swapped {
-				err = errHandlerTimeout
-			} else {
-				err = fmt.Errorf("ddrc: dispatch handler panicked: %v", r)
-			}
-		}
-	}()
-
 	handlerCtx, cancel := context.WithTimeout(context.Background(), p.handlerTimeout)
 	defer cancel()
 
-	// Wait until the context is completed, if it completed because of a normal operation,
-	// then we'll have already set the completed atomic bool to true. If we end up performing
-	// the swap, then it means the context timed out and we need to send this as a dispatch error.
+	// Report a dispatch timeout once handlerCtx is done, unless the worker
+	// claims this job first by calling stopTimeoutReport. Whether
+	// stopTimeoutReport wins is decided synchronously: it returns false iff
+	// handlerCtx was already done, so there is no scheduling race between the
+	// two paths and exactly one of them answers the job.
 	//
-	// This goroutine is deliberately not joined by p.wg: if job.handler
-	// below never returns, this is the only goroutine that will ever answer
-	// this job, and it does so within handlerTimeout regardless of whether
-	// the worker calling job.handler ever comes back. wg.Done is called
-	// only once sendDispatchError has actually returned, so shutdown can't
-	// observe this job as answered while that call is still in flight.
-	go func() {
-		<-handlerCtx.Done()
-		swapped := completed.CompareAndSwap(false, true)
+	// The report runs in its own goroutine that is deliberately not joined by
+	// p.wg: if job.handler below never returns, this is the only thing that
+	// will ever answer this job, and it does so within handlerTimeout
+	// regardless of whether the worker calling job.handler ever comes back.
+	// wg.Done is called only once sendDispatchError has actually returned, so
+	// shutdown can't observe this job as answered while that call is still
+	// in flight.
+	stopTimeoutReport := context.AfterFunc(handlerCtx, func() {
+		p.sink.sendDispatchError(job.correlationID, DispatchErrorTimeout)
+		p.wg.Done()
+	})
 
-		// It wasn't completed yet, so we need to report the dispatch timeout
-		if swapped {
-			p.sink.sendDispatchError(job.correlationID, DispatchErrorTimeout)
-			p.wg.Done()
+	// This must be deferred after cancel so that it runs before it: cancel
+	// marks handlerCtx done, after which stopTimeoutReport always loses and a
+	// prompt panic would be misreported as a dispatch timeout.
+	defer func() {
+		if r := recover(); r != nil {
+			response = nil
+			if stopTimeoutReport() {
+				err = fmt.Errorf("ddrc: dispatch handler panicked: %v", r)
+			} else {
+				err = errHandlerTimeout
+			}
 		}
 	}()
 
 	response, err = job.handler(handlerCtx, job.correlationID, job.request.GetRequest())
 
-	// Check to see if we beat the timeout, and are able to send this as normal dispatch
-	// result to the backend.
-	swapped := completed.CompareAndSwap(false, true)
-	if !swapped {
+	// Claim the job before cancel runs; if the timeout already fired, it has
+	// been (or is being) reported as a dispatch error instead.
+	if !stopTimeoutReport() {
 		return nil, errHandlerTimeout
 	}
 
