@@ -26,6 +26,7 @@ use rc_x509_trust::{
     trust_store::VerificationError,
 };
 use std::{iter, num::NonZeroUsize, sync::Arc};
+use tokio_util::bytes::Bytes;
 use tracing::{debug, error, trace};
 
 use crate::{
@@ -42,8 +43,11 @@ use crate::{
 /// This type captures all inputs necessary to retry verification in the future.
 /// All fields are untrusted until successfully verified.
 #[derive(Debug)]
-pub(super) struct Deferred {
-    /// The RPC correlation ID that delivered this payload.
+pub(crate) struct Deferred {
+    /// The raw connection ID this message is targetting.
+    pub request_connection_id: Bytes,
+
+    /// The message correlation ID that delivered this payload.
     pub correlation_id: CorrelationId,
 
     /// The signing / leaf [`CertId`] that is claimed to have produced
@@ -234,10 +238,12 @@ impl DeferredVerifierState {
     /// If this call returns [`Err`] with any other [`VerifyFailure`], then
     /// `payload` is untrusted (potentially proven as fraudulent) and must not
     /// be delivered to the host application (outcome 2).
+    #[allow(clippy::too_many_arguments)] // Newtypes help
     pub(crate) fn verify_or_defer<V>(
         &mut self,
         verifier: &V,
         endpoint_hostname: &EndpointHostname,
+        request_connection_id: Bytes,
         correlation_id: CorrelationId,
         signing_cert_id: CertId,
         signature: Signature,
@@ -256,6 +262,7 @@ impl DeferredVerifierState {
                 return Err(self.add_deferred(
                     missing_cert_id,
                     Deferred {
+                        request_connection_id,
                         correlation_id,
                         signing_cert_id,
                         signature,
@@ -273,6 +280,7 @@ impl DeferredVerifierState {
                 return Err(self.add_deferred(
                     missing_cert_id.as_cert_id().to_owned(),
                     Deferred {
+                        request_connection_id,
                         correlation_id,
                         signing_cert_id,
                         signature,
@@ -381,6 +389,7 @@ mod tests {
 
     static CA: TestCA = TestCA::new();
     const CORRELATION_ID: CorrelationId = CorrelationId::new(42);
+    const CONNECTION_ID: Bytes = Bytes::from_static(b"bananas");
 
     /// A happy-path test where the [`DeferredVerifierState`] has nothing to do;
     /// the payload is passed to the underlying [`AttestationVerifier`] which
@@ -398,6 +407,7 @@ mod tests {
             .verify_or_defer(
                 &mock,
                 &hostname,
+                CONNECTION_ID.clone(),
                 CORRELATION_ID,
                 chain.leaf.cert().cert_id().to_owned(),
                 Signature::try_from([13_u8; 100].as_slice()).unwrap(),
@@ -462,6 +472,7 @@ mod tests {
             .verify_or_defer(
                 &trust_store,
                 &hostname,
+                CONNECTION_ID.clone(),
                 CORRELATION_ID,
                 chain.leaf.cert().cert_id().to_owned(),
                 sig.clone(),
@@ -497,6 +508,7 @@ mod tests {
             // There should be exactly one verification queued in the set of
             // deferred validations:
             let Deferred {
+                request_connection_id,
                 correlation_id,
                 signing_cert_id,
                 signature,
@@ -505,6 +517,7 @@ mod tests {
             assert!(deferred.next().is_none());
 
             // Verify the inputs are not modified:
+            assert_eq!(request_connection_id, CONNECTION_ID);
             assert_eq!(correlation_id, CORRELATION_ID);
             assert_eq!(
                 signing_cert_id.as_dangerous_comparable(),
@@ -520,6 +533,7 @@ mod tests {
                 .verify_or_defer(
                     &trust_store,
                     &hostname,
+                    request_connection_id,
                     correlation_id,
                     signing_cert_id,
                     signature,
@@ -552,6 +566,7 @@ mod tests {
         // After asking for and having been given all the non-root certificates
         // in the chain, the final validation must succeed:
         let Deferred {
+            request_connection_id,
             correlation_id,
             signing_cert_id,
             signature,
@@ -566,6 +581,7 @@ mod tests {
             .verify_or_defer(
                 &trust_store,
                 &hostname,
+                request_connection_id,
                 correlation_id,
                 signing_cert_id,
                 signature,

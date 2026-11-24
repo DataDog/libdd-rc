@@ -204,7 +204,7 @@ impl TestConn {
             .expect("handshake must be performed before dispatching");
 
         let payload = Payload::from(encode(&v1::DispatchRequestPayload {
-            connection_id: Some(connection_id),
+            connection_id: Some(connection_id.clone()),
             payload: Some(v1::dispatch_request_payload::Payload::MagicTunnel(
                 MagicTunnelRequest {
                     uri: uri.to_string(),
@@ -214,6 +214,7 @@ impl TestConn {
         }));
 
         self.send(Ok(ServerToClient::Dispatch {
+            connection_id: connection_id.uuid_v8.clone(),
             correlation_id,
             payload,
             detached_signature: Some(DetachedSignature {
