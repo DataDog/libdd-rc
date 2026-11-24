@@ -1649,6 +1649,7 @@ dependencies = [
  "proptest-derive",
  "prost",
  "prost-build",
+ "prost-types",
  "serde",
 ]
 

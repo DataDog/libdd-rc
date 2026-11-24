@@ -8,6 +8,7 @@ package rc.x509.protocol.v1;
 import "rc/x509/protocol/v1/chain.proto";
 import "rc/x509/protocol/v1/dispatch.proto";
 import "rc/x509/protocol/v1/handshake.proto";
+import "rc/x509/protocol/v1/metadata.proto";
 import "rc/x509/protocol/v1/ping.proto";
 import "rc/x509/protocol/v1/protocol_error.proto";
 
@@ -69,5 +70,8 @@ message ClientToServer {
 
     // Request for a missing certificate and optionally the chain to it.
     ChainFetch chain_fetch = 5;
+
+    // A partial update to the client metadata.
+    MetadataUpdate metadata_update = 6;
   }
 }

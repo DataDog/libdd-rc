@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+// Client metadata updates from the client, to the server.
+//
+// These types provide a way for the client to push an initial snapshot
+// (`MetadataSnapshot`), followed by zero or more updates (`MetadataUpdate`) as
+// and when necessary:
+//
+// ```text
+//                          ┌──────────────┐
+//                          │   Snapshot   │
+//                          └──────────────┘
+//                                  │
+//                                  ▼
+//                          ┌──────────────┐
+//                          │    Update    │
+//                          └──────────────┘
+//                                  │
+//                                  ▼
+//                          ┌──────────────┐
+//                          │    Update    │
+//                          └──────────────┘
+//                                  │
+//                                  ▼
+//                                 ...
+// ```
+//
+// This allows the client to push the initial state necessary for client
+// targetting, while minimising ongoing traffic to the minimum useful amount,
+// however this requires the consumer of this metadata to materialise the result
+// of updates.
+package rc.x509.protocol.v1;
+
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1";
+
+// A full snapshot of current client metadata.
+message MetadataSnapshot {
+  // The set of key:value tags emitted by the client.
+  //
+  // See https://docs.datadoghq.com/getting_started/tagging/.
+  repeated string host_tags = 1;
+
+  // Integration-specific metadata; opaque values keyed by integration name.
+  map<string, google.protobuf.Any> integration_metadata = 2;
+}
+
+// A partial update to a previously transmitted snapshot / update.
+message MetadataUpdate {
+  // The full set of host tags.
+  //
+  // Present only if the set of host tags has changed since the last update /
+  // snapshot.
+  repeated string host_tags = 1;
+
+  // A partial update of integration metadata.
+  //
+  // Contains only the entries that have changed since the last update /
+  // snapshot.
+  map<string, google.protobuf.Any> integration_metadata = 2;
+}

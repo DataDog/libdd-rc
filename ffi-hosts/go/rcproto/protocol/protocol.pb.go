@@ -175,6 +175,7 @@ type ClientToServer struct {
 	//	*ClientToServer_Dispatch
 	//	*ClientToServer_ProtocolError
 	//	*ClientToServer_ChainFetch
+	//	*ClientToServer_MetadataUpdate
 	Message       isClientToServer_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -262,6 +263,15 @@ func (x *ClientToServer) GetChainFetch() *ChainFetch {
 	return nil
 }
 
+func (x *ClientToServer) GetMetadataUpdate() *MetadataUpdate {
+	if x != nil {
+		if x, ok := x.Message.(*ClientToServer_MetadataUpdate); ok {
+			return x.MetadataUpdate
+		}
+	}
+	return nil
+}
+
 type isClientToServer_Message interface {
 	isClientToServer_Message()
 }
@@ -291,6 +301,11 @@ type ClientToServer_ChainFetch struct {
 	ChainFetch *ChainFetch `protobuf:"bytes,5,opt,name=chain_fetch,json=chainFetch,proto3,oneof"`
 }
 
+type ClientToServer_MetadataUpdate struct {
+	// A partial update to the client metadata.
+	MetadataUpdate *MetadataUpdate `protobuf:"bytes,6,opt,name=metadata_update,json=metadataUpdate,proto3,oneof"`
+}
+
 func (*ClientToServer_Pong) isClientToServer_Message() {}
 
 func (*ClientToServer_ClientHello) isClientToServer_Message() {}
@@ -301,25 +316,28 @@ func (*ClientToServer_ProtocolError) isClientToServer_Message() {}
 
 func (*ClientToServer_ChainFetch) isClientToServer_Message() {}
 
+func (*ClientToServer_MetadataUpdate) isClientToServer_Message() {}
+
 var File_rc_x509_protocol_v1_protocol_proto protoreflect.FileDescriptor
 
 const file_rc_x509_protocol_v1_protocol_proto_rawDesc = "" +
 	"\n" +
-	"\"rc/x509/protocol/v1/protocol.proto\x12\x13rc.x509.protocol.v1\x1a\x1frc/x509/protocol/v1/chain.proto\x1a\"rc/x509/protocol/v1/dispatch.proto\x1a#rc/x509/protocol/v1/handshake.proto\x1a\x1erc/x509/protocol/v1/ping.proto\x1a(rc/x509/protocol/v1/protocol_error.proto\"\x94\x03\n" +
+	"\"rc/x509/protocol/v1/protocol.proto\x12\x13rc.x509.protocol.v1\x1a\x1frc/x509/protocol/v1/chain.proto\x1a\"rc/x509/protocol/v1/dispatch.proto\x1a#rc/x509/protocol/v1/handshake.proto\x1a\"rc/x509/protocol/v1/metadata.proto\x1a\x1erc/x509/protocol/v1/ping.proto\x1a(rc/x509/protocol/v1/protocol_error.proto\"\x94\x03\n" +
 	"\x0eServerToClient\x12/\n" +
 	"\x04ping\x18\x01 \x01(\v2\x19.rc.x509.protocol.v1.PingH\x00R\x04ping\x12Q\n" +
 	"\x10certificate_push\x18\x02 \x01(\v2$.rc.x509.protocol.v1.CertificatePushH\x00R\x0fcertificatePush\x12B\n" +
 	"\bdispatch\x18\x03 \x01(\v2$.rc.x509.protocol.v1.DispatchRequestH\x00R\bdispatch\x12O\n" +
 	"\x10client_hello_ack\x18\x04 \x01(\v2#.rc.x509.protocol.v1.ClientHelloAckH\x00R\x0eclientHelloAck\x12^\n" +
 	"\x15set_reconnection_data\x18\x05 \x01(\v2(.rc.x509.protocol.v1.SetReconnectionDataH\x00R\x13setReconnectionDataB\t\n" +
-	"\amessage\"\xef\x02\n" +
+	"\amessage\"\xbf\x03\n" +
 	"\x0eClientToServer\x12/\n" +
 	"\x04pong\x18\x01 \x01(\v2\x19.rc.x509.protocol.v1.PongH\x00R\x04pong\x12E\n" +
 	"\fclient_hello\x18\x02 \x01(\v2 .rc.x509.protocol.v1.ClientHelloH\x00R\vclientHello\x12C\n" +
 	"\bdispatch\x18\x03 \x01(\v2%.rc.x509.protocol.v1.DispatchResponseH\x00R\bdispatch\x12Q\n" +
 	"\x0eprotocol_error\x18\x04 \x01(\v2(.rc.x509.protocol.v1.ClientProtocolErrorH\x00R\rprotocolError\x12B\n" +
 	"\vchain_fetch\x18\x05 \x01(\v2\x1f.rc.x509.protocol.v1.ChainFetchH\x00R\n" +
-	"chainFetchB\t\n" +
+	"chainFetch\x12N\n" +
+	"\x0fmetadata_update\x18\x06 \x01(\v2#.rc.x509.protocol.v1.MetadataUpdateH\x00R\x0emetadataUpdateB\t\n" +
 	"\amessageBFZDgithub.com/DataDog/libdd-rc/ffi-hosts/go/rcproto/protocol;protocolv1b\x06proto3"
 
 var (
@@ -348,6 +366,7 @@ var file_rc_x509_protocol_v1_protocol_proto_goTypes = []any{
 	(*DispatchResponse)(nil),    // 9: rc.x509.protocol.v1.DispatchResponse
 	(*ClientProtocolError)(nil), // 10: rc.x509.protocol.v1.ClientProtocolError
 	(*ChainFetch)(nil),          // 11: rc.x509.protocol.v1.ChainFetch
+	(*MetadataUpdate)(nil),      // 12: rc.x509.protocol.v1.MetadataUpdate
 }
 var file_rc_x509_protocol_v1_protocol_proto_depIdxs = []int32{
 	2,  // 0: rc.x509.protocol.v1.ServerToClient.ping:type_name -> rc.x509.protocol.v1.Ping
@@ -360,11 +379,12 @@ var file_rc_x509_protocol_v1_protocol_proto_depIdxs = []int32{
 	9,  // 7: rc.x509.protocol.v1.ClientToServer.dispatch:type_name -> rc.x509.protocol.v1.DispatchResponse
 	10, // 8: rc.x509.protocol.v1.ClientToServer.protocol_error:type_name -> rc.x509.protocol.v1.ClientProtocolError
 	11, // 9: rc.x509.protocol.v1.ClientToServer.chain_fetch:type_name -> rc.x509.protocol.v1.ChainFetch
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	12, // 10: rc.x509.protocol.v1.ClientToServer.metadata_update:type_name -> rc.x509.protocol.v1.MetadataUpdate
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_rc_x509_protocol_v1_protocol_proto_init() }
@@ -375,6 +395,7 @@ func file_rc_x509_protocol_v1_protocol_proto_init() {
 	file_rc_x509_protocol_v1_chain_proto_init()
 	file_rc_x509_protocol_v1_dispatch_proto_init()
 	file_rc_x509_protocol_v1_handshake_proto_init()
+	file_rc_x509_protocol_v1_metadata_proto_init()
 	file_rc_x509_protocol_v1_ping_proto_init()
 	file_rc_x509_protocol_v1_protocol_error_proto_init()
 	file_rc_x509_protocol_v1_protocol_proto_msgTypes[0].OneofWrappers = []any{
@@ -390,6 +411,7 @@ func file_rc_x509_protocol_v1_protocol_proto_init() {
 		(*ClientToServer_Dispatch)(nil),
 		(*ClientToServer_ProtocolError)(nil),
 		(*ClientToServer_ChainFetch)(nil),
+		(*ClientToServer_MetadataUpdate)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

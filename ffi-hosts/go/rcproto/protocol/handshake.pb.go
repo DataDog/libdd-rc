@@ -65,8 +65,10 @@ type ClientHello struct {
 	AppVersion string `protobuf:"bytes,12,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
 	// The duration the most recently closed remained connected, if any.
 	LastClosedConnectionDurationSeconds uint64 `protobuf:"varint,11,opt,name=last_closed_connection_duration_seconds,json=lastClosedConnectionDurationSeconds,proto3" json:"last_closed_connection_duration_seconds,omitempty"`
-	unknownFields                       protoimpl.UnknownFields
-	sizeCache                           protoimpl.SizeCache
+	// The complete set of client metadata currently known to the client.
+	MetadataSnapshot *MetadataSnapshot `protobuf:"bytes,13,opt,name=metadata_snapshot,json=metadataSnapshot,proto3" json:"metadata_snapshot,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ClientHello) Reset() {
@@ -181,6 +183,13 @@ func (x *ClientHello) GetLastClosedConnectionDurationSeconds() uint64 {
 		return x.LastClosedConnectionDurationSeconds
 	}
 	return 0
+}
+
+func (x *ClientHello) GetMetadataSnapshot() *MetadataSnapshot {
+	if x != nil {
+		return x.MetadataSnapshot
+	}
+	return nil
 }
 
 // A `ClientHelloAck` is the response to a `ClientHello` to complete the
@@ -313,7 +322,7 @@ var File_rc_x509_protocol_v1_handshake_proto protoreflect.FileDescriptor
 
 const file_rc_x509_protocol_v1_handshake_proto_rawDesc = "" +
 	"\n" +
-	"#rc/x509/protocol/v1/handshake.proto\x12\x13rc.x509.protocol.v1\x1a'rc/x509/protocol/v1/connection_id.proto\"\xce\x04\n" +
+	"#rc/x509/protocol/v1/handshake.proto\x12\x13rc.x509.protocol.v1\x1a'rc/x509/protocol/v1/connection_id.proto\x1a\"rc/x509/protocol/v1/metadata.proto\"\xa2\x05\n" +
 	"\vClientHello\x12\x14\n" +
 	"\x05nonce\x18\x01 \x01(\fR\x05nonce\x12@\n" +
 	"\x1cgraceful_disconnection_count\x18\x02 \x01(\x04R\x1agracefulDisconnectionCount\x12D\n" +
@@ -329,7 +338,8 @@ const file_rc_x509_protocol_v1_handshake_proto_rawDesc = "" +
 	" \x01(\tR\aappName\x12\x1f\n" +
 	"\vapp_version\x18\f \x01(\tR\n" +
 	"appVersion\x12T\n" +
-	"'last_closed_connection_duration_seconds\x18\v \x01(\x04R#lastClosedConnectionDurationSecondsB\x0e\n" +
+	"'last_closed_connection_duration_seconds\x18\v \x01(\x04R#lastClosedConnectionDurationSeconds\x12R\n" +
+	"\x11metadata_snapshot\x18\r \x01(\v2%.rc.x509.protocol.v1.MetadataSnapshotR\x10metadataSnapshotB\x0e\n" +
 	"\f_version_preB\x11\n" +
 	"\x0f_version_commit\"{\n" +
 	"\x0eClientHelloAck\x12F\n" +
@@ -355,15 +365,17 @@ var file_rc_x509_protocol_v1_handshake_proto_goTypes = []any{
 	(*ClientHello)(nil),         // 0: rc.x509.protocol.v1.ClientHello
 	(*ClientHelloAck)(nil),      // 1: rc.x509.protocol.v1.ClientHelloAck
 	(*SetReconnectionData)(nil), // 2: rc.x509.protocol.v1.SetReconnectionData
-	(*ConnectionId)(nil),        // 3: rc.x509.protocol.v1.ConnectionId
+	(*MetadataSnapshot)(nil),    // 3: rc.x509.protocol.v1.MetadataSnapshot
+	(*ConnectionId)(nil),        // 4: rc.x509.protocol.v1.ConnectionId
 }
 var file_rc_x509_protocol_v1_handshake_proto_depIdxs = []int32{
-	3, // 0: rc.x509.protocol.v1.ClientHelloAck.connection_id:type_name -> rc.x509.protocol.v1.ConnectionId
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 0: rc.x509.protocol.v1.ClientHello.metadata_snapshot:type_name -> rc.x509.protocol.v1.MetadataSnapshot
+	4, // 1: rc.x509.protocol.v1.ClientHelloAck.connection_id:type_name -> rc.x509.protocol.v1.ConnectionId
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_rc_x509_protocol_v1_handshake_proto_init() }
@@ -372,6 +384,7 @@ func file_rc_x509_protocol_v1_handshake_proto_init() {
 		return
 	}
 	file_rc_x509_protocol_v1_connection_id_proto_init()
+	file_rc_x509_protocol_v1_metadata_proto_init()
 	file_rc_x509_protocol_v1_handshake_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
