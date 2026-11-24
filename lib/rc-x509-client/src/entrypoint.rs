@@ -31,6 +31,7 @@ use crate::{
         AttestationVerifier, ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate,
     },
     host_runtime::Connection,
+    host_tags::{HostTagsSetter, HostTagsWatch},
     metrics::InstanceMetrics,
 };
 
@@ -82,6 +83,11 @@ pub struct Main<V> {
     /// The verifier of payload signatures used by all connections driven by
     /// this entrypoint.
     verifier: V,
+
+    /// The latest host tags set through [`Main::host_tags()`], reported on
+    /// every connection.
+    host_tags_watch: HostTagsWatch,
+    host_tags_setter: HostTagsSetter,
 }
 
 impl Main<TrustStore<2, MemoryCertCache>> {
@@ -94,11 +100,24 @@ impl Main<TrustStore<2, MemoryCertCache>> {
             MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
         );
 
-        Self { app_info, verifier }
+        let (host_tags_watch, host_tags_setter) = HostTagsWatch::new();
+
+        Self {
+            app_info,
+            verifier,
+            host_tags_watch,
+            host_tags_setter,
+        }
     }
 }
 
 impl<V> Main<V> {
+    /// A handle to replace the host tags this instance reports, usable at any
+    /// time, including before [`LibraryEntrypoint::entrypoint()`] runs.
+    pub fn host_tags(&self) -> HostTagsSetter {
+        self.host_tags_setter.clone()
+    }
+
     /// Replace the signature verifier with `v`, reducing the security of this
     /// client to whatever `v` enforces.
     ///
@@ -110,6 +129,8 @@ impl<V> Main<V> {
         Main {
             app_info: self.app_info,
             verifier: v,
+            host_tags_watch: self.host_tags_watch,
+            host_tags_setter: self.host_tags_setter,
         }
     }
 }
@@ -141,6 +162,7 @@ where
             metrics,
             self.app_info,
             Arc::new(self.verifier),
+            self.host_tags_watch,
         )));
 
         // Wait forever for the shutdown signal.
@@ -174,6 +196,7 @@ async fn handle_connection_events<IO, V>(
     metrics: Arc<InstanceMetrics>,
     app_info: AppInfo,
     verifier: Arc<V>,
+    host_tags_watch: HostTagsWatch,
 ) where
     IO: Connection,
     V: AttestationVerifier + 'static,
@@ -235,6 +258,7 @@ async fn handle_connection_events<IO, V>(
                     stop.clone(),
                     delegate,
                     dispatch_stream,
+                    host_tags_watch.clone(),
                     Arc::clone(&metrics),
                 );
                 let task = tokio::spawn(conn.run());
