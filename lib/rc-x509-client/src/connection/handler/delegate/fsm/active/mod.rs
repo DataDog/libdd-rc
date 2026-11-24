@@ -14,3 +14,6 @@
 
 mod active;
 pub(crate) use active::*;
+
+#[allow(dead_code)] // Unused so far.
+mod verifier_state;

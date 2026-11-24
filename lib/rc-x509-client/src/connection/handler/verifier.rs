@@ -36,13 +36,17 @@ pub trait AttestationVerifier: std::fmt::Debug + Send + Sync + ProdSealed {
     ///
     /// The signer certificate MUST be authorised to sign payloads for
     /// `endpoint`.
+    ///
+    /// # Logging
+    ///
+    /// The implementation MUST log user-visible verification errors.
     fn verify(
         &self,
-        signing_cert_id: CertId,
-        signature: Signature,
-        payload: Payload,
+        signing_cert_id: &CertId,
+        signature: &Signature,
+        payload: &Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<Payload, VerificationError>;
+    ) -> Result<(), VerificationError>;
 
     /// Add the provided `certs` to the pool of certificates that are used to
     /// verify payload signatures.
@@ -57,11 +61,11 @@ where
 {
     fn verify(
         &self,
-        signing_cert_id: CertId,
-        signature: Signature,
-        payload: Payload,
+        signing_cert_id: &CertId,
+        signature: &Signature,
+        payload: &Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<Payload, VerificationError> {
+    ) -> Result<(), VerificationError> {
         T::verify(self, signing_cert_id, signature, payload, endpoint)
     }
 
@@ -82,11 +86,11 @@ where
 {
     fn verify(
         &self,
-        signing_cert_id: CertId,
-        signature: Signature,
-        payload: Payload,
+        signing_cert_id: &CertId,
+        signature: &Signature,
+        payload: &Payload,
         endpoint: &EndpointHostname,
-    ) -> Result<Payload, VerificationError> {
+    ) -> Result<(), VerificationError> {
         TrustStore::verify(
             self,
             signing_cert_id,
@@ -94,7 +98,6 @@ where
             payload.as_bytes(),
             endpoint,
         )
-        .map(|_| payload)
     }
 
     fn add<U>(&self, certs: U)

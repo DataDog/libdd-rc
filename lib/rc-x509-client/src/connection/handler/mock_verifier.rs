@@ -12,20 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{collections::VecDeque, sync::Mutex};
+
+use rc_crypto::certificate::id::CertId;
+use rc_x509_trust::trust_store::VerificationError;
+
 use crate::{Payload, ProdSealed, connection::AttestationVerifier};
 
 #[derive(Debug, Default)]
-pub(crate) struct MockVerifier {}
+struct Inner {
+    verify_ret: VecDeque<Result<(), VerificationError>>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct MockVerifier(Mutex<Inner>);
+
+impl MockVerifier {
+    pub(crate) fn with_verify_ret(
+        self,
+        v: impl IntoIterator<Item = Result<(), VerificationError>>,
+    ) -> Self {
+        self.0.lock().unwrap().verify_ret = v.into_iter().collect();
+        self
+    }
+}
 
 impl AttestationVerifier for MockVerifier {
     fn verify(
         &self,
-        _signing_cert_id: rc_crypto::certificate::id::CertId,
-        _signature: rc_crypto::Signature,
-        _payload: Payload,
+        _signing_cert_id: &CertId,
+        _signature: &rc_crypto::Signature,
+        _payload: &Payload,
         _endpoint: &rc_x509_trust::EndpointHostname,
-    ) -> Result<Payload, rc_x509_trust::trust_store::VerificationError> {
-        unimplemented!()
+    ) -> Result<(), VerificationError> {
+        self.0
+            .lock()
+            .unwrap()
+            .verify_ret
+            .pop_front()
+            .expect("no mock values configured for verify()")
     }
 
     fn add<U>(&self, _certs: U)
