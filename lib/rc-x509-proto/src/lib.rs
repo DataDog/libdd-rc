@@ -104,6 +104,7 @@ pub(crate) mod rc {
     }
 }
 
+#[cfg(any(test, feature = "arbitrary"))]
 use proptest::prelude::Strategy;
 use prost::bytes::{Buf, Bytes};
 
@@ -159,6 +160,7 @@ impl core::fmt::Debug
 
 /// A value generator for [`Bytes`] fields on protobuf types (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+#[cfg(any(test, feature = "arbitrary"))]
 pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
     proptest::prelude::any::<Vec<u8>>().prop_map(Bytes::from)
 }
@@ -171,6 +173,7 @@ pub(crate) fn arbitrary_bytes() -> impl Strategy<Value = Bytes> {
 /// on an enum variant (rather than a field) as producing the *whole* enum
 /// value for that variant, so the strategy must construct `v` itself instead
 /// of just the inner [`Bytes`].
+#[cfg(any(test, feature = "arbitrary"))]
 pub(crate) fn arbitrary_bytes_oneof<T>(v: impl Fn(Bytes) -> T + 'static) -> impl Strategy<Value = T>
 where
     T: core::fmt::Debug,
@@ -180,6 +183,7 @@ where
 
 /// A value generator for [`pbjson_types::Timestamp`] fields (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+#[cfg(any(test, feature = "arbitrary"))]
 pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<pbjson_types::Timestamp>> {
     proptest::prelude::any::<(i64, i32)>()
         .prop_map(|(seconds, nanos)| Some(pbjson_types::Timestamp { seconds, nanos }))
@@ -187,6 +191,7 @@ pub(crate) fn arbitrary_timestamp() -> impl Strategy<Value = Option<pbjson_types
 
 /// A value generator for [`pbjson_types::Duration`] fields (to satisfy the
 /// [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf types).
+#[cfg(any(test, feature = "arbitrary"))]
 pub(crate) fn arbitrary_duration() -> impl Strategy<Value = Option<pbjson_types::Duration>> {
     proptest::prelude::any::<(i64, i32)>()
         .prop_map(|(seconds, nanos)| Some(pbjson_types::Duration { seconds, nanos }))
@@ -195,6 +200,7 @@ pub(crate) fn arbitrary_duration() -> impl Strategy<Value = Option<pbjson_types:
 /// A value generator for `map<string, google.protobuf.Any>` fields (to
 /// satisfy the [`proptest::arbitrary::Arbitrary`] trait derived on all protobuf
 /// types).
+#[cfg(any(test, feature = "arbitrary"))]
 pub(crate) fn arbitrary_any_map()
 -> impl Strategy<Value = std::collections::HashMap<String, prost_types::Any>> {
     proptest::collection::hash_map(

@@ -16,6 +16,18 @@
 
 use glob::glob;
 
+/// Wrap `attr` (the inner part of a `#[...]` attribute) so it is only applied
+/// when the `arbitrary` feature is enabled (or when running this crate's tests).
+fn arbitrary_attr(attr: &str) -> String {
+    format!(r#"#[cfg_attr(any(test, feature = "arbitrary"), {attr})]"#)
+}
+
+/// A field attribute that uses the `strategy` expression to generate values
+/// for the field's derived `Arbitrary` impl.
+fn proptest_generator(strategy: &str) -> String {
+    arbitrary_attr(&format!(r#"proptest(strategy = "{strategy}")"#))
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut config = prost_build::Config::new();
 
@@ -41,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for v in bytes_fields {
-        config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_bytes()")]"#);
+        config.field_attribute(v, proptest_generator("crate::arbitrary_bytes()"));
     }
 
     // A `bytes` field nested inside a `oneof` is addressed via the
@@ -52,20 +64,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // dedicated helper that constructs the variant itself.
     config.field_attribute(
         "rc.x509.magic_tunnel.v1.MagicTunnelResponse.result.response",
-        r#"#[proptest(strategy = "crate::arbitrary_bytes_oneof(crate::magic_tunnel::v1::magic_tunnel_response::Result::Response)")]"#,
+        proptest_generator("crate::arbitrary_bytes_oneof(crate::magic_tunnel::v1::magic_tunnel_response::Result::Response)"),
     );
 
     // `google.protobuf.Timestamp` is mapped to `prost_types::Timestamp`, which
     // doesn't implement `Arbitrary`, so it needs a manual strategy too.
     config.field_attribute(
         "rc.x509.magic_tunnel.remote_config.v1.PingResponse.now",
-        r#"#[proptest(strategy = "crate::arbitrary_timestamp()")]"#,
+        proptest_generator("crate::arbitrary_timestamp()"),
     );
 
     // Likewise `google.protobuf.Duration`.
     config.field_attribute(
         "rc.x509.magic_tunnel.remote_config.rc_secrets.v1.PrepareSecretDeliveryResponse.key_validity",
-        r#"#[proptest(strategy = "crate::arbitrary_duration()")]"#,
+        proptest_generator("crate::arbitrary_duration()"),
     );
 
     // Likewise `google.protobuf.Any` (here, as map values).
@@ -73,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.protocol.v1.MetadataSnapshot.integration_metadata",
         "rc.x509.protocol.v1.MetadataUpdate.integration_metadata",
     ] {
-        config.field_attribute(v, r#"#[proptest(strategy = "crate::arbitrary_any_map()")]"#);
+        config.field_attribute(v, proptest_generator("crate::arbitrary_any_map()"));
     }
 
     // `token` is a bearer credential, so the derived `Debug` is replaced with a
@@ -110,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let descriptor_path = std::path::PathBuf::from(out_dir).join("rc_x509_proto_descriptor.bin");
     config
         .bytes(bytes_fields)
-        .type_attribute(".", "#[derive(proptest_derive::Arbitrary)]")
+        .type_attribute(".", arbitrary_attr("derive(proptest_derive::Arbitrary)"))
         .protoc_arg("--experimental_allow_proto3_optional") // Old protoc versions
         .file_descriptor_set_path(&descriptor_path)
         .compile_protos(&protos, &["protos"])?;
