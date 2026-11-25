@@ -15,9 +15,9 @@
 use rc_crypto::certificate::id::IssuerCertId;
 use thiserror::Error;
 use tracing::{debug, error, trace};
-use valuable::Valuable;
 
 use crate::{
+    AsLogValue,
     cert::UntrustedCert,
     chain::UntrustedChain,
     trust_store::{CertCache, RootSet},
@@ -113,7 +113,7 @@ where
         // "chain" and aborting if it his a threshold.
         if chain.len() >= MAX_INTERMEDIATES {
             error!(
-                cert = cert.as_value(),
+                cert = cert.as_log_value(),
                 chain_len = %chain.len(),
                 "rejecting excessively long chain for untrusted cert"
             );
@@ -123,15 +123,15 @@ where
         let issuer_cert = match cache.get(next_cert_id.as_cert_id()) {
             Some(v) => {
                 trace!(
-                    issuer = v.as_value(),
-                    for_cert_id = next_cert_id.as_value(),
+                    issuer = v.as_log_value(),
+                    for_cert_id = next_cert_id.as_log_value(),
                     "found intermediate cert in local cache"
                 );
                 v
             }
             None => {
                 debug!(
-                    for_cert_id = next_cert_id.as_value(),
+                    for_cert_id = next_cert_id.as_log_value(),
                     "no intermediate cert in local cache"
                 );
                 return Err(ChainBuildError::MissingIntermediate(

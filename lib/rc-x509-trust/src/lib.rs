@@ -22,6 +22,28 @@ pub mod trust_store;
 
 pub use endpoint_hostname::*;
 
+/// Render a [`valuable::Valuable`] type as a [`tracing`] field value.
+///
+/// When compiled with `--cfg tracing_unstable`, the value is recorded as
+/// structured [`valuable`] data. Otherwise (as [`tracing`] cannot record
+/// [`valuable`] data without it) the value is recorded using the [`Debug`]
+/// representation of its [`valuable::Value`] instead.
+pub(crate) trait AsLogValue: valuable::Valuable {
+    /// Return the [`tracing`] field value for `self`.
+    #[cfg(tracing_unstable)]
+    fn as_log_value(&self) -> valuable::Value<'_> {
+        self.as_value()
+    }
+
+    /// Return the [`tracing`] field value for `self`.
+    #[cfg(not(tracing_unstable))]
+    fn as_log_value(&self) -> tracing::field::DebugValue<valuable::Value<'_>> {
+        tracing::field::debug(self.as_value())
+    }
+}
+
+impl<T> AsLogValue for T where T: valuable::Valuable + ?Sized {}
+
 #[cfg(test)]
 mod tests {
     use bytes::Bytes;

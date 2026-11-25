@@ -18,10 +18,9 @@ use rc_crypto::{Signature, certificate::id::CertId, keys::SignatureVerifyErr};
 use rc_x509_roots::RootCertificate;
 use thiserror::Error;
 use tracing::{debug, error, trace};
-use valuable::Valuable;
 
 use crate::{
-    EndpointHostname,
+    AsLogValue, EndpointHostname,
     cert::UntrustedCert,
     chain::{
         ChainBuildError, ChainVerifyError, EKUPolicy, build_unverified_chain_for, verify_chain,
@@ -99,7 +98,7 @@ where
     {
         for cert in certs {
             debug!(
-                cert = cert.as_value(),
+                cert = cert.as_log_value(),
                 "adding new certificate to local cache"
             );
 
@@ -142,7 +141,7 @@ where
 
         trace!(
             %endpoint,
-            candidate_chain = candidate_chain.as_value(),
+            candidate_chain = candidate_chain.as_log_value(),
             "unverified chain built for signature verification"
         );
 
@@ -160,7 +159,7 @@ where
                 debug!(
                     %signature,
                     %endpoint,
-                    signer_cert = cert.as_value(),
+                    signer_cert = cert.as_log_value(),
                     "chain verified as trusted"
                 );
 
@@ -174,7 +173,7 @@ where
                     error=%e,
                     %signature,
                     %endpoint,
-                    signer_cert = leaf.as_value(),
+                    signer_cert = leaf.as_log_value(),
                     "chain verification failed"
                 );
 
@@ -196,7 +195,7 @@ where
                 debug!(
                     %signature,
                     %endpoint,
-                    signer_cert = cert.as_value(),
+                    signer_cert = cert.as_log_value(),
                     "signature verified"
                 );
 
@@ -209,7 +208,7 @@ where
                     error=%e,
                     %signature,
                     %endpoint,
-                    signer_cert = leaf.as_value(),
+                    signer_cert = leaf.as_log_value(),
                     "signature verification failure"
                 );
 
