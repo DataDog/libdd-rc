@@ -114,7 +114,9 @@ async fn test_handshake() {
         version.pre().unwrap_or_default(),
         env!("CARGO_PKG_VERSION_PRE")
     );
-    assert_eq!(version.commit(), Some(env!("BUILD_GIT_COMMIT_HASH")));
+    // Both crates embed the same hash, or neither does (e.g. when built
+    // outside of a git checkout).
+    assert_eq!(version.commit(), option_env!("BUILD_GIT_COMMIT_HASH"));
 
     // Derive the final connection ID:
     let server_nonce = IdNonce::default();
