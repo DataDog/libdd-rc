@@ -62,6 +62,8 @@ pub(in crate::connection::handler) async fn retry_send<IO>(
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+
     use crate::mocks::io::new_io_pair;
 
     use super::*;
@@ -74,7 +76,7 @@ mod tests {
 
         retry_send(&mut client, ClientToServer::Pong, &stop).await;
 
-        assert_eq!(server.recv().await, Some(ClientToServer::Pong));
+        assert_matches!(server.recv().await, Some(ClientToServer::Pong));
     }
 
     /// A [`ConnectionErr::Closed`] error aborts the send immediately, without

@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rc.x509.magic_tunnel.v1.MagicTunnelRequest.request",
         "rc.x509.magic_tunnel.v1.MagicTunnelResponse.response",
         "rc.x509.protocol.v1.Certificate.der",
+        "rc.x509.protocol.v1.ChainFetch.cert_id",
         "rc.x509.protocol.v1.ClientHello.nonce",
         "rc.x509.protocol.v1.ClientHello.reconnection_data",
         "rc.x509.protocol.v1.ClientHelloAck.server_nonce",

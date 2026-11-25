@@ -44,12 +44,19 @@ mod mocks;
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
+    use rc_crypto::certificate::id::CertId;
     use tokio_util::bytes::Bytes;
 
     pub(crate) fn arbitrary_bytes(
         size: impl Into<prop::collection::SizeRange>,
     ) -> impl Strategy<Value = Bytes> {
         prop::collection::vec(any::<u8>(), size).prop_map(Bytes::from)
+    }
+
+    /// Generate an arbitrary, valid-length [`CertId`].
+    pub(crate) fn arbitrary_cert_id() -> impl Strategy<Value = CertId> {
+        prop::collection::vec(any::<u8>(), CertId::MIN_LENGTH..=CertId::MAX_LENGTH)
+            .prop_map(|v| CertId::try_from(v).expect("valid length cert ID"))
     }
 }
 

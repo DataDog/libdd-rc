@@ -14,6 +14,7 @@
 
 //! Codec for outgoing [`ClientToServer`] messages.
 
+use rc_crypto::certificate::id::CertId;
 use rc_x509_proto::{
     encode,
     protocol::v1::{self, DispatchResponse, client_to_server::Message},
@@ -33,7 +34,7 @@ use crate::{
 
 /// All possible messages originating from this client library, sent to the RC
 /// delivery backend.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum ClientToServer {
     /// A response to a [`ServerToClient::Ping`].
@@ -82,6 +83,16 @@ pub enum ClientToServer {
         /// A marker that is true if the connection that reports the violation
         /// has completed the handshake (from the client perspective).
         is_handshake_complete: bool,
+    },
+
+    /// Request the server push the certificate identified by `cert_id` (and
+    /// optionally the chain to it) via a [`ServerToClient::CertificatePush`].
+    ///
+    /// [`ServerToClient::CertificatePush`]: super::ServerToClient::CertificatePush
+    ChainFetch {
+        /// The ID of the missing certificate.
+        #[cfg_attr(test, proptest(strategy = "crate::tests::arbitrary_cert_id()"))]
+        cert_id: CertId,
     },
 }
 
@@ -133,6 +144,10 @@ impl From<ClientToServer> for Bytes {
                 is_handshake_complete,
                 error: Some(v1::client_protocol_error::Error::from(reason)),
             }),
+
+            ClientToServer::ChainFetch { cert_id } => Message::ChainFetch(v1::ChainFetch {
+                cert_id: Vec::from(cert_id).into(),
+            }),
         };
 
         encode(&v1::ClientToServer {
@@ -146,6 +161,79 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
+
+    /// Compare two [`ClientToServer`] for equality.
+    ///
+    /// [`ClientToServer`] cannot implement [`PartialEq`] as [`CertId`]
+    /// intentionally does not implement it.
+    fn messages_eq(a: &ClientToServer, b: &ClientToServer) -> bool {
+        match (a, b) {
+            (ClientToServer::Pong, ClientToServer::Pong) => true,
+            (
+                ClientToServer::ClientHello {
+                    client_nonce: a_nonce,
+                    graceful: a_graceful,
+                    ungraceful: a_ungraceful,
+                    last_closed_connection_duration: a_duration,
+                    reconnection_data: a_reconnection,
+                    version_info: a_version,
+                    app_name: a_app_name,
+                    app_version: a_app_version,
+                },
+                ClientToServer::ClientHello {
+                    client_nonce: b_nonce,
+                    graceful: b_graceful,
+                    ungraceful: b_ungraceful,
+                    last_closed_connection_duration: b_duration,
+                    reconnection_data: b_reconnection,
+                    version_info: b_version,
+                    app_name: b_app_name,
+                    app_version: b_app_version,
+                },
+            ) => {
+                a_nonce == b_nonce
+                    && a_graceful == b_graceful
+                    && a_ungraceful == b_ungraceful
+                    && a_duration == b_duration
+                    && a_reconnection == b_reconnection
+                    && a_version == b_version
+                    && a_app_name == b_app_name
+                    && a_app_version == b_app_version
+            }
+            (
+                ClientToServer::DispatchResponse {
+                    correlation_id: a_id,
+                    result: a_result,
+                },
+                ClientToServer::DispatchResponse {
+                    correlation_id: b_id,
+                    result: b_result,
+                },
+            ) => a_id == b_id && a_result == b_result,
+            (
+                ClientToServer::ProtocolError {
+                    reason: a_reason,
+                    is_handshake_complete: a_complete,
+                },
+                ClientToServer::ProtocolError {
+                    reason: b_reason,
+                    is_handshake_complete: b_complete,
+                },
+            ) => a_reason == b_reason && a_complete == b_complete,
+            (
+                ClientToServer::ChainFetch { cert_id: a_id },
+                ClientToServer::ChainFetch { cert_id: b_id },
+            ) => a_id.as_dangerous_comparable() == b_id.as_dangerous_comparable(),
+            (
+                ClientToServer::Pong
+                | ClientToServer::ClientHello { .. }
+                | ClientToServer::DispatchResponse { .. }
+                | ClientToServer::ProtocolError { .. }
+                | ClientToServer::ChainFetch { .. },
+                _,
+            ) => false,
+        }
+    }
 
     proptest! {
         #[test]
@@ -164,7 +252,7 @@ mod tests {
             // the output message variants are equal (a_out == b_out).
             assert_eq!(
                 // If the input ClientToServer instances are the same.
-                a == b,
+                messages_eq(&a, &b),
                 // Then the deterministic encoding must ensure the outputs are
                 // both identical.
                 a_out == b_out,
