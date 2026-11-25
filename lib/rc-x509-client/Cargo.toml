@@ -47,6 +47,7 @@ tokio = { version = "1.52.3", features = ["parking_lot"] }
 assert_matches = "1.5.0"
 proptest = "1.11.0"
 proptest-derive = "0.9.0"
+rc-x509-proto = { workspace = true, features = ["arbitrary"] }
 rc-x509-trust = { workspace = true, features = ["arbitrary"] }
 rc-x509-test-helpers = { workspace = true, features = ["test-issuer"] }
 static_assertions = "1.1.0"
