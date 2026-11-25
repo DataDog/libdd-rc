@@ -14,7 +14,9 @@
 
 use std::sync::Arc;
 
+use rc_crypto::connection_id::ConnectionId;
 use rc_x509_trust::EndpointHostname;
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
@@ -47,6 +49,26 @@ where
         endpoint_hostname: EndpointHostname,
         verifier: V,
     ) -> Self {
+        Self::new_with_connection_id_tx(
+            stop,
+            metrics,
+            dispatch,
+            app_info,
+            endpoint_hostname,
+            verifier,
+            None,
+        )
+    }
+
+    pub(crate) fn new_with_connection_id_tx(
+        stop: CancellationToken,
+        metrics: Arc<InstanceMetrics>,
+        dispatch: DispatchPublisher,
+        app_info: AppInfo,
+        endpoint_hostname: EndpointHostname,
+        verifier: V,
+        connection_id_tx: Option<watch::Sender<Option<ConnectionId>>>,
+    ) -> Self {
         Self(State::PreHandshake(fsm::Fsm::new(
             metrics,
             stop,
@@ -54,6 +76,7 @@ where
             app_info,
             verifier,
             endpoint_hostname,
+            connection_id_tx,
         )))
     }
 

@@ -98,6 +98,10 @@ where
 
                 debug!(%connection_id, "connection handshake complete");
 
+                if let Some(tx) = &self.connection_id_tx {
+                    let _ = tx.send(Some(connection_id.clone()));
+                }
+
                 State::Active(self.into_state(Active::new(connection_id)))
             }
 

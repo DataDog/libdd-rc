@@ -17,8 +17,10 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::{Stream, StreamExt};
+use rc_crypto::connection_id::ConnectionId;
 use rc_x509_roots::{R1, R2};
 use rc_x509_trust::trust_store::{MemoryCertCache, TrustStore};
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -82,6 +84,9 @@ pub struct Main<V> {
     /// The verifier of payload signatures used by all connections driven by
     /// this entrypoint.
     verifier: V,
+
+    /// Optional watcher notified when a connection completes handshake or disconnects.
+    connection_id_tx: Option<watch::Sender<Option<ConnectionId>>>,
 }
 
 impl Main<TrustStore<2, MemoryCertCache>> {
@@ -94,11 +99,23 @@ impl Main<TrustStore<2, MemoryCertCache>> {
             MemoryCertCache::new(APPROX_MAX_CACHE_BYTES as _),
         );
 
-        Self { app_info, verifier }
+        Self {
+            app_info,
+            verifier,
+            connection_id_tx: None,
+        }
     }
 }
 
 impl<V> Main<V> {
+    /// Attach a watch channel that publishes the active [`ConnectionId`] once
+    /// the handshake completes, and resets to `None` on disconnect or shutdown.
+    pub fn with_connection_id_watcher(mut self) -> (Self, watch::Receiver<Option<ConnectionId>>) {
+        let (tx, rx) = watch::channel(None);
+        self.connection_id_tx = Some(tx);
+        (self, rx)
+    }
+
     /// Replace the signature verifier with `v`, reducing the security of this
     /// client to whatever `v` enforces.
     ///
@@ -110,6 +127,7 @@ impl<V> Main<V> {
         Main {
             app_info: self.app_info,
             verifier: v,
+            connection_id_tx: self.connection_id_tx,
         }
     }
 }
@@ -141,6 +159,7 @@ where
             metrics,
             self.app_info,
             Arc::new(self.verifier),
+            self.connection_id_tx,
         )));
 
         // Wait forever for the shutdown signal.
@@ -174,6 +193,7 @@ async fn handle_connection_events<IO, V>(
     metrics: Arc<InstanceMetrics>,
     app_info: AppInfo,
     verifier: Arc<V>,
+    connection_id_tx: Option<watch::Sender<Option<ConnectionId>>>,
 ) where
     IO: Connection,
     V: AttestationVerifier + 'static,
@@ -192,6 +212,9 @@ async fn handle_connection_events<IO, V>(
             v = incoming.next() => v,
             _ = shutdown.wait_for_shutdown() => {
                 debug!("gracefully stopping connection event handler");
+                if let Some(tx) = &connection_id_tx {
+                    tx.send_replace(None);
+                }
                 if let Some(v) = active_conn.take() {
                     v.stop().await;
                 }
@@ -203,6 +226,9 @@ async fn handle_connection_events<IO, V>(
             Some(v) => v,
             None => {
                 debug!("connection event stream closed");
+                if let Some(tx) = &connection_id_tx {
+                    tx.send_replace(None);
+                }
                 if let Some(v) = active_conn.take() {
                     v.stop().await;
                 }
@@ -220,15 +246,20 @@ async fn handle_connection_events<IO, V>(
                     "connection established"
                 );
 
+                if let Some(tx) = &connection_id_tx {
+                    tx.send_replace(None);
+                }
+
                 let stop = shutdown.child_token();
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
-                let delegate = MessageDelegate::new(
+                let delegate = MessageDelegate::new_with_connection_id_tx(
                     stop.clone(),
                     Arc::clone(&metrics),
                     dispatch,
                     app_info.clone(), // Refclone
                     endpoint_hostname,
                     Arc::clone(&verifier),
+                    connection_id_tx.clone(),
                 );
                 let conn = ConnectionActor::new(
                     io,
@@ -245,6 +276,9 @@ async fn handle_connection_events<IO, V>(
                 }
             }
             ConnectionEvent::Disconnected => {
+                if let Some(tx) = &connection_id_tx {
+                    tx.send_replace(None);
+                }
                 if let Some(v) = active_conn.take() {
                     v.stop().await;
                 }
