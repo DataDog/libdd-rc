@@ -132,9 +132,9 @@ mod tests {
         },
         connection::{
             handler::delegate::fsm::test_helpers::{
-                any_server_to_client, arbitrary_invalid_dispatch_request, do_handshake,
-                filter_allowed_after_handshake, filter_allowed_at_any_time, filter_implemented,
-                has_reply,
+                any_server_to_client, arbitrary_connection_id, arbitrary_invalid_dispatch_request,
+                arbitrary_valid_dispatch_request, do_handshake, filter_allowed_after_handshake,
+                filter_allowed_at_any_time, filter_implemented, has_reply,
             },
             mock_verifier::MockVerifier,
         },
@@ -390,6 +390,21 @@ mod tests {
                 .block_on(prop_invalid_dispatch_raises_protocol_error_body(invalid_dispatch, valid_msg));
         }
 
+        /// A dispatch request targeting a connection ID other than the one
+        /// agreed during the handshake causes the client to raise a protocol
+        /// error, and refuse subsequent requests of any sort.
+        #[test]
+        fn prop_dispatch_connection_id_mismatch(
+            dispatch in arbitrary_valid_dispatch_request(arbitrary_connection_id()),
+            valid_msg in any_server_to_client(),
+        ) {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(prop_dispatch_connection_id_mismatch_body(dispatch, valid_msg));
+        }
+
         /// Assert that the message types accepted by the
         /// `filter_allowed_at_any_time` function can be delivered at any stage
         /// of the handshake while still leading to a successful handshake.
@@ -442,7 +457,7 @@ mod tests {
         let (mut client, mut server) = new_io_pair();
 
         // Drive a complete, successful handshake.
-        d = do_handshake(d, &mut client, &mut server).await;
+        (d, _) = do_handshake(d, &mut client, &mut server).await;
 
         // Nothing further from the client:
         assert_matches!(server.recv().now_or_never(), None);
@@ -546,7 +561,7 @@ mod tests {
         let (mut client, mut server) = new_io_pair();
 
         // Drive a complete, successful handshake.
-        d = do_handshake(d, &mut client, &mut server).await;
+        (d, _) = do_handshake(d, &mut client, &mut server).await;
 
         // Which completes the handshake for the client:
         assert_matches!(d.state(), State::Active(..));
@@ -593,7 +608,7 @@ mod tests {
         assert!(!server.is_connection_closed());
     }
 
-    async fn prop_any_message_after_handshake_body(msg: ServerToClient) {
+    async fn prop_any_message_after_handshake_body(mut msg: ServerToClient) {
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
@@ -608,10 +623,20 @@ mod tests {
         let (mut client, mut server) = new_io_pair();
 
         // Drive a complete, successful handshake.
-        d = do_handshake(d, &mut client, &mut server).await;
+        let connection_id;
+        (d, connection_id) = do_handshake(d, &mut client, &mut server).await;
 
         // Nothing further from the client:
         assert_matches!(server.recv().now_or_never(), None);
+
+        // Generated dispatch requests target a random connection ID - retarget
+        // them at this connection so they are accepted:
+        if let ServerToClient::Dispatch {
+            connection_id: id, ..
+        } = &mut msg
+        {
+            *id = Bytes::copy_from_slice(connection_id.as_bytes());
+        }
 
         // Deliver any message to the client:
         d = d.process(Ok(msg), &mut client).await;
@@ -622,7 +647,7 @@ mod tests {
     }
 
     async fn prop_invalid_dispatch_raises_protocol_error_body(
-        invalid_dispatch: ServerToClient,
+        mut invalid_dispatch: ServerToClient,
         valid_msg: ServerToClient,
     ) {
         let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
@@ -639,9 +664,20 @@ mod tests {
         let (mut client, mut server) = new_io_pair();
 
         // Drive a complete, successful handshake.
-        d = do_handshake(d, &mut client, &mut server).await;
+        let connection_id;
+        (d, connection_id) = do_handshake(d, &mut client, &mut server).await;
 
         assert_matches!(d.state(), State::Active(..));
+
+        // Retarget the invalid dispatch at this connection, so that the
+        // violation is caused by the generated defect, and not a connection ID
+        // mismatch:
+        assert_matches!(
+            &mut invalid_dispatch,
+            ServerToClient::Dispatch { connection_id: id, .. } => {
+                *id = Bytes::copy_from_slice(connection_id.as_bytes());
+            }
+        );
 
         // Deliver the invalid dispatch message:
         d = d.process(Ok(invalid_dispatch), &mut client).await;
@@ -668,6 +704,68 @@ mod tests {
                     | DispatchViolation::MalformedSignature(..)
                     | DispatchViolation::CertIdInvalidLength(..)
             )
+        );
+
+        // The client MUST now be in the error state:
+        assert_matches!(d.state(), State::Error(..));
+
+        // Which causes it to refuse any subsequent valid message:
+        d = d.process(Ok(valid_msg), &mut client).await;
+        assert_matches!(server.recv().now_or_never(), None);
+        assert_matches!(d.state(), State::Error(..));
+    }
+
+    async fn prop_dispatch_connection_id_mismatch_body(
+        dispatch: ServerToClient,
+        valid_msg: ServerToClient,
+    ) {
+        let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+            new_dispatcher_interconnect();
+        let mut d = MessageDelegate::new(
+            CancellationToken::default(),
+            Arc::new(InstanceMetrics::default()),
+            dispatch_publish,
+            AppInfo::new("bananas", "1.0.0"),
+            mock_endpoint_hostname(),
+            MockVerifier::default(),
+        );
+
+        let (mut client, mut server) = new_io_pair();
+
+        // Drive a complete, successful handshake.
+        let connection_id;
+        (d, connection_id) = do_handshake(d, &mut client, &mut server).await;
+
+        assert_matches!(d.state(), State::Active(..));
+
+        // The otherwise valid dispatch targets a random connection ID:
+        let correlation_id = assert_matches!(
+            &dispatch,
+            ServerToClient::Dispatch { connection_id: id, correlation_id, .. } => {
+                // The chance of generating the agreed connection ID is
+                // negligible.
+                if id.as_ref() == connection_id.as_bytes() {
+                    return;
+                }
+                *correlation_id
+            }
+        );
+
+        d = d.process(Ok(dispatch), &mut client).await;
+
+        // Which should cause the client to emit a protocol violation error:
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ProtocolError {
+                reason,
+                is_handshake_complete
+            }) => {
+                assert!(is_handshake_complete); // Complete
+                assert_eq!(
+                    reason,
+                    ProtocolError::Dispatch(correlation_id, DispatchViolation::ConnectionIdMismatch)
+                );
+            }
         );
 
         // The client MUST now be in the error state:

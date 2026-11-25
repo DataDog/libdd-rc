@@ -1,5 +1,6 @@
 Component,Origin,License,Copyright
 aho-corasick,https://github.com/BurntSushi/aho-corasick,Unlicense OR MIT,Andrew Gallant <jamslam@gmail.com>
+allocator-api2,https://github.com/zakarumych/allocator-api2,MIT OR Apache-2.0,Zakarum <zaq.dev@icloud.com>
 anstream,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 anstyle,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
 anstyle-parse,https://github.com/rust-cli/anstyle.git,MIT OR Apache-2.0,N/A
@@ -57,6 +58,7 @@ fastrand,https://github.com/smol-rs/fastrand,Apache-2.0 OR MIT,Stjepan Glavina <
 find-msvc-tools,https://github.com/rust-lang/cc-rs,MIT OR Apache-2.0,N/A
 fixedbitset,https://github.com/petgraph/fixedbitset,MIT OR Apache-2.0,bluss
 fnv,https://github.com/servo/rust-fnv,Apache-2.0 OR MIT,Alex Crichton <alex@alexcrichton.com>
+foldhash,https://github.com/orlp/foldhash,Zlib,Orson Peters <orsonpeters@gmail.com>
 foldhash,https://github.com/orlp/foldhash,Zlib,Orson Peters <orsonpeters@gmail.com>
 fs_extra,https://github.com/webdesus/fs_extra,MIT,Denis Kurilenko <webdesus@gmail.com>
 futures,https://github.com/rust-lang/futures-rs,MIT OR Apache-2.0,N/A

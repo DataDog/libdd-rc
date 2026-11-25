@@ -114,6 +114,7 @@ impl From<ClientToServer> for Bytes {
                 version_pre: version_info.pre().map(|v| v.to_string()),
                 app_name: app_name.to_string(),
                 app_version: app_version.to_string(),
+                metadata_snapshot: None,
             }),
 
             ClientToServer::Pong => Message::Pong(v1::Pong::default()),

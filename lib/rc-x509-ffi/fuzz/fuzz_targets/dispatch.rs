@@ -158,11 +158,17 @@ fuzz_target!(|v: (&[u8], &[u8])| {
     let payload = decode::<v1::ServerToClient>(message);
 
     match payload.map(|v| v.message) {
-        Ok(Some(v1::server_to_client::Message::Dispatch(v1::DispatchRequest {
-            correlation_id: server_sent_id,
-            encoded_dispatch_request,
-            signature: _,
-        }))) => {
+        // The client partially decodes the payload to extract the connection
+        // ID, so only a decodable payload is dispatched.
+        Ok(Some(v1::server_to_client::Message::Dispatch(req)))
+            if req.decode_connection_id().is_ok() =>
+        {
+            let v1::DispatchRequest {
+                correlation_id: server_sent_id,
+                encoded_dispatch_request,
+                signature: _,
+            } = req;
+
             // The client library will emit a Dispatch callback for this message
             // type.
             let (callback_id, callback_data) = dispatch_rx.recv().expect("sender not dropped");
@@ -263,6 +269,7 @@ where
     while let Some(v) = recv.next().await {
         match v {
             Ok(codec::ServerToClient::Dispatch {
+                connection_id: _,
                 correlation_id,
                 payload,
                 detached_signature: _,

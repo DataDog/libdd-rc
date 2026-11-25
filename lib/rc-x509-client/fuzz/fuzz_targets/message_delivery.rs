@@ -195,12 +195,12 @@ impl rc_x509_client::ProdSealed for AlwaysYesVerifier {}
 impl AttestationVerifier for AlwaysYesVerifier {
     fn verify(
         &self,
-        _signing_cert_id: CertId,
-        _signature: Signature,
-        payload: Payload,
+        _signing_cert_id: &CertId,
+        _signature: &Signature,
+        _payload: &Payload,
         _endpoint: &EndpointHostname,
-    ) -> Result<Payload, VerificationError> {
-        Ok(payload)
+    ) -> Result<(), VerificationError> {
+        Ok(())
     }
 
     fn add<U>(&self, _certs: U)
