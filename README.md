@@ -75,6 +75,13 @@ rc_conn_recv(conn, data, len)     // passes data received for the connection
 
 See the [FFI README](lib/rc-x509-ffi/README.md) for more details.
 
+## Log Output
+
+These crate logs via `tracing`; the output is considerably cleaner if you enable
+the `tracing_unstable` cfg ([docs][valuable]).
+
+[valuable]: https://docs.rs/tracing/latest/tracing/#unstable-features
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for commit signing requirements and

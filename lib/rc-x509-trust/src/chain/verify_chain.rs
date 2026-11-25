@@ -16,12 +16,13 @@ use rc_crypto::certificate::Certificate;
 use rustls_pki_types::{CertificateDer, SignatureVerificationAlgorithm, UnixTime};
 use thiserror::Error;
 use tracing::debug;
-use valuable::Valuable;
 use webpki::{
     ExtendedKeyUsageValidator, KeyPurposeId, KeyUsage, anchor_from_trusted_cert, aws_lc_rs,
 };
 
-use crate::{cert::UntrustedCert, chain::UntrustedChain, endpoint_hostname::EndpointHostname};
+use crate::{
+    AsLogValue, cert::UntrustedCert, chain::UntrustedChain, endpoint_hostname::EndpointHostname,
+};
 
 /// Signature algorithms that are accepted when validating the signatures within
 /// a certificate.
@@ -431,9 +432,9 @@ pub(crate) fn verify_chain<'a>(
     ee.verify_is_valid_for_subject_name(dns_name.as_server_name())?;
 
     debug!(
-        root = chain.root().as_value(),
-        leaf = cert.as_value(),
-        intermediates = chain.as_value(),
+        root = chain.root().as_log_value(),
+        leaf = cert.as_log_value(),
+        intermediates = chain.as_log_value(),
         "accepted certificate as valid"
     );
 

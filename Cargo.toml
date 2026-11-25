@@ -51,7 +51,9 @@ missing_debug_implementations = "warn" # Frequently used bound on data structure
 unused_crate_dependencies = "warn"     # Warn for unused dependencies
 
 # `cfg(fuzzing)` is used by cargo fuzz - do not warn about it.
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+#
+# `cfg(tracing_unstable)` optionally enables structured `valuable` log fields.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)", "cfg(tracing_unstable)"] }
 
 [workspace.dependencies]
 rc-crypto = { version = "0.1.8", path = "lib/rc-crypto", default-features = false }

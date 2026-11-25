@@ -12,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Record structured (`valuable`) log fields in local builds. This is optional -
+# without it, these fields are logged using their `Debug` representation.
 [build]
 rustflags = ["--cfg", "tracing_unstable"]

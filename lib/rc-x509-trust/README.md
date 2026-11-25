@@ -31,3 +31,10 @@ Additionally, a leaf / payload signer certificate has the following additional
 requirements:
 
 1. The certificate has an EKU (Extended Key Usage) for `codeSigning`.
+
+## Log Output
+
+This crate logs via `tracing`; the output is considerably cleaner if you enable
+the `tracing_unstable` cfg ([docs][valuable]).
+
+[valuable]: https://docs.rs/tracing/latest/tracing/#unstable-features

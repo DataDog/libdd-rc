@@ -53,6 +53,11 @@ jobs:
           - name: test # Saves the debug cacle.
             cmd: cargo test --workspace
             cache: debug
+          # The tracing_unstable cfg in .cargo/config.toml is optional - ensure
+          # builds work without it.
+          - name: no tracing_unstable
+            cmd: cargo clippy --workspace --all-targets --config 'build.rustflags=[]' -- -D warnings
+            cache: no-tracing-unstable
           - name: fmt
             cmd: cargo fmt --check
             cache: ""
