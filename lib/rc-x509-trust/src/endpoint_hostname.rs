@@ -30,7 +30,7 @@ use thiserror::Error;
 ///
 /// This value also supports IP addresses, but RC certificates are not typically
 /// issued with IP SANs, making IP addresses unsuitable for prod usage.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EndpointHostname(ServerName<'static>);
 
 impl EndpointHostname {
@@ -69,6 +69,7 @@ mod tests {
     fn test_parse_dns() {
         let got = EndpointHostname::try_from("us1.datadoqhq.com".to_string()).unwrap();
         assert_eq!(got.to_string(), "us1.datadoqhq.com");
+        assert_eq!(got.to_string(), got.clone().to_string());
     }
 
     /// This test fails because it is passing a URI, not a DNS hostname. The
