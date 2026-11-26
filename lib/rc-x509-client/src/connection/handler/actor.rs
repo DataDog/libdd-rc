@@ -358,7 +358,7 @@ mod tests {
             server.recv().await,
             None | Some(ClientToServer::ClientHello { .. })
         );
-        assert_eq!(server.recv().await, None);
+        assert_matches!(server.recv().await, None);
     }
 
     proptest! {
