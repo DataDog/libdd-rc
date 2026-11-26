@@ -1665,6 +1665,7 @@ name = "rc-x509-test-client-harness"
 version = "0.3.0"
 dependencies = [
  "assert_matches",
+ "proptest",
  "rc-crypto",
  "rc-x509-client",
  "rc-x509-proto",
