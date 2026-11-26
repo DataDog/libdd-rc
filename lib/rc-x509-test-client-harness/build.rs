@@ -58,21 +58,35 @@ fn rerun_if_head_changed(start: &Path) {
 fn main() {
     rerun_if_head_changed(&PathBuf::from(env!("CARGO_MANIFEST_DIR")));
 
-    if let Some(v) = option_env!("_OVERRIDE_GIT_VERSION_HASH") {
-        println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={v}");
-        return;
+    let git_call = Command::new("git").args(["rev-parse", "HEAD"]).output();
+
+    // Check if the execution succeeded (Ok) and if it did, check if the git
+    // command returned 0, else capture the error output.
+    let err = match git_call {
+        Ok(output) if output.status.success() => {
+            let hash = String::from_utf8_lossy(&output.stdout);
+            println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={hash}");
+            None
+        }
+        Ok(output) => Some(String::from_utf8_lossy(&output.stderr).to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+
+    // The hash couldn't be read, because of the error output in "err".
+    if let Some(err) = err {
+        // If there is a build-time override set, use this value:
+        if let Some(v) = option_env!("_OVERRIDE_GIT_VERSION_HASH") {
+            println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={v}");
+        } else {
+            // else the build is broken.
+            println!("cargo:warning=WARNING");
+            println!("cargo:warning=");
+            println!(
+                "cargo:warning=rc-x509-test-client-harness will have no embedded commit hash: {err}"
+            );
+            println!("cargo:warning=");
+            println!("cargo:warning=set _OVERRIDE_GIT_VERSION_HASH=hash in build env");
+            println!("cargo:warning=");
+        }
     }
-    let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .expect("failed to exec git");
-
-    assert!(
-        output.status.success(),
-        "git commit lookup failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let hash = String::from_utf8_lossy(&output.stdout);
-    println!("cargo:rustc-env=BUILD_GIT_COMMIT_HASH={hash}");
 }
