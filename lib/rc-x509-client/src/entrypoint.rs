@@ -31,7 +31,7 @@ use crate::{
         AttestationVerifier, ConnectionActor, ConnectionEvent, ConnectionUpdate, MessageDelegate,
     },
     host_runtime::Connection,
-    metrics::InstanceMetrics,
+    instance_state::InstanceState,
 };
 
 /// Time allotted to the [`LibraryEntrypoint`] for a graceful shutdown.
@@ -124,11 +124,11 @@ where
         shutdown: ShutdownSignal,
         conn_events: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
     ) {
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
 
         info!(
             version = %env!("CARGO_PKG_VERSION"),
-            commit = %metrics.version().commit().unwrap_or("unknown"),
+            commit = %instance_state.version().commit().unwrap_or("unknown"),
             app_name = %self.app_info.name(),
             app_version = %self.app_info.version(),
             "starting rc-x509-client instance"
@@ -138,7 +138,7 @@ where
         let conn_events = AbortOnDrop::from(tokio::spawn(handle_connection_events(
             shutdown.clone(),
             conn_events,
-            metrics,
+            instance_state,
             self.app_info,
             Arc::new(self.verifier),
         )));
@@ -171,7 +171,7 @@ where
 async fn handle_connection_events<IO, V>(
     shutdown: ShutdownSignal,
     incoming: impl Stream<Item = ConnectionUpdate<IO>> + Send + Sync + 'static,
-    metrics: Arc<InstanceMetrics>,
+    instance_state: Arc<InstanceState>,
     app_info: AppInfo,
     verifier: Arc<V>,
 ) where
@@ -224,7 +224,7 @@ async fn handle_connection_events<IO, V>(
                 let dispatch_stream = dispatch.take_recv_stream().expect("first call");
                 let delegate = MessageDelegate::new(
                     stop.clone(),
-                    Arc::clone(&metrics),
+                    Arc::clone(&instance_state),
                     dispatch,
                     app_info.clone(), // Refclone
                     endpoint_hostname,
@@ -235,7 +235,7 @@ async fn handle_connection_events<IO, V>(
                     stop.clone(),
                     delegate,
                     dispatch_stream,
-                    Arc::clone(&metrics),
+                    Arc::clone(&instance_state),
                 );
                 let task = tokio::spawn(conn.run());
 

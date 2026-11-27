@@ -74,7 +74,7 @@ where
             }
 
             ServerToClient::SetReconnectionData(v) => {
-                self.metrics.set_reconnection_data(v);
+                self.instance_state.set_reconnection_data(v);
                 State::Active(self)
             }
 

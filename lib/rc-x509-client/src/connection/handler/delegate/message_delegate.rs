@@ -25,7 +25,7 @@ use crate::{
         AttestationVerifier, SendToServer, ServerMessageDelegate, delegate::state::State,
     },
     dispatch::DispatchPublisher,
-    metrics::InstanceMetrics,
+    instance_state::InstanceState,
 };
 
 use super::fsm;
@@ -41,14 +41,14 @@ where
 {
     pub(crate) fn new(
         stop: CancellationToken,
-        metrics: Arc<InstanceMetrics>,
+        instance_state: Arc<InstanceState>,
         dispatch: DispatchPublisher,
         app_info: AppInfo,
         endpoint_hostname: EndpointHostname,
         verifier: V,
     ) -> Self {
         Self(State::PreHandshake(fsm::Fsm::new(
-            metrics,
+            instance_state,
             stop,
             dispatch,
             app_info,
@@ -152,7 +152,7 @@ mod tests {
             new_dispatcher_interconnect();
         let d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -171,14 +171,14 @@ mod tests {
     /// `ClientHello` of subsequent connections from the same instance.
     #[tokio::test]
     async fn test_reconnection_data_in_hello() {
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
 
         let new_delegate = || {
             let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
                 new_dispatcher_interconnect();
             MessageDelegate::new(
                 CancellationToken::default(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("bananas", "1.0.0"),
                 mock_endpoint_hostname(),
@@ -235,7 +235,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "opaque 1.0.0"),
             mock_endpoint_hostname(),
@@ -308,7 +308,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -344,7 +344,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -509,7 +509,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -556,7 +556,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -613,7 +613,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -675,7 +675,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -716,7 +716,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -785,7 +785,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -848,7 +848,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
@@ -922,7 +922,7 @@ mod tests {
             new_dispatcher_interconnect();
         let mut d = MessageDelegate::new(
             CancellationToken::default(),
-            Arc::new(InstanceMetrics::default()),
+            Arc::new(InstanceState::default()),
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),

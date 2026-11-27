@@ -22,7 +22,7 @@ pub mod connection;
 pub mod dispatch;
 pub mod entrypoint;
 pub mod host_runtime;
-mod metrics;
+mod instance_state;
 mod payload;
 mod prod_sealed;
 mod shutdown_signal;

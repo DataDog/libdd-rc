@@ -28,9 +28,9 @@ use crate::{
     },
 };
 
-/// Metrics collected by the client library across connections.
+/// State and metrics shared by the client library across connections.
 #[derive(Debug, Default)]
-pub(crate) struct InstanceMetrics {
+pub(crate) struct InstanceState {
     version: BuildVersion,
 
     graceful_disconnect: GracefulDisconnectionCount,
@@ -44,7 +44,7 @@ pub(crate) struct InstanceMetrics {
     reconnection_data: Mutex<Option<ReconnectionData>>,
 }
 
-impl InstanceMetrics {
+impl InstanceState {
     /// Return the [`BuildVersion`] for this execution.
     pub(crate) fn version(&self) -> &BuildVersion {
         &self.version
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_version() {
-        let m = InstanceMetrics::default();
+        let m = InstanceState::default();
         let version = BuildVersion::from_build();
 
         assert_eq!(*m.version(), version);
@@ -108,7 +108,7 @@ mod tests {
         fn prop_last_conn_duration(
             values in prop::collection::vec(any::<Duration>(), 2..20),
         ) {
-            let m = InstanceMetrics::default();
+            let m = InstanceState::default();
 
             for v in values {
                 m.set_last_conn_duration(v);
@@ -122,7 +122,7 @@ mod tests {
         fn prop_reconnection_data(
             values in prop::collection::vec(any::<ReconnectionData>(), 1..20),
         ) {
-            let m = InstanceMetrics::default();
+            let m = InstanceState::default();
             assert_eq!(m.reconnection_data(), None);
 
             for v in values {
