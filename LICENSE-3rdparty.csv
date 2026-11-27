@@ -90,6 +90,7 @@ lazy_static,https://github.com/rust-lang-nursery/lazy-static.rs,MIT OR Apache-2.
 libc,https://github.com/rust-lang/libc,MIT OR Apache-2.0,N/A
 libfuzzer-sys,https://github.com/rust-fuzz/libfuzzer,MIT OR Apache-2.0 OR NCSA,The rust-fuzz Project Developers
 libloading,https://github.com/nagisa/rust_libloading/,ISC,Simonas Kazlauskas <libloading@kazlauskas.me>
+libm,https://github.com/rust-lang/compiler-builtins,MIT,Alex Crichton <alex@alexcrichton.com>, Amanieu d'Antras <amanieu@gmail.com>, Jorge Aparicio <japaricious@gmail.com>, Trevor Gross <tg@trevorgross.com>
 linux-raw-sys,https://github.com/sunfishcode/linux-raw-sys,Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT,Dan Gohman <dev@sunfishcode.online>
 lock_api,https://github.com/Amanieu/parking_lot,MIT OR Apache-2.0,Amanieu d'Antras <amanieu@gmail.com>
 log,https://github.com/rust-lang/log,MIT OR Apache-2.0,The Rust Project Developers
@@ -216,6 +217,7 @@ windows-sys,https://github.com/microsoft/windows-rs,MIT OR Apache-2.0,N/A
 winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 winnow,https://github.com/winnow-rs/winnow,MIT,N/A
 x509-parser,https://github.com/rusticata/x509-parser.git,MIT OR Apache-2.0,Pierre Chifflier <chifflier@wzdftpd.net>
+xorf,https://github.com/ayazhafiz/xorf,MIT,ayazhafiz <ayaz.hafiz.1@gmail.com>
 yasna,https://github.com/qnighy/yasna.rs,MIT OR Apache-2.0,Masaki Hara <ackie.h.gmai@gmail.com>
 zeroize,https://github.com/RustCrypto/utils,Apache-2.0 OR MIT,The RustCrypto Project Developers
 zmij,https://github.com/dtolnay/zmij,MIT,David Tolnay <dtolnay@gmail.com>

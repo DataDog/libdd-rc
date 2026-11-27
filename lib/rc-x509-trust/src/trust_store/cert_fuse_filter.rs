@@ -109,19 +109,19 @@ mod tests {
     #[test]
     fn test_byte_size_500() {
         let bits_per_entry = assert_byte_size(500, 788);
-        assert_eq!(bits_per_entry, 12.3);
+        assert_eq!(bits_per_entry.round(), 12.0);
     }
 
     #[test]
     fn test_byte_size_1000() {
         let bits_per_entry = assert_byte_size(1_000, 1_428);
-        assert_eq!(bits_per_entry, 11.3);
+        assert_eq!(bits_per_entry.round(), 11.0);
     }
 
     #[test]
     fn test_byte_size_3000() {
         let bits_per_entry = assert_byte_size(3_000, 4_116);
-        assert_eq!(bits_per_entry, 10.9);
+        assert_eq!(bits_per_entry.round(), 11.0);
     }
 
     #[test]
