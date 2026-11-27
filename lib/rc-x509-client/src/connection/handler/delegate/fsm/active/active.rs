@@ -73,8 +73,8 @@ where
                 self.handle_cert_push_ignore_deferred(reply, certs).await
             }
 
-            ServerToClient::SetReconnectionData(..) => {
-                // TODO: implement.
+            ServerToClient::SetReconnectionData(v) => {
+                self.metrics.set_reconnection_data(v);
                 State::Active(self)
             }
 

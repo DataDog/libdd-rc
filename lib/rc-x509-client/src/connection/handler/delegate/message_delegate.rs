@@ -131,10 +131,11 @@ mod tests {
             tests::SAMPLE_CERT_DER,
         },
         connection::{
+            ReconnectionData,
             handler::delegate::fsm::test_helpers::{
                 any_server_to_client, arbitrary_connection_id, arbitrary_invalid_dispatch_request,
                 arbitrary_valid_dispatch_request, do_handshake, filter_allowed_after_handshake,
-                filter_allowed_at_any_time, filter_implemented, has_reply,
+                filter_allowed_at_any_time, has_reply,
             },
             mock_verifier::MockVerifier,
         },
@@ -164,6 +165,67 @@ mod tests {
 
         let got = server.recv().await.expect("must reply");
         assert_matches!(got, ClientToServer::Pong);
+    }
+
+    /// Reconnection data received on one connection is reflected back in the
+    /// `ClientHello` of subsequent connections from the same instance.
+    #[tokio::test]
+    async fn test_reconnection_data_in_hello() {
+        let metrics = Arc::new(InstanceMetrics::default());
+
+        let new_delegate = || {
+            let (dispatch_publish, _dispatch_stream, _dispatch_responder) =
+                new_dispatcher_interconnect();
+            MessageDelegate::new(
+                CancellationToken::default(),
+                Arc::clone(&metrics),
+                dispatch_publish,
+                AppInfo::new("bananas", "1.0.0"),
+                mock_endpoint_hostname(),
+                MockVerifier::default(),
+            )
+        };
+
+        let (mut client, mut server) = new_io_pair();
+
+        // The first connection receives reconnection data from the server
+        // before the handshake.
+        let want = ReconnectionData::new(Bytes::from_static(b"platanos"));
+        let d = new_delegate()
+            .process(
+                Ok(ServerToClient::SetReconnectionData(want.clone())),
+                &mut client,
+            )
+            .await;
+        assert_matches!(d.state(), State::PreHandshake(..));
+
+        // Which is presented in the hello of the first connection:
+        d.send_hello(&mut client).await;
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ClientHello { reconnection_data, .. }) => {
+                assert_eq!(reconnection_data, Some(want));
+            }
+        );
+
+        // And the server updates it after the handshake has started.
+        let want = ReconnectionData::new(Bytes::from_static(b"bananas"));
+        let d = new_delegate().send_hello(&mut client).await;
+        let _ = server.recv().await.expect("must send hello");
+        d.process(
+            Ok(ServerToClient::SetReconnectionData(want.clone())),
+            &mut client,
+        )
+        .await;
+
+        // A new connection presents the latest reconnection data.
+        new_delegate().send_hello(&mut client).await;
+        assert_matches!(
+            server.recv().await,
+            Some(ClientToServer::ClientHello { reconnection_data, .. }) => {
+                assert_eq!(reconnection_data, Some(want));
+            }
+        );
     }
 
     /// Happy path test for a successful handshake.
@@ -324,7 +386,7 @@ mod tests {
         /// even once the handshake has completed.
         #[test]
         fn prop_deserialisation_error_rejects_messages(
-            msg in filter_allowed_after_handshake(filter_implemented(any_server_to_client())),
+            msg in filter_allowed_after_handshake(any_server_to_client()),
         ) {
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -366,7 +428,7 @@ mod tests {
         /// completed without causing it to transition into the error state.
         #[test]
         fn prop_any_message_after_handshake(
-            msg in filter_allowed_after_handshake(filter_implemented(any_server_to_client())),
+            msg in filter_allowed_after_handshake(any_server_to_client()),
         ) {
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()

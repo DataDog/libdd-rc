@@ -31,7 +31,7 @@ pub(super) fn build_hello(
             graceful: metrics.graceful_disconnect(),
             ungraceful: metrics.ungraceful_disconnect(),
             last_closed_connection_duration: metrics.last_conn_duration(),
-            reconnection_data: None,
+            reconnection_data: metrics.reconnection_data(),
             version_info: metrics.version().clone(),
             app_name: app_info.name().clone(),       // Refclone
             app_version: app_info.version().clone(), // Refclone

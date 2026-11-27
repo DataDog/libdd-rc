@@ -205,7 +205,7 @@ pub(crate) fn arbitrary_invalid_dispatch_request() -> impl Strategy<Value = Serv
 pub(crate) fn filter_allowed_at_any_time(
     input: impl Strategy<Value = ServerToClient>,
 ) -> impl Strategy<Value = ServerToClient> {
-    filter_implemented(input).prop_filter("allowed at any time filter", |v| match v {
+    input.prop_filter("allowed at any time filter", |v| match v {
         // These message types have ordering restrictions:
         ServerToClient::Dispatch { .. } | ServerToClient::ClientHelloAck { .. } => false,
         _ => true,
@@ -219,15 +219,6 @@ pub(crate) fn filter_allowed_after_handshake(
 ) -> impl Strategy<Value = ServerToClient> {
     input.prop_filter("allowed after handshake filter", |v| {
         !matches!(v, ServerToClient::ClientHelloAck { .. })
-    })
-}
-
-// A temporary filter until all handlers are implemented.
-pub(crate) fn filter_implemented(
-    input: impl Strategy<Value = ServerToClient>,
-) -> impl Strategy<Value = ServerToClient> {
-    input.prop_filter("implemented filter", |v| {
-        !matches!(v, ServerToClient::SetReconnectionData(..))
     })
 }
 
