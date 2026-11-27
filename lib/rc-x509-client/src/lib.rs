@@ -38,6 +38,10 @@ pub use shutdown_signal::*;
 /// internal detail).
 pub use rc_x509_trust::EndpointHostname;
 
+/// Re-export `ConnectionId` so hosts can observe handshake completion without
+/// depending on `rc-crypto` directly.
+pub use rc_crypto::connection_id::ConnectionId;
+
 #[cfg(test)]
 mod mocks;
 

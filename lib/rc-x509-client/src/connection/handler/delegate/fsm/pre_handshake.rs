@@ -17,7 +17,9 @@
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use rc_crypto::connection_id::ConnectionId;
 use rc_x509_trust::EndpointHostname;
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -54,6 +56,7 @@ impl<V> Fsm<PreHandshake, V> {
         app_info: AppInfo,
         verifier: V,
         endpoint_hostname: EndpointHostname,
+        connection_id_tx: Option<watch::Sender<Option<ConnectionId>>>,
     ) -> Self {
         Self {
             metrics,
@@ -61,6 +64,7 @@ impl<V> Fsm<PreHandshake, V> {
             dispatch,
             verifier,
             endpoint_hostname,
+            connection_id_tx,
             state: PreHandshake { app_info },
         }
     }

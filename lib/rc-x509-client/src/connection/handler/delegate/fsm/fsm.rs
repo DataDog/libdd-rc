@@ -14,7 +14,9 @@
 
 use std::{fmt::Debug, sync::Arc};
 
+use rc_crypto::connection_id::ConnectionId;
 use rc_x509_trust::{EndpointHostname, cert::UntrustedCertBytes};
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace, warn};
 
@@ -50,6 +52,8 @@ pub(crate) struct Fsm<S, V> {
     /// The [`EndpointHostname`] passed to the verifier to enforce the DC pin.
     pub(super) endpoint_hostname: EndpointHostname,
 
+    pub(super) connection_id_tx: Option<watch::Sender<Option<ConnectionId>>>,
+
     pub(super) state: S,
 }
 
@@ -70,6 +74,7 @@ where
             dispatch: self.dispatch,
             verifier: self.verifier,
             endpoint_hostname: self.endpoint_hostname,
+            connection_id_tx: self.connection_id_tx,
             state,
         }
     }
