@@ -19,7 +19,7 @@ use rc_x509_proto::protocol::v1;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{
     codec::{DecodingError, ServerToClient},
@@ -148,7 +148,7 @@ where
     }
 
     async fn server_message(mut self, msg: Result<ServerToClient, DecodingError>) -> Self {
-        debug!(?msg, "received message from server");
+        trace!(?msg, "received message from server");
 
         // Delegate processing of messages to the dedicated handler:
         self.delegate = self.delegate.process(msg, &mut self.io).await;
@@ -156,7 +156,7 @@ where
     }
 
     async fn dispatch_response(&mut self, v: DispatchResult) {
-        debug!(?v, "received dispatch result from application");
+        trace!(?v, "received dispatch result from application");
 
         let result = match v.result {
             Ok(payload) => v1::dispatch_response::Result::Payload(payload),

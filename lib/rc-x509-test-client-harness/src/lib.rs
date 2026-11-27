@@ -17,6 +17,9 @@
 use rc_x509_test_helpers as _;
 use rc_x509_trust as _;
 
+#[cfg(test)]
+use proptest as _;
+
 mod builder;
 /// A mock client driving the [`rc_x509_client`] entrypoint end-to-end.
 pub mod client;

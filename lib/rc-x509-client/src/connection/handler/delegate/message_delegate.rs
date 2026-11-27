@@ -617,7 +617,7 @@ mod tests {
             dispatch_publish,
             AppInfo::new("bananas", "1.0.0"),
             mock_endpoint_hostname(),
-            MockVerifier::default(),
+            MockVerifier::default().with_verify_ret([Ok(())]),
         );
 
         let (mut client, mut server) = new_io_pair();

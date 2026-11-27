@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{ops::Deref, time::Duration};
+use std::{iter, ops::Deref, time::Duration};
 
 use assert_matches::assert_matches;
 use rc_crypto::{
-    Signature,
-    certificate::{Certificate, id::CertId},
+    certificate::Certificate,
     connection_id::{ConnectionId, IdNonce, UntrustedConnectionId},
 };
 use rc_x509_client::{
@@ -35,6 +34,7 @@ use rc_x509_proto::{
     magic_tunnel::v1::{MagicTunnelRequest, MagicTunnelResponse, magic_tunnel_response},
     protocol::v1,
 };
+use rc_x509_test_helpers::test_issuer::{Identity, TestChain};
 use rc_x509_trust::cert::UntrustedCertBytes;
 use tokio::{sync::mpsc, time::timeout};
 use tokio_stream::StreamExt;
@@ -93,7 +93,8 @@ impl TestClient {
             .send(ConnectionUpdate::new(ConnectionEvent::Connected(
                 io,
                 dispatch_publisher,
-                EndpointHostname::try_from("config.itsallbroken.com".to_string()).unwrap(),
+                // Matches the leaf SAN issued by the test chain builders.
+                EndpointHostname::try_from("leaf.itsallbroken.com".to_string()).unwrap(),
             )))
             .await
             .expect("notify: connection connected");
@@ -186,18 +187,30 @@ impl TestConn {
         connection_id
     }
 
-    /// Simulate the server sending a dispatch request for `uri` with
-    /// `request`, correlated by `correlation_id`.
+    /// Push the certificates in a [`TestChain`] to the client.
+    pub async fn push_chain(&mut self, chain: &TestChain) {
+        self.send(Ok(ServerToClient::CertificatePush(
+            chain
+                .intermediates
+                .iter()
+                .chain(iter::once(&chain.leaf))
+                .map(|v| UntrustedCertBytes::new(v.cert().as_der()))
+                .collect(),
+        )))
+        .await
+    }
+
+    /// Construct a valid [`ServerToClient::Dispatch`] request for `uri` with
+    /// `request`, correlated by `correlation_id` and signed by `signer`.
     ///
     /// The connection handshake must have been performed first.
-    pub async fn dispatch_magic_tunnel(
-        &mut self,
+    pub fn new_magic_tunnel_dispatch(
+        &self,
         correlation_id: CorrelationId,
-        signer_cert_id: &CertId,
-        signature: Signature,
+        signer: &Identity,
         uri: &str,
         request: Bytes,
-    ) {
+    ) -> ServerToClient {
         let connection_id = self
             .connection_id
             .clone()
@@ -212,19 +225,19 @@ impl TestConn {
                 },
             )),
         }));
+        let signature = signer.sign(payload.as_bytes());
 
-        self.send(Ok(ServerToClient::Dispatch {
+        ServerToClient::Dispatch {
             connection_id: connection_id.uuid_v8.clone(),
             correlation_id,
             payload,
             detached_signature: Some(DetachedSignature {
                 cert_id: Bytes::copy_from_slice(
-                    signer_cert_id.as_dangerous_comparable().as_bytes(),
+                    signer.cert().cert_id().as_dangerous_comparable().as_bytes(),
                 ),
                 signature: Bytes::copy_from_slice(signature.as_ref()),
             }),
-        }))
-        .await;
+        }
     }
 
     /// Wait for the client to route a dispatch request to the application.
@@ -238,6 +251,16 @@ impl TestConn {
             dispatch,
             responder: self.dispatch_response.clone(),
         }
+    }
+
+    /// Send a PING to the client and assert it is not answered (the client is
+    /// refusing to process further requests; i.e. it has emitted a protocol
+    /// error).
+    pub async fn assert_refuses_messages(&mut self) {
+        self.send(Ok(ServerToClient::Ping)).await;
+        tokio::time::timeout(Duration::from_millis(50), self.recv())
+            .await
+            .expect_err("must timeout - client should ignore messages after protocol error");
     }
 
     /// Close this connection.

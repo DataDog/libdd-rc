@@ -58,3 +58,6 @@ non-fips = [
 	"rc-x509-test-helpers/non-fips",
 	"rc-x509-trust/non-fips",
 ]
+
+[dev-dependencies]
+proptest = "1.12.0"
