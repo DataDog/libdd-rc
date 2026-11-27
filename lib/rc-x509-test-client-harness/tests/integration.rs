@@ -284,3 +284,45 @@ async fn test_push_certs() {
 
     client.shutdown().await;
 }
+
+/// Ensure reconnection data set by the server is echoed back in the
+/// `ClientHello` of subsequent connections, with the most recent value winning.
+#[tokio::test]
+async fn test_reconnection_data_echoed() {
+    logging::init();
+
+    let mut client = TestClient::default();
+
+    // The first connection has no reconnection data to present.
+    let mut conn = client.new_connection().await;
+    assert_matches!(
+        conn.recv().await.into_inner(),
+        ClientToServer::ClientHello { reconnection_data, .. } => {
+            assert_eq!(reconnection_data, None);
+        }
+    );
+
+    // The server provides reconnection data before the handshake completes,
+    // and then replaces it.
+    conn.set_reconnection_data(Bytes::from_static(b"bananas"))
+        .await;
+    conn.set_reconnection_data(Bytes::from_static(b"platanos"))
+        .await;
+
+    // Ensure the client has processed the above before disconnecting.
+    conn.send(Ok(ServerToClient::Ping)).await;
+    assert_matches!(conn.recv().await.into_inner(), ClientToServer::Pong);
+    conn.close().await;
+
+    // The next connection presents the most recent reconnection data.
+    let mut conn = client.new_connection().await;
+    assert_matches!(
+        conn.recv().await.into_inner(),
+        ClientToServer::ClientHello { reconnection_data, .. } => {
+            assert_eq!(reconnection_data.unwrap().as_bytes().as_ref(), b"platanos");
+        }
+    );
+    conn.close().await;
+
+    client.shutdown().await;
+}
