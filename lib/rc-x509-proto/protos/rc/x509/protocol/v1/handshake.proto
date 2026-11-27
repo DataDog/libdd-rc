@@ -28,7 +28,13 @@ message ClientHello {
   // Opaque data previously provided by the server by a `SetReconnectionData`
   // message, or an empty payload if none has been previously set.
   //
+  // Reconnection data is stored at the instance level and shared across all
+  // connections. Concurrent writes to the connection data resolve with "last
+  // write wins" internally with no guarantee of ordering.
+  //
   // This data is opaque to the client; it MUST NOT change this data in any way.
+  // The server MUST NOT trust this data implicitly, as it is a client-side
+  // controlled value that can be manipulated.
   bytes reconnection_data = 4;
 
   // Client build version information.

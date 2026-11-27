@@ -146,6 +146,23 @@ impl TestConn {
         .await
     }
 
+    /// Send `opaque` reconnection data to the client, as the server would.
+    pub async fn set_reconnection_data(&mut self, opaque: Bytes) {
+        let wire = encode(&v1::ServerToClient {
+            message: Some(v1::server_to_client::Message::SetReconnectionData(
+                v1::SetReconnectionData { opaque },
+            )),
+        });
+
+        let data = assert_matches!(
+            ServerToClient::try_from(wire.as_ref()),
+            Ok(ServerToClient::SetReconnectionData(v)) => v
+        );
+
+        self.send(Ok(ServerToClient::SetReconnectionData(data)))
+            .await;
+    }
+
     /// Wait for the client to send a [`ClientToServer`].
     pub async fn recv(&mut self) -> TestClientToServer {
         TestClientToServer(self.io.recv().await.expect("failed to recv from client"))

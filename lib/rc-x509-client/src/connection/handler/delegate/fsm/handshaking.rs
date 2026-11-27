@@ -61,8 +61,8 @@ where
                 self.handle_cert_push_ignore_deferred(reply, certs).await
             }
 
-            ServerToClient::SetReconnectionData(..) => {
-                // TODO: implement.
+            ServerToClient::SetReconnectionData(v) => {
+                self.instance_state.set_reconnection_data(v);
                 State::Handshaking(self)
             }
 

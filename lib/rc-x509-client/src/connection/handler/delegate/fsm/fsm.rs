@@ -28,7 +28,7 @@ use crate::{
         },
     },
     dispatch::DispatchPublisher,
-    metrics::InstanceMetrics,
+    instance_state::InstanceState,
 };
 
 use super::Error;
@@ -37,7 +37,7 @@ use super::Error;
 /// `state`.
 #[derive(Debug)]
 pub(crate) struct Fsm<S, V> {
-    pub(super) metrics: Arc<InstanceMetrics>,
+    pub(super) instance_state: Arc<InstanceState>,
     pub(super) stop: CancellationToken,
     pub(super) dispatch: DispatchPublisher,
 
@@ -65,7 +65,7 @@ where
         trace!(from=?self.state, to=?state, "fsm transition");
 
         Fsm {
-            metrics: self.metrics,
+            instance_state: self.instance_state,
             stop: self.stop,
             dispatch: self.dispatch,
             verifier: self.verifier,

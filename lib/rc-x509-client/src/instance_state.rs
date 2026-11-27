@@ -13,18 +13,24 @@
 // limitations under the License.
 
 use std::{
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        Mutex, PoisonError,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Duration,
 };
 
 use crate::{
     build_version::BuildVersion,
-    connection::{GracefulDisconnectionCount, LastConnectedDuration, UngracefulDisconnectionCount},
+    connection::{
+        GracefulDisconnectionCount, LastConnectedDuration, ReconnectionData,
+        UngracefulDisconnectionCount,
+    },
 };
 
-/// Metrics collected by the client library across connections.
+/// State and metrics shared by the client library across connections.
 #[derive(Debug, Default)]
-pub(crate) struct InstanceMetrics {
+pub(crate) struct InstanceState {
     version: BuildVersion,
 
     graceful_disconnect: GracefulDisconnectionCount,
@@ -32,9 +38,13 @@ pub(crate) struct InstanceMetrics {
 
     /// Number of seconds the last connection was connected for.
     last_conn_duration: AtomicU64,
+
+    /// The most recent opaque [`ReconnectionData`] provided by the server, to
+    /// be reflected back in the next `ClientHello`.
+    reconnection_data: Mutex<Option<ReconnectionData>>,
 }
 
-impl InstanceMetrics {
+impl InstanceState {
     /// Return the [`BuildVersion`] for this execution.
     pub(crate) fn version(&self) -> &BuildVersion {
         &self.version
@@ -58,6 +68,22 @@ impl InstanceMetrics {
         self.last_conn_duration
             .store(v.as_secs(), Ordering::Relaxed);
     }
+
+    /// Return the most recently set [`ReconnectionData`], if any.
+    pub(crate) fn reconnection_data(&self) -> Option<ReconnectionData> {
+        self.reconnection_data
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone() // Refclone
+    }
+
+    /// Replace the [`ReconnectionData`] to send in subsequent handshakes.
+    pub(crate) fn set_reconnection_data(&self, v: ReconnectionData) {
+        *self
+            .reconnection_data
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(v);
+    }
 }
 
 // TODO: record disconnection metrics
@@ -70,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_version() {
-        let m = InstanceMetrics::default();
+        let m = InstanceState::default();
         let version = BuildVersion::from_build();
 
         assert_eq!(*m.version(), version);
@@ -82,11 +108,26 @@ mod tests {
         fn prop_last_conn_duration(
             values in prop::collection::vec(any::<Duration>(), 2..20),
         ) {
-            let m = InstanceMetrics::default();
+            let m = InstanceState::default();
 
             for v in values {
                 m.set_last_conn_duration(v);
                 assert_eq!(m.last_conn_duration().as_seconds(), v.as_secs());
+            }
+        }
+
+        /// Storing and reading back reconnection data, with the last write
+        /// winning.
+        #[test]
+        fn prop_reconnection_data(
+            values in prop::collection::vec(any::<ReconnectionData>(), 1..20),
+        ) {
+            let m = InstanceState::default();
+            assert_eq!(m.reconnection_data(), None);
+
+            for v in values {
+                m.set_reconnection_data(v.clone());
+                assert_eq!(m.reconnection_data(), Some(v));
             }
         }
     }

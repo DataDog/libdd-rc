@@ -15,11 +15,11 @@
 use rc_crypto::connection_id::IdNonce;
 use tokio_util::bytes::Bytes;
 
-use crate::{app_info::AppInfo, codec::ClientToServer, metrics::InstanceMetrics};
+use crate::{app_info::AppInfo, codec::ClientToServer, instance_state::InstanceState};
 
 pub(super) fn build_hello(
     app_info: &AppInfo,
-    metrics: &InstanceMetrics,
+    instance_state: &InstanceState,
 ) -> (IdNonce, ClientToServer) {
     let nonce = IdNonce::default();
     let client_nonce = Bytes::copy_from_slice(nonce.as_bytes());
@@ -28,11 +28,11 @@ pub(super) fn build_hello(
         nonce,
         ClientToServer::ClientHello {
             client_nonce,
-            graceful: metrics.graceful_disconnect(),
-            ungraceful: metrics.ungraceful_disconnect(),
-            last_closed_connection_duration: metrics.last_conn_duration(),
-            reconnection_data: None,
-            version_info: metrics.version().clone(),
+            graceful: instance_state.graceful_disconnect(),
+            ungraceful: instance_state.ungraceful_disconnect(),
+            last_closed_connection_duration: instance_state.last_conn_duration(),
+            reconnection_data: instance_state.reconnection_data(),
+            version_info: instance_state.version().clone(),
             app_name: app_info.name().clone(),       // Refclone
             app_version: app_info.version().clone(), // Refclone
         },

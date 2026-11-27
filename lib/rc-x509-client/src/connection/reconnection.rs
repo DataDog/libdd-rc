@@ -95,7 +95,8 @@ impl ReconnectionData {
         Self(bytes)
     }
 
-    pub(crate) fn as_bytes(&self) -> &Bytes {
+    /// Return the opaque reconnection data bytes.
+    pub fn as_bytes(&self) -> &Bytes {
         &self.0
     }
 }

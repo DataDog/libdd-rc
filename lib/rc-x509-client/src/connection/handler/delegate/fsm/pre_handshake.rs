@@ -32,7 +32,7 @@ use crate::{
         },
     },
     dispatch::DispatchPublisher,
-    metrics::InstanceMetrics,
+    instance_state::InstanceState,
 };
 
 use super::{Fsm, Handshaking, ServerMessageDelegate};
@@ -48,7 +48,7 @@ pub(crate) struct PreHandshake {
 
 impl<V> Fsm<PreHandshake, V> {
     pub(crate) fn new(
-        metrics: Arc<InstanceMetrics>,
+        instance_state: Arc<InstanceState>,
         stop: CancellationToken,
         dispatch: DispatchPublisher,
         app_info: AppInfo,
@@ -56,7 +56,7 @@ impl<V> Fsm<PreHandshake, V> {
         endpoint_hostname: EndpointHostname,
     ) -> Self {
         Self {
-            metrics,
+            instance_state,
             stop,
             dispatch,
             verifier,
@@ -80,7 +80,7 @@ where
     /// Send a `ClientHello`, (re)starting the handshake and transitioning to
     /// [`Handshaking`] with a freshly generated nonce.
     async fn send_hello(self, reply: &mut IO) -> State<V> {
-        let (nonce, hello) = build_hello(&self.state.app_info, &self.metrics);
+        let (nonce, hello) = build_hello(&self.state.app_info, &self.instance_state);
         retry_send(reply, hello, &self.stop).await;
 
         State::Handshaking(self.into_state(Handshaking(nonce)))
@@ -97,8 +97,8 @@ where
                 self.handle_cert_push_ignore_deferred(reply, certs).await
             }
 
-            ServerToClient::SetReconnectionData(..) => {
-                // TODO: implement.
+            ServerToClient::SetReconnectionData(v) => {
+                self.instance_state.set_reconnection_data(v);
                 State::PreHandshake(self)
             }
 

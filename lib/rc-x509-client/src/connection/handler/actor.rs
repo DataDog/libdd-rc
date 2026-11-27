@@ -26,7 +26,7 @@ use crate::{
     connection::handler::ServerMessageDelegate,
     dispatch::DispatchResult,
     host_runtime::Connection,
-    metrics::InstanceMetrics,
+    instance_state::InstanceState,
 };
 
 /// The control loop for a single connection to the RC backend.
@@ -52,8 +52,8 @@ pub(crate) struct ConnectionActor<IO, T, D> {
     /// A [`ServerToClient`] message processing delegate.
     delegate: T,
 
-    /// Client metrics shared across connections.
-    metrics: Arc<InstanceMetrics>,
+    /// Client state shared across connections.
+    instance_state: Arc<InstanceState>,
 }
 
 impl<IO, T, D> ConnectionActor<IO, T, D>
@@ -70,14 +70,14 @@ where
         stop: CancellationToken,
         delegate: T,
         dispatch_stream: D,
-        metrics: Arc<InstanceMetrics>,
+        instance_state: Arc<InstanceState>,
     ) -> Self {
         Self {
             io,
             stop: stop.clone(),
             dispatch_stream: Some(dispatch_stream),
             delegate,
-            metrics,
+            instance_state,
         }
     }
 }
@@ -95,13 +95,13 @@ where
     pub(crate) async fn run(self) {
         // Grab the timestamp for connection lifetime reporting later.
         let start = Instant::now();
-        let metrics = Arc::clone(&self.metrics);
+        let instance_state = Arc::clone(&self.instance_state);
 
         // Run the main actor loop.
         self.run_loop().await;
 
         // Record the duration this connection was active.
-        metrics.set_last_conn_duration(start.elapsed());
+        instance_state.set_last_conn_duration(start.elapsed());
     }
 
     async fn run_loop(mut self) {
@@ -203,21 +203,21 @@ mod tests {
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
             MessageDelegate::new(
                 stop.clone(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
                 mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
-            metrics,
+            instance_state,
         );
 
         let task = tokio::spawn(actor.run());
@@ -241,21 +241,21 @@ mod tests {
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
             MessageDelegate::new(
                 stop.clone(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
                 mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
-            metrics,
+            instance_state,
         );
 
         let task = tokio::spawn(actor.run());
@@ -279,21 +279,21 @@ mod tests {
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
             MessageDelegate::new(
                 stop.clone(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
                 mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
-            metrics,
+            instance_state,
         );
 
         let task = tokio::spawn(actor.run());
@@ -317,21 +317,21 @@ mod tests {
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
             MessageDelegate::new(
                 stop.clone(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
                 mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
-            metrics,
+            instance_state,
         );
 
         // Before the actor runs for the first time, stage the two inputs to
@@ -382,21 +382,21 @@ mod tests {
             new_dispatcher_interconnect();
 
         let stop = CancellationToken::default();
-        let metrics = Arc::new(InstanceMetrics::default());
+        let instance_state = Arc::new(InstanceState::default());
         let dispatch_stream = dispatch_publish.take_recv_stream().expect("first call");
         let actor = ConnectionActor::new(
             client,
             stop.clone(),
             MessageDelegate::new(
                 stop.clone(),
-                Arc::clone(&metrics),
+                Arc::clone(&instance_state),
                 dispatch_publish,
                 AppInfo::new("test", "0.0.0"),
                 mock_endpoint_hostname(),
                 MockVerifier::default(),
             ),
             dispatch_stream,
-            metrics,
+            instance_state,
         );
 
         let _task = tokio::spawn(actor.run());
